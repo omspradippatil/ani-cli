@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Premium Stream - Android TV Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#004493",
+                        "on-error": "#690005",
+                        "tertiary": "#a7c8ff",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313",
+                        "primary": "#ffb4aa",
+                        "surface-bright": "#393939",
+                        "on-tertiary-fixed-variant": "#004689",
+                        "on-secondary-container": "#00285c",
+                        "surface-dim": "#131313",
+                        "on-surface-variant": "#e9bcb6",
+                        "on-tertiary": "#003061",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary-container": "#4b8eff",
+                        "on-tertiary-container": "#f8f9ff",
+                        "on-primary": "#690003",
+                        "tertiary-container": "#0072d7",
+                        "inverse-surface": "#e5e2e1",
+                        "secondary-fixed": "#d8e2ff",
+                        "secondary": "#adc6ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "primary-fixed": "#ffdad5",
+                        "error": "#ffb4ab",
+                        "primary-container": "#e50914",
+                        "surface-container-highest": "#353534",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed-variant": "#930007",
+                        "surface-tint": "#ffb4aa",
+                        "outline-variant": "#5e3f3b",
+                        "surface-container-high": "#2a2a2a",
+                        "error-container": "#93000a",
+                        "outline": "#af8782",
+                        "tertiary-fixed-dim": "#a7c8ff",
+                        "inverse-primary": "#c0000c",
+                        "surface": "#131313",
+                        "on-tertiary-fixed": "#001b3c",
+                        "inverse-on-surface": "#313030",
+                        "surface-container": "#201f1f",
+                        "on-secondary-fixed": "#001a41",
+                        "tertiary-fixed": "#d5e3ff",
+                        "on-background": "#e5e2e1",
+                        "on-secondary": "#002e69",
+                        "on-primary-container": "#fff7f6",
+                        "primary-fixed-dim": "#ffb4aa",
+                        "surface-variant": "#353534",
+                        "on-primary-fixed": "#410001"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "64px",
+                        "safe-area-x": "80px",
+                        "safe-area-y": "48px",
+                        "gutter": "24px",
+                        "card-gap": "20px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["20px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-lg": ["24px", { "lineHeight": "32px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "headline-lg": ["48px", { "lineHeight": "56px", "fontWeight": "700" }],
+                        "label-lg": ["18px", { "lineHeight": "24px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg": ["72px", { "lineHeight": "80px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Base styles to hide scrollbars for cleaner TV look */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            background-color: #131313; /* Use background color from config */
+            color: #e5e2e1; /* on-background */
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden selection:bg-primary-container selection:text-white">
+<!-- Top Navigation (Web/TV specific representation based on JSON) -->
+<header class="fixed top-0 w-full z-40 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center px-[80px] py-[48px] w-full hidden md:flex transition-all duration-300">
+<div class="flex items-center gap-12">
+<!-- Brand -->
+<div class="font-headline-md text-headline-md font-bold text-primary-container mr-8">
+                PREMIUM STREAM
+            </div>
+<!-- Links -->
+<nav class="flex gap-8">
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Search</a>
+<a class="text-primary border-b-4 border-primary pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Home</a>
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Library</a>
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">History</a>
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Settings</a>
+</nav>
+</div>
+<!-- Trailing Action -->
+<div>
+<button aria-label="User Profile" class="w-[60px] h-[60px] rounded-full bg-[#FFFFFF1A] hover:bg-white hover:text-black focus:bg-white focus:text-black flex items-center justify-center transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Side Navigation (Mobile/Alternative representation based on JSON) -->
+<nav class="fixed left-0 top-0 h-full w-[80px] hover:w-[280px] z-50 transition-all duration-300 bg-surface-container bg-surface-container/60 backdrop-blur-[30px] flex flex-col items-center py-[48px] gap-8 md:hidden overflow-hidden group">
+<div class="mb-8 flex flex-col items-center w-full px-4">
+<div class="w-[48px] h-[48px] rounded-full bg-surface-highest flex items-center justify-center overflow-hidden mb-4 shrink-0">
+<img class="w-full h-full object-cover" data-alt="A macro shot of a sleek metallic surface illuminated by moody cinematic lighting, deep blacks and sharp silver highlights, reflecting a high-end, premium aesthetic suitable for a user avatar placeholder in a dark mode UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo-fK_aoCdKwag3GVjEftejwkVcSBA5tLy_Ldh1fWZjTRJ-pbb47FfH6eHmBXhpG53O3aGJbhFIJOUg9LGfqbYUckA21XbyaWgFfHfbFzQQugHh5Ek84KfXMUVCio-FjHV9mKIsM9VWt8FavYYWwHzaZHh89nC7Wu8deUZV1e2w0FEeHVEkIIAo7G0ckshkoBw0gmTiXj8mm72jDjEcm1HBSICAF3MW_WEc3OreDf9JRNI_PQS4L_KvQ"/>
+</div>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-center w-full whitespace-nowrap">
+<h2 class="font-headline-sm text-on-background">Welcome</h2>
+<p class="font-label-sm text-primary">Premium Member</p>
+</div>
+</div>
+<div class="flex flex-col gap-4 w-full px-4">
+<a class="flex items-center gap-4 text-on-surface-variant p-3 hover:bg-surface-bright focus:scale-105 focus:border-4 focus:border-white transition-all duration-200 rounded-lg group/item" href="#">
+<span class="material-symbols-outlined shrink-0">search</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-label-lg text-label-lg">Search</span>
+</a>
+<a class="flex items-center gap-4 bg-primary-container text-on-primary-container p-3 hover:bg-surface-bright focus:scale-105 focus:border-4 focus:border-white transition-all duration-200 rounded-lg group/item" href="#">
+<span class="material-symbols-outlined shrink-0" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-label-lg text-label-lg">Home</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface-variant p-3 hover:bg-surface-bright focus:scale-105 focus:border-4 focus:border-white transition-all duration-200 rounded-lg group/item" href="#">
+<span class="material-symbols-outlined shrink-0">video_library</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-label-lg text-label-lg">Library</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface-variant p-3 hover:bg-surface-bright focus:scale-105 focus:border-4 focus:border-white transition-all duration-200 rounded-lg group/item" href="#">
+<span class="material-symbols-outlined shrink-0">history</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-label-lg text-label-lg">History</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface-variant p-3 hover:bg-surface-bright focus:scale-105 focus:border-4 focus:border-white transition-all duration-200 rounded-lg group/item" href="#">
+<span class="material-symbols-outlined shrink-0">settings</span>
+<span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-label-lg text-label-lg">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="w-full min-h-screen">
+<!-- Hero Banner -->
+<section class="relative w-full h-[870px] min-h-[600px] flex items-end pb-[safe-area-y]">
+<!-- Hero Image Background -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-cover bg-center bg-no-repeat" data-alt="A massive, cinematic wide-shot of a solitary astronaut standing on an alien planet surface looking towards a massive ringed gas giant in the sky. The color grading is extremely dark, relying on deep blacks and subtle blue/teal volumetric lighting. The mood is epic, isolating, and highly realistic, resembling a high-budget sci-fi blockbuster movie poster suitable for a premium streaming UI." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDVp4qWQ-X4GeatOjfO1P-vmJpmEyLsRG0a-x2ME1KKACVXbd094QhlNPndgwz1-zbS477R9Cw6HXDhNIbHSpkG05WymJPn3_6__eIkXsxzfoMHEdOq8vHEhyYDGF-fPgAhFO_Cgx4qg-CQN6awbV35k-TGkA6NFUjECO24-lgWs_nMV5PHPCsxJ8fEsaRW9jp68rC6i5l7MTQaOgQz3mbpgWhNUzD5k9fJJF1hL1AhE0de14JUle4gXQ')"></div>
+<!-- Gradients for text legibility and smooth blend into content -->
+<div class="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent"></div>
+</div>
+<!-- Hero Content -->
+<div class="relative z-10 pl-[safe-area-x] pr-[safe-area-x] w-full max-w-4xl flex flex-col gap-6">
+<h1 class="font-display-lg text-display-lg text-white drop-shadow-2xl leading-none">Interstellar</h1>
+<div class="flex items-center gap-4 font-label-lg text-label-lg text-on-surface-variant">
+<span class="flex items-center gap-1 text-[#F5C518]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+                        8.6
+                    </span>
+<span>2014</span>
+<span class="px-2 py-0.5 border border-on-surface-variant rounded text-sm">PG-13</span>
+<span>2h 49m</span>
+<span>Sci-Fi</span>
+</div>
+<p class="font-body-lg text-body-lg text-on-surface max-w-2xl line-clamp-3">
+                    A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival. As Earth's resources dwindle, this crew must find a new habitable world.
+                </p>
+<div class="flex items-center gap-4 mt-4">
+<button class="bg-white text-black font-label-lg text-label-lg px-8 py-4 rounded-lg flex items-center gap-2 hover:scale-105 focus:scale-110 focus:border-4 focus:border-primary-container transition-all duration-300">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                        Play
+                    </button>
+<button class="bg-[#FFFFFF1A] text-white font-label-lg text-label-lg px-8 py-4 rounded-lg flex items-center gap-2 hover:bg-white hover:text-black focus:bg-white focus:text-black focus:scale-110 focus:border-4 focus:border-primary-container transition-all duration-300 backdrop-blur-sm">
+<span class="material-symbols-outlined">info</span>
+                        More Info
+                    </button>
+</div>
+</div>
+</section>
+<!-- Content Rows Section -->
+<section class="pl-[safe-area-x] flex flex-col gap-[section-gap] pb-[safe-area-y] -mt-[100px] relative z-20">
+<!-- Row 1: Continue Watching -->
+<div class="flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md text-white">Continue Watching</h2>
+<div class="flex overflow-x-auto gap-[card-gap] pb-8 pr-[safe-area-x] snap-x">
+<!-- Card 1 (Focused State Simulated for demonstration per prompt) -->
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 scale-110 border-[4px] border-primary-container z-10 mx-4 mt-4">
+<div class="w-full h-full rounded-lg bg-cover bg-center overflow-hidden" data-alt="A dramatic scene from a neo-noir cyberpunk city street at night. Neon signs reflect on wet pavement. The lighting is dominated by deep blacks, magenta, and cyan hues. The image looks like a high-quality still from a gritty sci-fi television series, framed horizontally." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDPe14Hg8bAmCrY1udtLpBJMoV1PGey5YyHV0v1oZVBUFhOYp4q4ldyrHOx0rKYk_RWL5jtSAC83mhadKkxqrgXZChc2EetPCun1dK1sdUJqNTLAiQWcjzaz-bT_Ak0VWoF_SOIp1P-81LscF5-gWTpxFr0i4JiuZjLwlhM3fYg2jXxw5Lma2-vrH1szTJoWBTuzjm2clNyZJvwu92lu-Kn7OQXgizLoSFhv85GzmeKyj5_RfRZvICAYA')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent rounded-lg"></div>
+<!-- Progress Bar Overlay -->
+<div class="absolute bottom-0 left-0 w-full p-4 flex flex-col gap-2">
+<h3 class="font-label-lg text-label-lg text-white truncate drop-shadow-md">Altered Carbon</h3>
+<div class="w-full h-[4px] bg-[#FFFFFF33] rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[65%]"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant drop-shadow-md">S1:E4 · 24m remaining</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 mt-4 outline-none" tabindex="0">
+<div class="w-full h-full rounded-xl bg-cover bg-center overflow-hidden" data-alt="A tense, low-light shot inside a medieval castle. A figure in dark armor stands near a stone fireplace. The lighting is warm from the fire but overall very dark and moody, resembling a high-budget fantasy epic series." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAiLBi-a0HroUAen11a2aLl19Xn8B6zzSIx-ALwdG27R2TnphWOcd_xTrE1xXvHoKlfZVcbyDp0g4RvUK5YIKOzluH_k7vBgVvfI6TccWeJ60q5Rf7tlrc8oz_xh3duAeyvsz-YJWWYf9lidmmfXStpmeyNrmgUf3QtVOCum6pkhAbq-bf7dgRko9sUR2eEKS6myWjdLHwjJuG7o6CwMPrR32kP_wWHQXfY3tx5ZF5qi12VSidHSTbnxw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent rounded-xl"></div>
+<!-- Progress Bar Overlay -->
+<div class="absolute bottom-0 left-0 w-full p-4 flex flex-col gap-2">
+<h3 class="font-label-lg text-label-lg text-white truncate drop-shadow-md">House of the Dragon</h3>
+<div class="w-full h-[4px] bg-[#FFFFFF33] rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[15%]"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant drop-shadow-md">S2:E1 · 45m remaining</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 mt-4 outline-none" tabindex="0">
+<div class="w-full h-full rounded-xl bg-cover bg-center overflow-hidden" data-alt="A vast, sweeping landscape shot of a desert canyon at sunset. The colors are rich oranges, deep reds, and shadows turning black. It looks like a high-end nature documentary series shot in 8K." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD6mbidw3xsQ2gBye1Y8O2wJCJaxKaFRml45NP2iqNgkTy-MYAH4rTfLZ4pH9kUG4kN0JQMcbeX36pLmL0XXs-40W3uHlwXzKhe51k2U-Gz8c72pf3bAnsg6W4M2v1w4HIjPgQ5oIO8FBCdRZ0rsM-kXGKQeCIEHvGhNrm9f_kJPcbwkQkpk8ZuhCGcre-cgiVnWi93v-zv6OXcXB0Ct2zwrA0jaOvh1EBZ4tUvVPMsDnYBuBNBp7ygSA')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent rounded-xl"></div>
+<!-- Progress Bar Overlay -->
+<div class="absolute bottom-0 left-0 w-full p-4 flex flex-col gap-2">
+<h3 class="font-label-lg text-label-lg text-white truncate drop-shadow-md">Planet Earth III</h3>
+<div class="w-full h-[4px] bg-[#FFFFFF33] rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[80%]"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant drop-shadow-md">E3: Deserts · 10m remaining</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Row 2: Trending Now (2:3 aspect ratio posters) -->
+<div class="flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md text-white">Trending Now</h2>
+<div class="flex overflow-x-auto gap-[card-gap] pb-8 pr-[safe-area-x] snap-x pt-4">
+<div class="snap-start shrink-0 w-[200px] aspect-[2/3] rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="A striking vertical movie poster featuring a silhouette of a person standing against a bright, burning sky. The contrast is extreme, with deep blacks dominating the lower half. The style is minimalist and highly stylized, typical of an independent thriller film." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBH8nU7WhO0dm2ainUBCTG9nd_h23COY7rO5S1WkAQQKk5Br_BZAuENfqplrSFSWRatT2zyEKzzTtY4mTZiJVZgVkHkCyh8-ldK3JGeLk5QX4ecsTbFZh_WC6GjgziN7pXk8mcQnkrY-XIY6DswrEtfrMUKjBRwTLcQnfHwqataoNx1Tiz9IfhlzR7giCBkjMwyNokUrwfdX3Op4quHTuiBaKRff4mt9FiVb0oSbV3EMSznizQZxFoRRA"/>
+</div>
+<div class="snap-start shrink-0 w-[200px] aspect-[2/3] rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Vertical poster art showing a massive, intricate spaceship hovering over a futuristic metropolis. The color palette features dark blues and bright neon highlights. It looks like a blockbuster sci-fi movie poster." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBO28kV_u8ygPSasNoMuFxMAhAXzVTOpayoXubp3eBCL4D0vxzsIEi0J_pcGJn7CwpZBW3KF8v_hFuetaEuTuUaQRSY6R0PC6S02CggbWXHJJ6WeoivL3-1eImE1Wq6DRaVfPepWeNAc1IKw4Er9OeLtQTdK9i0bFJmIsPxHYHmRGAqLjgUbrJl6IlA-HFyLE_mPoe-9CyReNGpf4sC_UZpH1LDbnRxce3jIPuzWxk7_ToJ0vRakRMNJw"/>
+</div>
+<div class="snap-start shrink-0 w-[200px] aspect-[2/3] rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Vertical poster art featuring a close-up of a rugged detective's face lit by a single streetlamp in the rain. The mood is somber, dark, and tense, indicative of a premium crime drama series." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuOd8aS8S1mzCRk-Y6Kc9tEr_XUzbTWcqrLikDWV6n3MuDNpN7U7Io2F0TXPQLy3Pg8SZ-rU4Dj7yn5sOnFHvyrN1Y4rcju5eWXYrl4KV-j_4Qmqxtk3JDWiGK_7KSRrSBr7N-d4drsvvHveRmzYTmi8V4bQ7mCKuBmyP3rVfTF1MuptOopU98rTx6YWtOBjDGJtpy0Szz--un6S2HGzPgQho-DWT091tVIuAvNdT_pGjYExpde413Tg"/>
+</div>
+<div class="snap-start shrink-0 w-[200px] aspect-[2/3] rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Vertical poster art depicting a historical battle scene painted in a classical style, but with very dark, moody lighting. Deep reds and earthy browns dominate the palette, suited for an epic historical drama." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwx8bX4tymkbcWYnfTK_se4kwf_mVDutgv4wfhydHpEor_GSIwk0dcGeT2j9Fnrqn-DjiBPHSHZF3EMO5fraKELPY3F8k2bmimWfwgzfCJB2cdOKrZninSXegI6X9mQzVdj6JN4fyHOC5a8sfUVYfkaX9plwfykfCJ0-TY0I0tb3SEHtNBi5WZzLMRApP0u6qgpCdfnN4oUdLE6tgmDdlpya3CpD2s5cZxnCqx0txu-nQQvFdZ8Pe5HA"/>
+</div>
+<div class="snap-start shrink-0 w-[200px] aspect-[2/3] rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Vertical poster art showing a hauntingly beautiful, gothic mansion shrouded in fog at night. The lighting is very dim, creating a sense of dread and mystery, perfect for a high-end horror movie." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjT3hA0yj36Q0D62yUnRsscccwm2NBfQykcDIeMLXK07jInLgKJ0ZNTta6sorV7qYoSGyofwgcp8qzbEl-52DbpGDxK7SQbCa3shQF66zRwxS4o-PHQRcga446Qg6GxvUnuwhFesao7v2NBybF45wZBNDgoNw47G_hsWnNtO9fyOLr8LVlaXfgzi74Vbu_FTtjqWyptEFvo_cUatv8FJdZiq0FHetvhH8zmbNTjHL8t9GwV0OkLH1xfQ"/>
+</div>
+</div>
+</div>
+<!-- Row 3: Recently Added (16:9 aspect ratio cards) -->
+<div class="flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md text-white">Recently Added</h2>
+<div class="flex overflow-x-auto gap-[card-gap] pb-8 pr-[safe-area-x] snap-x pt-4">
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Horizontal thumbnail image showing a high-speed car chase through a neon-lit tunnel. The motion blur and vibrant lights contrast sharply with the dark surroundings, indicating an action-packed movie." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqyE41yQ39gxAAuGQXuh7u7JTZnB9nr_7X2ZJ51WhjSBDbmy948Ihh2TkhJY2hCnfj-2JuY3cFcIyMa6YPe0WrHg9TekaxA211_4uIeVqClNuSUecrfz8soOPY7qZk3ihypQdKmXF869Au65vz1SHS9fsY2a8n24saQg0Umz5N587fPDqK4T3XJC-WWmU0c2P1aKXtSc-3zb48y8TSW1PhvRT0foWVvtj8UVpyek8XgLon6gobZnCFZQ"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent group-focus:bg-transparent transition-colors rounded-xl"></div>
+<div class="absolute top-2 left-2 bg-primary-container text-white font-label-sm px-2 py-1 rounded shadow-lg text-xs font-bold uppercase tracking-wider">New</div>
+</div>
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Horizontal thumbnail image of a beautifully animated magical forest at twilight. Glowing plants and deep shadows create a serene yet mysterious atmosphere, suitable for a premium animated feature." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7HnxZKfg9duDeZKPa5fFgO3ZP3Rk_Xxs4Z_eEYHleOHdN0xGIlIAvztuNvn7AgBzGWNwM-8A37KPzMc1k9_p1HKdSA_DMv3Fpcfn-mTUYw7YZj7rBRyiost4BbpfQ0qGRBuUQHNl6RJ99h4LqVcRQa2u5uuDPPZeMyNujUgeUWnzFGTdf34rr84t1PZIPAvsgpkOPLqsUsAGVFhxYS7f3fYUVX-kWPwUBFvPCSTtfaoEYZP7HVN-NMg"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent group-focus:bg-transparent transition-colors rounded-xl"></div>
+<div class="absolute top-2 left-2 bg-primary-container text-white font-label-sm px-2 py-1 rounded shadow-lg text-xs font-bold uppercase tracking-wider">New</div>
+</div>
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Horizontal thumbnail image featuring a dimly lit, high-end restaurant interior where two characters are engaged in intense conversation. The lighting is moody and cinematic, highlighting a sophisticated drama." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARzJSyxYGxOJP5eJwgXEQJave7IPywAmCYR5JSGTE44VE4bBE0w__wJCOb3vDSRSkZVDv2Wr1VmhRj9uLXMnP0fkL0N2330uojnbC8yD5OmGWLwVfR-ug1HDRRKKb3Rcxwst0IbHBbPHrwamcgLOzKOhsMRyx2O_8r_24ct4VfDijGiZKoJRDyxg7CJs2m2llJzCmmZHBa_CtyVX9GjnQkuM7tyblXP8cBD5WSKHqPjLyAB5DmCUefgQ"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent group-focus:bg-transparent transition-colors rounded-xl"></div>
+</div>
+<div class="snap-start shrink-0 w-[320px] aspect-video rounded-xl relative group transition-all duration-300 hover:scale-105 focus:scale-110 focus:border-[4px] focus:border-white focus:z-10 outline-none" tabindex="0">
+<img class="w-full h-full object-cover rounded-xl" data-alt="Horizontal thumbnail image of a sprawling, futuristic space station orbiting a dark, cloudy planet. The scene is epic in scale, rendered in high fidelity, suggesting a major sci-fi release." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQlGJY0tgqFZ5oAy8OXQSNepC6UyENbAWAxxbxL_7yyNfqbF6YBNSkboq3nZr4Z_LipvSyH27p6GGtBmBBTK56u0lM37pe7C1BLsVIIKOATk0q93_DQoiPejAP2e43Ys1MWiUU9opkpn6DRK0w2y67AntG0ColAhqWizaKzXGCClzR46eAcwPsBcZoceMA_IiIr3-g8e_PA9TAtxQO_uzJ0XAUf3zt3rB39DSox_oNVkmf0Pf7Qv-q3A"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent group-focus:bg-transparent transition-colors rounded-xl"></div>
+</div>
+</div>
+</div>
+<!-- Row 4: Recommended for You (Bento-style mixed layout to break the standard list) -->
+<div class="flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md text-white">Recommended for You</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-[card-gap] pr-[safe-area-x] pb-12 pt-4 h-[400px]">
+<!-- Large Feature Card -->
+<div class="md:col-span-2 relative rounded-[24px] overflow-hidden group transition-all duration-300 hover:scale-[1.02] focus:scale-[1.02] focus:border-[4px] focus:border-white outline-none" tabindex="0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A wide, sweeping landscape of snow-capped mountains at dawn. The light is pale blue and stark white against deep shadows, creating a pristine, high-contrast, cinematic image suitable for a prominent feature banner in a UI." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD9DJ_GA-a0GO9_BtkVrkq6ogTyH4A0SblwO3TIqb4x0G73i4KGtrUbD_UXChYVYFzzQI70F-PINTUd8j6jK8SrQJFB3ZehMkEiDiipTuOjB_GwS4OVd3F3OXZaHnR-2_isUt5REJxZXz_BQo6Yyc7Ffz-cvhTu7wDAJwuOAcGHg5e6F04Aji9yXzJ3erCF0MzPoBUV5uNzENawJLvJKUWu1UGz739hv3aWgXb0PG5xRCmCQA_eU941Mw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-8 flex flex-col gap-2">
+<div class="text-primary font-label-sm uppercase tracking-widest mb-1">Based on your watch history</div>
+<h3 class="font-headline-lg text-headline-lg text-white">Arctic Explorers</h3>
+<p class="font-body-md text-on-surface-variant max-w-lg line-clamp-2">Journey into the harshest environments on Earth with this groundbreaking new documentary series featuring unseen footage.</p>
+</div>
+</div>
+<!-- Stacked Smaller Cards -->
+<div class="flex flex-col gap-[card-gap] h-full">
+<div class="flex-1 relative rounded-[24px] overflow-hidden group transition-all duration-300 hover:scale-105 focus:scale-105 focus:border-[4px] focus:border-white outline-none" tabindex="0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A tight close-up of a stand-up comedian on a dark stage, illuminated only by a stark, white spotlight. The background is pure black, emphasizing the performer and matching a premium comedy special thumbnail." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD4ZoQF2UDozl7LEUpEVsCSPGnC9q1trLNnc6ei04bhElD3fryIAUmPH3MyBT0pWGA78ljSxZ1KWGoJ4FhWKrP0IEtsdt1hIq0wYuZN06-quhqXoihYmV925jhgW_V2aD-kr2beTRRUntUE2GThfRL7gGYX1WpKfZYONRVMz6yeZh0piKrACaNWbjGgwZaVkSiw-uedCRi0o-cfpV_SetTR-IxOhQgsZifdXhkyEzPR84wHOLattocUZg')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-white">
+<h4 class="font-label-lg font-bold">Midnight Comedy Special</h4>
+</div>
+</div>
+<div class="flex-1 relative rounded-[24px] overflow-hidden group transition-all duration-300 hover:scale-105 focus:scale-105 focus:border-[4px] focus:border-white outline-none" tabindex="0">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="An abstract, swirling digital art piece featuring deep blues, purples, and faint red glows, resembling a stylized galaxy or neural network. It's used as a backdrop for a sci-fi anthology series card." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAMhcHWY_UZh9VDRbnOCGR0h4b_c8Hh2kHMEvFqzI3RKh8aM-VlBo25UUj-KE2ur-nThvoLP4y2ls8-calU91B5EXxYwwESLQmyqiZeLWGjfJl1Hf6L1stIVZNjQVZdPqyxW_LoPW-B1LtLL5WrhHNt6JoM8tm6TDuyImCicdaLjE3Xoq2AtAS66IwF5byDEwqUNOPX2NiHHcZxRDfzfMOHdrPKOu1GWyG1SHm5g9fGFwv_qdtsauX37A')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-white">
+<h4 class="font-label-lg font-bold">Mindscape Anthology</h4>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<script>
+        // Simple script to handle basic keyboard navigation to simulate TV D-pad
+        document.addEventListener('keydown', function(e) {
+            const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+            const elements = Array.from(document.querySelectorAll(focusableElements)).filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
+            
+            let currentIndex = elements.indexOf(document.activeElement);
+
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                let nextIndex = currentIndex + 1;
+                if(nextIndex < elements.length) elements[nextIndex].focus();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                let prevIndex = currentIndex - 1;
+                if(prevIndex >= 0) elements[prevIndex].focus();
+            }
+            // Basic down/up (very simplified, real TV nav requires spatial awareness)
+             else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                 let nextIndex = currentIndex + 5; // skip a few to simulate row jump
+                 if(nextIndex < elements.length) elements[nextIndex].focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                let prevIndex = currentIndex - 5;
+                if(prevIndex >= 0) elements[prevIndex].focus();
+            }
+        });
+    </script>
+</body></html>

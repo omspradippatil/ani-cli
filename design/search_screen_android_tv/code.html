@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Android TV Search</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#004493",
+                      "on-error": "#690005",
+                      "tertiary": "#a7c8ff",
+                      "on-error-container": "#ffdad6",
+                      "background": "#131313",
+                      "primary": "#ffb4aa",
+                      "surface-bright": "#393939",
+                      "on-tertiary-fixed-variant": "#004689",
+                      "on-secondary-container": "#00285c",
+                      "surface-dim": "#131313",
+                      "on-surface-variant": "#e9bcb6",
+                      "on-tertiary": "#003061",
+                      "surface-container-low": "#1c1b1b",
+                      "secondary-container": "#4b8eff",
+                      "on-tertiary-container": "#f8f9ff",
+                      "on-primary": "#690003",
+                      "tertiary-container": "#0072d7",
+                      "inverse-surface": "#e5e2e1",
+                      "secondary-fixed": "#d8e2ff",
+                      "secondary": "#adc6ff",
+                      "surface-container-lowest": "#0e0e0e",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "primary-fixed": "#ffdad5",
+                      "error": "#ffb4ab",
+                      "primary-container": "#e50914",
+                      "surface-container-highest": "#353534",
+                      "on-surface": "#e5e2e1",
+                      "on-primary-fixed-variant": "#930007",
+                      "surface-tint": "#ffb4aa",
+                      "outline-variant": "#5e3f3b",
+                      "surface-container-high": "#2a2a2a",
+                      "error-container": "#93000a",
+                      "outline": "#af8782",
+                      "tertiary-fixed-dim": "#a7c8ff",
+                      "inverse-primary": "#c0000c",
+                      "surface": "#131313",
+                      "on-tertiary-fixed": "#001b3c",
+                      "inverse-on-surface": "#313030",
+                      "surface-container": "#201f1f",
+                      "on-secondary-fixed": "#001a41",
+                      "tertiary-fixed": "#d5e3ff",
+                      "on-background": "#e5e2e1",
+                      "on-secondary": "#002e69",
+                      "on-primary-container": "#fff7f6",
+                      "primary-fixed-dim": "#ffb4aa",
+                      "surface-variant": "#353534",
+                      "on-primary-fixed": "#410001"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap": "64px",
+                      "safe-area-x": "80px",
+                      "safe-area-y": "48px",
+                      "gutter": "24px",
+                      "card-gap": "20px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "display-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "body-md": ["20px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "body-lg": ["24px", {"lineHeight": "32px", "fontWeight": "400"}],
+                      "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "headline-lg": ["48px", {"lineHeight": "56px", "fontWeight": "700"}],
+                      "label-lg": ["18px", {"lineHeight": "24px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "display-lg": ["72px", {"lineHeight": "80px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #121212; /* Fallback */
+        }
+        .tv-focus-ring:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px white;
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        .tv-keyboard-key:focus {
+            outline: none;
+            background-color: white;
+            color: #0A0A0A;
+            transform: scale(1.1);
+        }
+        /* Custom scrollbar for grid */
+        ::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3); 
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface w-screen h-screen overflow-hidden antialiased">
+<!-- Top Navigation (Shell) -->
+<nav class="fixed top-0 w-full z-40 bg-transparent flex justify-between items-center px-safe-area-x py-safe-area-y bg-gradient-to-b from-black/80 to-transparent flat no shadows">
+<div class="font-headline-md text-headline-md font-bold text-primary-container">PREMIUM STREAM</div>
+<div class="flex gap-8">
+<a class="text-primary border-b-4 border-primary pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Home</a>
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Library</a>
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">History</a>
+<a class="text-on-surface-variant pb-2 font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300" href="#">Settings</a>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface font-label-lg text-label-lg hover:scale-110 hover:text-primary transition-transform duration-200 focus:scale-110 focus:border-4 focus:border-white transition-all duration-300 cursor-pointer" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+</div>
+</nav>
+<!-- Main Layout -->
+<main class="w-full h-full pt-[144px] px-safe-area-x pb-safe-area-y flex gap-12">
+<!-- Left Column: Search & Keyboard -->
+<div class="w-1/3 flex flex-col gap-8 h-full">
+<!-- Search Input -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-3xl">search</span>
+<input class="w-full bg-surface-container h-20 pl-16 pr-6 rounded-xl font-headline-md text-headline-md text-on-surface focus:bg-white focus:text-surface focus:outline-none transition-colors border-none" placeholder="Search movies, shows..." type="text" value="Action"/>
+<button class="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 focus:bg-white focus:text-surface transition-all tv-focus-ring">
+<span class="material-symbols-outlined text-2xl">mic</span>
+</button>
+</div>
+<!-- Keyboard -->
+<div class="bg-surface-container rounded-2xl p-6 grid grid-cols-6 gap-3 flex-1 auto-rows-fr">
+<!-- Row 1 -->
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">A</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">B</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">C</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">D</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">E</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">F</button>
+<!-- Row 2 -->
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">G</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">H</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">I</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">J</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">K</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">L</button>
+<!-- Row 3 -->
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">M</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">N</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">O</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">P</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">Q</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">R</button>
+<!-- Row 4 -->
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">S</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">T</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">U</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">V</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">W</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">X</button>
+<!-- Row 5 -->
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">Y</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">Z</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all">123</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all col-span-2">SPACE</button>
+<button class="tv-keyboard-key bg-white/10 rounded-lg font-body-lg text-body-lg text-on-surface transition-all flex items-center justify-center">
+<span class="material-symbols-outlined">backspace</span>
+</button>
+</div>
+<!-- Recent Searches -->
+<div class="mt-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-4">Recent Searches</h3>
+<div class="flex flex-wrap gap-3">
+<button class="bg-surface-container hover:bg-surface-bright px-6 py-3 rounded-full font-body-md text-body-md text-on-surface transition-all tv-focus-ring">Sci-Fi Movies</button>
+<button class="bg-surface-container hover:bg-surface-bright px-6 py-3 rounded-full font-body-md text-body-md text-on-surface transition-all tv-focus-ring">Comedy Specials</button>
+<button class="bg-surface-container hover:bg-surface-bright px-6 py-3 rounded-full font-body-md text-body-md text-on-surface transition-all tv-focus-ring">Stranger Things</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Results Grid -->
+<div class="w-2/3 h-full overflow-y-auto pr-4 pb-12">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-8">Results for "Action"</h2>
+<div class="grid grid-cols-3 gap-x-6 gap-y-12">
+<!-- Result 1 (Focused) -->
+<div autofocus="" class="flex flex-col gap-4 relative outline-none focus:outline-none" tabindex="0">
+<div class="aspect-[16/9] rounded-3xl overflow-hidden relative shadow-[0_0_0_4px_white] scale-110 transition-transform z-10">
+<img class="w-full h-full object-cover" data-alt="A cinematic, wide-angle shot of a high-octane action movie poster. Explosions illuminate the dark, gritty urban background with intense orange and yellow light. In the foreground, a silhouetted hero figure stands resolute, holding a futuristic weapon. The overall color grading is teal and orange, emphasizing high contrast and a premium, modern cinematic aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAA6tS59zsCcUmfDMOu39tpGZ1lKG4kdXoyajP-sKKCipOb5TjVuiUbCr1dfr6e357MyRG0VRFSbzcQjoEwa8PO3KAwDsRlE9mGtx7RbMr1Hl3kbORjAKPUpStCfhoXSUZm9EPJfA-nppq3U4gD5JEfp_HONdVpVJoSNkob-C6pYiFJCss4ABi6CD7nFu9yXDzximWkpwZWoS0vw8ywGcM6hJW3Bq3kcWagqj2P5FF9DjKTjoveYlSRjQ"/>
+<div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-md font-label-sm text-label-sm text-white">Action / Thriller</div>
+</div>
+<div class="mt-2 pl-4">
+<h4 class="font-headline-md text-headline-md text-primary truncate">Cyberpunk: Retribution</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">2023 • 2h 15m</p>
+</div>
+</div>
+<!-- Result 2 -->
+<div class="flex flex-col gap-4 tv-focus-ring rounded-3xl transition-all" tabindex="0">
+<div class="aspect-[16/9] rounded-3xl overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover opacity-80" data-alt="A dramatic poster for a spy action film. A sleek sports car speeds down a rain-slicked mountain road at night. The headlights cut through heavy fog, creating streaks of bright white light against the deep, moody blues and blacks of the surrounding environment. The image feels fast-paced, sleek, and highly polished, suitable for a premium streaming interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4336Sm4JD-1WXNtZDCdDAAcpw2aQkwLZiCrvUz0Fuuo6QXiz41Wlr7gR06DfwCJijphfxDqTMv_iyYQq4ex71HSCO4rZY4OOrSCu5o4t3qPzDoq5RVCtO0tOiGWIxlRwRqrle5FR_Ef8vivsu-ldciULyrL9nYRo-9gU243__iPz-hhB_96XlOgZU1FGwEowqA7snGo_nUgnLW8btYIxiKvzd4o6MSvfGgkDWBZ5HDv3CphR8s0jVYg"/>
+<div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-md font-label-sm text-label-sm text-white">Action / Spy</div>
+</div>
+<div class="mt-2">
+<h4 class="font-body-lg text-body-lg text-on-surface truncate">Velocity Protocol</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">2024 • 1h 58m</p>
+</div>
+</div>
+<!-- Result 3 -->
+<div class="flex flex-col gap-4 tv-focus-ring rounded-3xl transition-all" tabindex="0">
+<div class="aspect-[16/9] rounded-3xl overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover opacity-80" data-alt="An epic fantasy action movie poster scene. A massive dragon soars above a fiery battlefield, casting a huge shadow. Below, armies clash in a haze of smoke and embers. The color palette is dominated by deep reds, oranges, and charred blacks, conveying a sense of monumental scale and intense conflict in a dark fantasy setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1hH9ehoWIWsxu91AfxwCqBRcyQWxohtGqeuQvWGzLHFRYY3CLpEmJSkB_Pj-PHAKalv2Q2ctF-kLT9Gg1PCzJtWyEqMM2bMymvAecD5wMG2xgJ3_FSBgfGQtnkw0ZXzoTh1cJKEmuBSfwq2REV8W6zUtbzqtjj6-RU7VX-fAekBQjWcsQ_3Z57guY_0LcdgNs7ik6Ng9q4rUkBPMvAmFtLgF12v6UmmGJtlhwDgEJeO8be9fIvNvk6A"/>
+<div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-md font-label-sm text-label-sm text-white">Action / Fantasy</div>
+</div>
+<div class="mt-2">
+<h4 class="font-body-lg text-body-lg text-on-surface truncate">Dragon's Fall</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">2022 • 2h 30m</p>
+</div>
+</div>
+<!-- Result 4 -->
+<div class="flex flex-col gap-4 tv-focus-ring rounded-3xl transition-all" tabindex="0">
+<div class="aspect-[16/9] rounded-3xl overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover opacity-80" data-alt="A gritty, urban martial arts movie poster. A dimly lit alleyway illuminated by a single flickering neon sign in bright magenta. A lone fighter is caught mid-kick, water splashing from a puddle on the ground. The scene is high contrast, moody, and intense, using deep shadows to emphasize the neon highlights and physical action." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTArsxkNw_35rdMmDZXAEWpsTCIzTGqUCUTCUmcFVksN66nlgDVMjgO6cnPLNRNjkPdvLrsBa1QwUhLZuIWQL6rt_T8KpTZy2CsDXyezKyDuZiJS66IY2g6_41blHrVj9wVJ18FJrel0rVmxJqL4KjWKnMZf5a5WtEwd6RRcl47mT4GMrzFY1p6lXFbBVu2ZLhD75qY4q4wrUlFesdca2w47Lhh_nbLFp8ZM2fpJw-rdGPZg_Oz7aqAQ"/>
+<div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-md font-label-sm text-label-sm text-white">Martial Arts</div>
+</div>
+<div class="mt-2">
+<h4 class="font-body-lg text-body-lg text-on-surface truncate">Neon Strike</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">2023 • 1h 45m</p>
+</div>
+</div>
+<!-- Result 5 -->
+<div class="flex flex-col gap-4 tv-focus-ring rounded-3xl transition-all" tabindex="0">
+<div class="aspect-[16/9] rounded-3xl overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover opacity-80" data-alt="A sci-fi space battle scene. Numerous sleek, metallic starships engage in combat against a backdrop of a vibrant, swirling purple and blue nebula. Laser fire in brilliant red and green cuts across the darkness of space. The image is highly detailed, emphasizing advanced technology and explosive, cinematic space combat in a premium sci-fi aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBR7IRPaG_9TE0xVXqv1EAhF0uivNwNN-ovtjDLr1-xD2XxPfbguQZlUuUM9bskiNgRWbUC33EaFxN6umDFOa6Kp7z6GxUWAGUZCYFh_AsjpiZrQ-2QN3CrdqtgSJ7cG7YqqRIr0Y11E2XBezqaBWc52VC--CIaAz5NHOvq7NQiZNboNLQkvPLUKSLUniqjHoa50FKVFPfRqqS5vICsVrtAgjj837tJqv-ycDCPdl6LD92M7gmrIoFlUw"/>
+<div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-md font-label-sm text-label-sm text-white">Sci-Fi / Action</div>
+</div>
+<div class="mt-2">
+<h4 class="font-body-lg text-body-lg text-on-surface truncate">Nebula Wars</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">2024 • 2h 10m</p>
+</div>
+</div>
+<!-- Result 6 -->
+<div class="flex flex-col gap-4 tv-focus-ring rounded-3xl transition-all" tabindex="0">
+<div class="aspect-[16/9] rounded-3xl overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover opacity-80" data-alt="A classic heist action movie poster. A vault door blown wide open, with gold bars glinting in the harsh, focused beam of flashlights. The surrounding room is cast in deep shadows, suggesting a stealthy nighttime operation. The colors are muted except for the bright metallic shine of the gold and the stark white of the tactical lights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMdT-2mWupzsEUgnVrgiW_IqtBeSWCLhK9FPF3_uj17OSdZRe06OP6GSpVAUOsCgptZZ2bAVl52Bz1gY8mgTxnAtoZC1ZBfh4oYQeOuMkWNPL2yqOJuvxEO5aU2yyR2RCuwc-TcjBmfIaJ8kGCMxnxmQJ0XK_AI8VwIU_PwRxhS9vP4zfQoCtKN5qhlBnUxa3XyYydBgxi2672kTXm6DFPFLAyemYbty_NPm4_L-JIusij1jiWZeF0dA"/>
+<div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-md font-label-sm text-label-sm text-white">Action / Heist</div>
+</div>
+<div class="mt-2">
+<h4 class="font-body-lg text-body-lg text-on-surface truncate">The Grand Vault</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">2021 • 2h 05m</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple script to handle focus rings moving off the initially focused item
+        document.addEventListener('keydown', (e) => {
+            const firstResult = document.querySelector('div[autofocus]');
+            if(firstResult && firstResult.contains(document.activeElement)) {
+                // If moving away from the first item, remove its forced styling so it behaves normally
+                firstResult.removeAttribute('autofocus');
+                const imgContainer = firstResult.querySelector('.aspect-\\[16\\/9\\]');
+                imgContainer.classList.remove('shadow-[0_0_0_4px_white]', 'scale-110', 'z-10');
+                
+                // Add standard focus classes back to the container for future focus
+                firstResult.classList.add('tv-focus-ring');
+                
+                // Re-style metadata
+                const title = firstResult.querySelector('h4');
+                title.classList.remove('text-primary');
+                title.classList.add('text-on-surface');
+            }
+        });
+    </script>
+</body></html>

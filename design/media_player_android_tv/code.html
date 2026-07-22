@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Android TV Media Player Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#004493",
+                      "on-error": "#690005",
+                      "tertiary": "#a7c8ff",
+                      "on-error-container": "#ffdad6",
+                      "background": "#131313",
+                      "primary": "#ffb4aa",
+                      "surface-bright": "#393939",
+                      "on-tertiary-fixed-variant": "#004689",
+                      "on-secondary-container": "#00285c",
+                      "surface-dim": "#131313",
+                      "on-surface-variant": "#e9bcb6",
+                      "on-tertiary": "#003061",
+                      "surface-container-low": "#1c1b1b",
+                      "secondary-container": "#4b8eff",
+                      "on-tertiary-container": "#f8f9ff",
+                      "on-primary": "#690003",
+                      "tertiary-container": "#0072d7",
+                      "inverse-surface": "#e5e2e1",
+                      "secondary-fixed": "#d8e2ff",
+                      "secondary": "#adc6ff",
+                      "surface-container-lowest": "#0e0e0e",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "primary-fixed": "#ffdad5",
+                      "error": "#ffb4ab",
+                      "primary-container": "#e50914",
+                      "surface-container-highest": "#353534",
+                      "on-surface": "#e5e2e1",
+                      "on-primary-fixed-variant": "#930007",
+                      "surface-tint": "#ffb4aa",
+                      "outline-variant": "#5e3f3b",
+                      "surface-container-high": "#2a2a2a",
+                      "error-container": "#93000a",
+                      "outline": "#af8782",
+                      "tertiary-fixed-dim": "#a7c8ff",
+                      "inverse-primary": "#c0000c",
+                      "surface": "#131313",
+                      "on-tertiary-fixed": "#001b3c",
+                      "inverse-on-surface": "#313030",
+                      "surface-container": "#201f1f",
+                      "on-secondary-fixed": "#001a41",
+                      "tertiary-fixed": "#d5e3ff",
+                      "on-background": "#e5e2e1",
+                      "on-secondary": "#002e69",
+                      "on-primary-container": "#fff7f6",
+                      "primary-fixed-dim": "#ffb4aa",
+                      "surface-variant": "#353534",
+                      "on-primary-fixed": "#410001"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap": "64px",
+                      "safe-area-x": "80px",
+                      "safe-area-y": "48px",
+                      "gutter": "24px",
+                      "card-gap": "20px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "72px",
+                              {
+                                      "lineHeight": "80px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ui-overlay {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* Focus styles for buttons */
+        .tv-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .tv-button:focus {
+            transform: scale(1.1);
+            border: 4px solid white;
+            background-color: white;
+            color: #0A0A0A;
+            outline: none;
+        }
+        .tv-button:focus .material-symbols-outlined {
+            color: #0A0A0A;
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen w-screen overflow-hidden flex flex-col justify-between font-body-md relative">
+<!-- Video Background (Placeholder) -->
+<div class="absolute inset-0 z-0 bg-black">
+<img alt="Video Background" class="w-full h-full object-cover opacity-80" data-alt="A breathtaking, cinematic sci-fi scene of a vast alien landscape. A massive ringed planet dominates the starry night sky. In the foreground, sleek, dark metallic structures glow with subtle, pulsating primary red lights. The atmosphere is tense and awe-inspiring, designed as a high-end, immersive background for a premium dark-mode media player interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDI6DTkv5g7tdhWn6G8sBHRz7lWOLBhMDeFQNkUQs5rdOz_G_-j0DeaZj9vk4dwp_It6aDIt-NhMBiTJFAR0_XdIhu6gG57q2KYQN3bPMhied4Mh69XMQMQGc-7zmUGR4ofoO3ibXQhpw7UstlhzM2OofXuhsc2nb7XrpB_65dAcsKEoLHMDd7Cw6_LERCNsw1lANzvOpO0cn7KNU3tcYIjPYj3yk1P55_VzexMQ2BFc7aO00SrBWMsMQ"/>
+</div>
+<!-- UI Overlay Container (Fades out) -->
+<div class="ui-overlay absolute inset-0 z-10 flex flex-col justify-between pointer-events-auto" id="ui-container">
+<!-- Top Overlay -->
+<div class="pt-safe-area-y px-safe-area-x flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pb-16">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-2">Neon Skyline: The Awakening</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Episode 1 - The Descent</p>
+</div>
+</div>
+<!-- Right Overlay (Settings) -->
+<div class="absolute right-safe-area-x top-1/2 -translate-y-1/2 flex flex-col gap-6">
+<button aria-label="Subtitles" class="tv-button bg-white/10 p-4 rounded-full flex items-center justify-center w-[60px] h-[60px] backdrop-blur-md">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="subtitles">subtitles</span>
+</button>
+<button aria-label="Audio Settings" class="tv-button bg-white/10 p-4 rounded-full flex items-center justify-center w-[60px] h-[60px] backdrop-blur-md">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="volume_up">volume_up</span>
+</button>
+<button aria-label="Video Quality" class="tv-button bg-white/10 p-4 rounded-full flex items-center justify-center w-[60px] h-[60px] backdrop-blur-md">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="settings">settings</span>
+</button>
+</div>
+<!-- Bottom Overlay -->
+<div class="pb-safe-area-y px-safe-area-x bg-gradient-to-t from-black/90 to-transparent pt-32">
+<!-- Progress Bar Area -->
+<div class="mb-8 flex items-center gap-4">
+<span class="font-label-lg text-label-lg text-on-surface-variant">24:15</span>
+<div class="flex-grow h-2 bg-white/20 rounded-full relative overflow-hidden">
+<!-- Progress Fill -->
+<div class="absolute left-0 top-0 h-full bg-primary-container w-1/3 rounded-full"></div>
+<!-- Playhead (optional, usually implied by progress end) -->
+</div>
+<span class="font-label-lg text-label-lg text-on-surface-variant">58:30</span>
+</div>
+<!-- Transport Controls -->
+<div class="flex justify-center items-center gap-8">
+<button aria-label="Skip Back 10 Seconds" class="tv-button bg-white/10 p-4 rounded-full flex items-center justify-center w-[60px] h-[60px]">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="replay_10">replay_10</span>
+</button>
+<!-- Play/Pause Button (Focused by default via JS) -->
+<button aria-label="Play or Pause" class="tv-button bg-white/10 p-6 rounded-full flex items-center justify-center w-[80px] h-[80px]" id="play-pause-btn">
+<span class="material-symbols-outlined text-white text-5xl" data-icon="play_arrow" data-weight="fill">play_arrow</span>
+</button>
+<button aria-label="Skip Forward 10 Seconds" class="tv-button bg-white/10 p-4 rounded-full flex items-center justify-center w-[60px] h-[60px]">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="forward_10">forward_10</span>
+</button>
+<button aria-label="Next Episode" class="tv-button bg-white/10 p-4 rounded-full flex items-center justify-center w-[60px] h-[60px] ml-16">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="skip_next">skip_next</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const uiContainer = document.getElementById('ui-container');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            let timeoutId;
+
+            // Set initial focus
+            playPauseBtn.focus();
+            playPauseBtn.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1";
+
+            const resetInactivityTimer = () => {
+                uiContainer.classList.remove('fade-out');
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    // Only fade out if a focusable element inside the UI has focus, or no focus
+                    // In a real TV app, you might want to maintain focus state logically even when hidden.
+                    uiContainer.classList.add('fade-out');
+                }, 3000);
+            };
+
+            // Listen for remote control activity (mapped to keyboard events in browser)
+            document.addEventListener('keydown', resetInactivityTimer);
+            document.addEventListener('mousemove', resetInactivityTimer);
+            
+            // Handle focus changes to update icon fill
+            const buttons = document.querySelectorAll('.tv-button');
+            buttons.forEach(btn => {
+                btn.addEventListener('focus', () => {
+                    const icon = btn.querySelector('.material-symbols-outlined');
+                    if(icon) {
+                        icon.style.fontVariationSettings = "'FILL' 1";
+                    }
+                });
+                btn.addEventListener('blur', () => {
+                    const icon = btn.querySelector('.material-symbols-outlined');
+                    if(icon && icon.getAttribute('data-weight') !== 'fill') {
+                        icon.style.fontVariationSettings = "'FILL' 0";
+                    } else if (icon && icon.getAttribute('data-weight') === 'fill') {
+                        // If it's meant to be filled normally, keep it filled, but maybe change color if needed
+                        icon.style.fontVariationSettings = "'FILL' 1";
+                    }
+                });
+            });
+
+            // Initial start
+            resetInactivityTimer();
+        });
+    </script>
+</body></html>
