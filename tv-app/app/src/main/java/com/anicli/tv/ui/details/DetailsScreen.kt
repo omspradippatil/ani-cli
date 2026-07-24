@@ -107,6 +107,12 @@ fun DetailsScreen(
                     }
                 }
             }
+        } else if (state.error != null) {
+            Text(
+                text = "Error: ${state.error}",
+                modifier = Modifier.align(Alignment.Center),
+                color = Color.Red
+            )
         }
     }
 }

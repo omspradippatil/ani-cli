@@ -83,7 +83,7 @@ fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(400.dp)
+            .height(250.dp)
             .padding(horizontal = 48.dp, vertical = 16.dp)
     ) {
         Card(

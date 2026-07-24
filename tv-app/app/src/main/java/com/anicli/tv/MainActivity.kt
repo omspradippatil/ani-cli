@@ -14,7 +14,7 @@ import com.anicli.tv.core.theme.AniCliTvTheme
 import com.anicli.tv.ui.details.DetailsScreen
 import com.anicli.tv.ui.home.HomeScreen
 import com.anicli.tv.ui.search.SearchScreen
-import com.anicli.tv.player.VideoPlayer
+import com.anicli.tv.ui.player.PlayerScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("player/{episodeId}") { backStackEntry ->
                             val episodeId = backStackEntry.arguments?.getString("episodeId") ?: return@composable
-                            VideoPlayer(videoUrl = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                            PlayerScreen(episodeId = episodeId)
                         }
                     }
                 }

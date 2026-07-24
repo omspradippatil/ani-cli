@@ -59,8 +59,8 @@ object DataModule {
     @Singleton
     fun provideAnimeApiService(okHttpClient: OkHttpClient): AnimeApiService {
         return Retrofit.Builder()
-            // Using a public hosted Consumet API instance for demonstration
-            .baseUrl("https://api.consumet.org/")
+            // Using AllAnime GraphQL API matching ani-cli
+            .baseUrl("https://api.allanime.day/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

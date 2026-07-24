@@ -31,3 +31,8 @@
 - Built Compose UI layer (Theme, `HomeScreen`, `DetailsScreen`).
 - Integrated `ExoPlayer` wrapped in a Compose `VideoPlayer` component.
 - Added Jetpack Navigation in `MainActivity.kt`.
+- Built custom `GraphQL` request payload structure to query `api.allanime.day`.
+- Implemented `RealMediaProvider` fetching real data from allanime using `OkHttpClient` and `JSONObject` parsing.
+- Refactored Hilt `ProviderModule` to supply `RealMediaProvider` over the mock variant.
+- Created `PlayerViewModel` and connected it to `PlayerScreen` to asynchronously fetch stream URLs before playback.
+- Modified `VideoPlayer` `ExoPlayer` instance to include necessary dynamic request headers for streaming (such as `sync` payload).

@@ -1,23 +1,33 @@
 package com.anicli.tv.data.remote
 
 import com.anicli.tv.data.remote.dto.*
+import retrofit2.http.Body
+import retrofit2.http.Header
+import retrofit2.http.POST
 import retrofit2.http.GET
-import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface AnimeApiService {
-    @GET("anime/gogoanime/top-airing")
-    suspend fun getTopAiring(): AnimeListResponse
 
-    @GET("anime/gogoanime/recent-release")
-    suspend fun getRecentRelease(): AnimeListResponse
+    @POST("api")
+    suspend fun searchAnime(
+        @Body request: GraphQLRequest,
+        @Header("Referer") referer: String = "https://youtu-chan.com",
+        @Header("Origin") origin: String = "https://youtu-chan.com"
+    ): GraphQLResponse<SearchData>
 
-    @GET("anime/gogoanime/{query}")
-    suspend fun searchAnime(@Path("query") query: String, @Query("page") page: Int = 1): AnimeListResponse
+    @POST("api")
+    suspend fun getAnimeInfo(
+        @Body request: GraphQLRequest,
+        @Header("Referer") referer: String = "https://youtu-chan.com",
+        @Header("Origin") origin: String = "https://youtu-chan.com"
+    ): GraphQLResponse<ShowData>
 
-    @GET("anime/gogoanime/info/{id}")
-    suspend fun getAnimeInfo(@Path("id") id: String): AnimeInfoResponse
-
-    @GET("anime/gogoanime/watch/{episodeId}")
-    suspend fun getWatchInfo(@Path("episodeId") episodeId: String): WatchResponse
+    @GET("api")
+    suspend fun getWatchInfo(
+        @Query("variables") variables: String,
+        @Query("extensions") extensions: String,
+        @Header("Referer") referer: String = "https://youtu-chan.com",
+        @Header("Origin") origin: String = "https://youtu-chan.com"
+    ): GraphQLResponse<EpisodeData>
 }

@@ -1,49 +1,63 @@
 package com.anicli.tv.data.remote.dto
 
-data class AnimeListResponse(
-    val currentPage: Int,
-    val hasNextPage: Boolean,
-    val results: List<AnimeDto>
+import com.google.gson.JsonElement
+
+// --- Requests ---
+data class GraphQLRequest(
+    val variables: Map<String, Any>,
+    val query: String
 )
 
-data class AnimeDto(
-    val id: String,
-    val title: String,
-    val image: String,
-    val url: String?,
-    val genres: List<String>?,
-    val releaseDate: String?
+// --- Responses ---
+data class GraphQLResponse<T>(
+    val data: T?,
+    val errors: List<GraphQLError>? = null
 )
 
-data class AnimeInfoResponse(
-    val id: String,
-    val title: String,
+data class GraphQLError(
+    val message: String
+)
+
+// 1. Search Query Data
+data class SearchData(
+    val shows: ShowsNode?
+)
+
+data class ShowsNode(
+    val edges: List<ShowEdge>?
+)
+
+data class ShowEdge(
+    val _id: String,
+    val name: String,
+    val availableEpisodes: Map<String, Any>? = null,
+    val airedStart: Map<String, Any>? = null
+)
+
+// 2. Show Episodes List Data
+data class ShowData(
+    val show: ShowDetailNode?
+)
+
+data class ShowDetailNode(
+    val _id: String,
+    val availableEpisodesDetail: Map<String, List<String>>? = null
+)
+
+// 3. Episode Stream Data
+data class EpisodeData(
+    val episode: EpisodeNode?
+)
+
+data class EpisodeNode(
+    val episodeString: String,
+    val sourceUrls: JsonElement? // Can be an encrypted string containing "tobeparsed" or a JsonArray
+)
+
+// Stream Decrypted format
+data class DecryptedStream(
     val url: String,
-    val genres: List<String>?,
-    val totalEpisodes: Int,
-    val image: String,
-    val releaseDate: String?,
-    val description: String?,
-    val subOrDub: String?,
-    val type: String?,
-    val status: String?,
-    val episodes: List<EpisodeDto>
-)
-
-data class EpisodeDto(
-    val id: String,
-    val number: Int,
-    val url: String?
-)
-
-data class WatchResponse(
-    val headers: Map<String, String>?,
-    val sources: List<SourceDto>,
-    val download: String?
-)
-
-data class SourceDto(
-    val url: String,
-    val isM3U8: Boolean,
-    val quality: String
+    val hls: Boolean = false,
+    val mp4: Boolean = false,
+    val resolutionStr: String = ""
 )

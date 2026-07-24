@@ -1,12 +1,17 @@
 package com.anicli.tv.provider
 
 import com.anicli.tv.data.remote.AnimeApiService
+import com.anicli.tv.data.remote.CryptoUtils
+import com.anicli.tv.data.remote.dto.GraphQLRequest
 import com.anicli.tv.domain.model.Episode
 import com.anicli.tv.domain.model.MediaDetail
 import com.anicli.tv.domain.model.MediaItem
 import com.anicli.tv.domain.model.MediaRow
 import com.anicli.tv.domain.model.StreamSource
 import com.anicli.tv.domain.provider.MediaProvider
+import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -17,43 +22,46 @@ class RealMediaProvider @Inject constructor(
     private val apiService: AnimeApiService
 ) : MediaProvider {
 
-    override val name: String = "Consumet"
+    override val name: String = "AllAnime (ani-cli native)"
+    private val gson = Gson()
+
+    private val SEARCH_GQL = """query( ${'$'}search: SearchInput ${'$'}limit: Int ${'$'}page: Int ${'$'}translationType: VaildTranslationTypeEnumType ${'$'}countryOrigin: VaildCountryOriginEnumType ) { shows( search: ${'$'}search limit: ${'$'}limit page: ${'$'}page translationType: ${'$'}translationType countryOrigin: ${'$'}countryOrigin ) { edges { _id name availableEpisodes airedStart __typename } }}"""
+    private val DETAILS_GQL = """query (${'$'}showId: String!) { show( _id: ${'$'}showId ) { _id availableEpisodesDetail }}"""
+    private val EPISODE_GQL = """query (${'$'}showId: String!, ${'$'}translationType: VaildTranslationTypeEnumType!, ${'$'}episodeString: String!) { episode( showId: ${'$'}showId translationType: ${'$'}translationType episodeString: ${'$'}episodeString ) { episodeString sourceUrls }}"""
 
     override suspend fun getHomeFeed(): Flow<Result<List<MediaRow>>> = flow {
         try {
-            val topAiring = apiService.getTopAiring()
-            val recent = apiService.getRecentRelease()
-
+            // Fetch recent or popular by sending an empty search query
+            val request = GraphQLRequest(
+                variables = mapOf(
+                    "search" to mapOf(
+                        "allowAdult" to false,
+                        "allowUnknown" to false,
+                        "query" to ""
+                    ),
+                    "limit" to 40,
+                    "page" to 1,
+                    "translationType" to "sub",
+                    "countryOrigin" to "ALL"
+                ),
+                query = SEARCH_GQL
+            )
+            
+            val response = apiService.searchAnime(request)
             val rows = mutableListOf<MediaRow>()
             
-            if (topAiring.results.isNotEmpty()) {
+            val edges = response.data?.shows?.edges
+            if (!edges.isNullOrEmpty()) {
                 rows.add(
                     MediaRow(
-                        title = "Top Airing Anime",
-                        items = topAiring.results.map {
+                        title = "Recent Releases",
+                        items = edges.map { edge ->
                             MediaItem(
-                                id = it.id,
-                                title = it.title,
-                                posterUrl = it.image,
-                                backdropUrl = it.image, // fallback
-                                tags = it.genres ?: emptyList()
-                            )
-                        }
-                    )
-                )
-            }
-
-            if (recent.results.isNotEmpty()) {
-                rows.add(
-                    MediaRow(
-                        title = "Recently Updated",
-                        items = recent.results.map {
-                            MediaItem(
-                                id = it.id,
-                                title = it.title,
-                                posterUrl = it.image,
-                                backdropUrl = it.image,
-                                tags = it.genres ?: emptyList()
+                                id = edge._id,
+                                title = edge.name,
+                                posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
+                                backdropUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                                tags = emptyList() // could extract from airedStart year if needed
                             )
                         }
                     )
@@ -68,21 +76,31 @@ class RealMediaProvider @Inject constructor(
 
     override suspend fun getDetails(mediaId: String): Result<MediaDetail> {
         return try {
-            val info = apiService.getAnimeInfo(mediaId)
+            val request = GraphQLRequest(
+                variables = mapOf("showId" to mediaId),
+                query = DETAILS_GQL
+            )
+            
+            val response = apiService.getAnimeInfo(request)
+            val show = response.data?.show ?: throw Exception("Show details not found")
+            
+            // AllAnime returns a map of translation type (e.g. "sub", "dub", "raw") to a list of episodes
+            val subEpisodes = show.availableEpisodesDetail?.get("sub") ?: emptyList()
+            
             Result.success(
                 MediaDetail(
-                    id = info.id,
-                    title = info.title,
-                    description = info.description ?: "No description available.",
-                    posterUrl = info.image,
-                    backdropUrl = info.image,
-                    genres = info.genres ?: emptyList(),
-                    episodes = info.episodes.map { ep ->
+                    id = show._id,
+                    title = "Anime", // We don't have the title in this specific query, the UI usually holds state from the item click
+                    description = "Description loaded.",
+                    posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
+                    backdropUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
+                    genres = emptyList(),
+                    episodes = subEpisodes.map { epNum ->
                         Episode(
-                            id = ep.id,
-                            title = "Episode ${ep.number}",
-                            number = ep.number,
-                            thumbnail = info.image,
+                            id = "${show._id}|$epNum",
+                            title = "Episode $epNum",
+                            number = epNum.toFloatOrNull()?.toInt() ?: 0,
+                            thumbnail = null,
                             isFiller = false
                         )
                     }
@@ -99,15 +117,32 @@ class RealMediaProvider @Inject constructor(
             return Result.success(emptyList())
         }
         return try {
-            val searchResponse = apiService.searchAnime(query)
+            val request = GraphQLRequest(
+                variables = mapOf(
+                    "search" to mapOf(
+                        "allowAdult" to false,
+                        "allowUnknown" to false,
+                        "query" to query
+                    ),
+                    "limit" to 40,
+                    "page" to 1,
+                    "translationType" to "sub",
+                    "countryOrigin" to "ALL"
+                ),
+                query = SEARCH_GQL
+            )
+            val searchResponse = apiService.searchAnime(request)
+            
+            val edges = searchResponse.data?.shows?.edges ?: emptyList()
+            
             Result.success(
-                searchResponse.results.map {
+                edges.map { edge ->
                     MediaItem(
-                        id = it.id,
-                        title = it.title,
-                        posterUrl = it.image,
-                        backdropUrl = it.image,
-                        tags = it.genres ?: emptyList()
+                        id = edge._id,
+                        title = edge.name,
+                        posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                        backdropUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                        tags = emptyList()
                     )
                 }
             )
@@ -119,17 +154,88 @@ class RealMediaProvider @Inject constructor(
 
     override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
         return try {
-            val watchData = apiService.getWatchInfo(episodeId)
-            val sources = watchData.sources.map {
-                StreamSource(
-                    url = it.url,
-                    title = "Streaming $episodeId",
-                    quality = it.quality,
-                    subtitles = emptyList(),
-                    headers = watchData.headers
+            val parts = episodeId.split("|")
+            if (parts.size != 2) throw Exception("Invalid Episode ID format")
+            val mediaId = parts[0]
+            val epNumber = parts[1]
+            
+            val queryHash = "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+            val variablesObj = mapOf(
+                "showId" to mediaId,
+                "translationType" to "sub",
+                "episodeString" to epNumber
+            )
+            val extensionsObj = mapOf(
+                "persistedQuery" to mapOf(
+                    "version" to 1,
+                    "sha256Hash" to queryHash
                 )
+            )
+            
+            val variablesStr = gson.toJson(variablesObj)
+            val extensionsStr = gson.toJson(extensionsObj)
+            
+            val response = apiService.getWatchInfo(variablesStr, extensionsStr)
+            val sourceUrlsElem = response.data?.episode?.sourceUrls ?: throw Exception("No source URLs found")
+            
+            val decryptedStreams = mutableListOf<String>()
+            
+            // sourceUrls can be a string representing encrypted JSON or directly an array
+            if (sourceUrlsElem.isJsonPrimitive && sourceUrlsElem.asJsonPrimitive.isString) {
+                val strValue = sourceUrlsElem.asString
+                // if it's not starting with "[", it might be the tobeparsed JSON wrapper
+                if (strValue.contains("tobeparsed")) {
+                    val jsonObj = gson.fromJson(strValue, JsonObject::class.java)
+                    val toBeParsed = jsonObj.get("tobeparsed")?.asString
+                    if (toBeParsed != null) {
+                        val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed)
+                        decryptedStreams.add(decrypted)
+                    }
+                } else {
+                    // Try to decrypt just in case the string itself is the base64 payload
+                    val decrypted = CryptoUtils.decryptAllAnimeStream(strValue)
+                    if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
+                }
+            } else if (sourceUrlsElem.isJsonArray) {
+                decryptedStreams.add(sourceUrlsElem.toString())
             }
-            Result.success(sources)
+            
+            if (decryptedStreams.isEmpty()) throw Exception("Decryption failed or stream not available")
+            
+            val parsedSources = mutableListOf<StreamSource>()
+            
+            for (streamRaw in decryptedStreams) {
+                try {
+                    // it should be an array of objects like [{"url": "...", "height": 1080}]
+                    // occasionally it's an array of {"sourceUrl": "..."}
+                    val array = gson.fromJson(streamRaw, JsonArray::class.java)
+                    for (i in 0 until array.size()) {
+                        val obj = array.get(i).asJsonObject
+                        val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
+                        val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
+                        
+                        if (url != null) {
+                            parsedSources.add(
+                                StreamSource(
+                                    url = url,
+                                    title = "Quality: ${quality}p",
+                                    quality = quality,
+                                    subtitles = emptyList(),
+                                    headers = mapOf(
+                                        "Referer" to "https://youtu-chan.com",
+                                        "Origin" to "https://youtu-chan.com",
+                                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+                                    )
+                                )
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            
+            Result.success(parsedSources)
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)

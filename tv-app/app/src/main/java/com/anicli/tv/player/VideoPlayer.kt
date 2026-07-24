@@ -28,6 +28,7 @@ import androidx.media3.ui.PlayerView
 @Composable
 fun VideoPlayer(
     videoUrl: String,
+    headers: Map<String, String> = emptyMap(),
     modifier: Modifier = Modifier,
     onStateChanged: (PlayerState) -> Unit = {}
 ) {
@@ -40,9 +41,14 @@ fun VideoPlayer(
         }
     }
 
-    LaunchedEffect(videoUrl) {
-        val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
-        exoPlayer.setMediaItem(mediaItem)
+    LaunchedEffect(videoUrl, headers) {
+        val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setDefaultRequestProperties(headers)
+        val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
+            .createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
+        
+        exoPlayer.setMediaItem(mediaSource.mediaItem)
+        exoPlayer.setMediaSource(mediaSource)
         exoPlayer.prepare()
     }
 
