@@ -48,7 +48,22 @@ object DataModule {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
+        
+        // Trust all certificates to fix emulator SSL chain validation issues
+        val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(
+            object : javax.net.ssl.X509TrustManager {
+                override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+            }
+        )
+
+        val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+
         return OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
+            .hostnameVerifier { _, _ -> true }
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -60,7 +75,7 @@ object DataModule {
     fun provideAnimeApiService(okHttpClient: OkHttpClient): AnimeApiService {
         return Retrofit.Builder()
             // Using AllAnime GraphQL API matching ani-cli
-            .baseUrl("https://api.allanime.day/")
+            .baseUrl("https://api.mkissa.net/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

@@ -30,6 +30,7 @@ data class ShowsNode(
 data class ShowEdge(
     val _id: String,
     val name: String,
+    val thumbnail: String? = null,
     val availableEpisodes: Map<String, Any>? = null,
     val airedStart: Map<String, Any>? = null
 )
@@ -41,6 +42,7 @@ data class ShowData(
 
 data class ShowDetailNode(
     val _id: String,
+    val thumbnail: String? = null,
     val availableEpisodesDetail: Map<String, List<String>>? = null
 )
 

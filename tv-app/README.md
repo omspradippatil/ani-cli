@@ -1,26 +1,11 @@
-# Ani-cli TV App
+# Ani-CLI TV App
 
-This is the Android TV implementation of `ani-cli`. 
+A native Android TV application for streaming anime, using the `ani-cli` logic for fetching dynamic stream decryption keys from AllAnime.
 
 ## Architecture
-The application is built using modern Android development practices:
-- **Language:** Kotlin
-- **UI:** Jetpack Compose for TV (Material 3)
-- **Architecture:** Clean Architecture + MVVM + Repository Pattern
-- **Async:** Kotlin Coroutines & Flow
-- **Networking:** OkHttp (for fetching data from `api.allanime.day` via GraphQL payload)
-- **Database:** Room
-- **DI:** Hilt
-- **Media Player:** AndroidX Media3 ExoPlayer
-- **Image Loading:** Coil
-- **Serialization:** JSON Parsing with org.json.JSONObject
 
-## Feature Set
-- Home screen displaying trending/recent anime.
-- Details screen with episodic list.
-- Built-in `ExoPlayer` streaming with custom header injection for allanime sources.
-
-## Important Implementation Details
-- Dynamic Stream Fetching: Streaming is handled by `PlayerViewModel` executing a network request for the stream URLs based on `episodeId` and then feeding them into the ExoPlayer.
-- Headers are dynamically generated inside the ExoPlayer `DefaultHttpDataSource.Factory` to bypass security measures (injecting `sync` payload as query parameter or headers where applicable).
-- `RealMediaProvider` makes GraphQL requests against the allanime backend.
+- Uses **Native Kotlin** for all networking and cryptography. No external bash scripts or Termux dependencies are required.
+- **Dynamic Key Fetching**: Replicates the `ani-cli` logic to parse the `allanime` Javascript bundle, extract the timestamp, `partB`, and 64-character hex mask, and perform a native XOR byte manipulation to retrieve the AES-GCM streaming key.
+- **SSL Validation Bypass**: The network layer natively trusts all certificates to allow playback on older emulators that may reject Let's Encrypt certificates.
+- **GraphQL**: The app speaks directly to `api.mkissa.net` (the AllAnime GraphQL endpoint) using native Gson deserialization to parse shows, episodes, and thumbnails.
+- **Mobile Friendly**: The `AndroidManifest.xml` includes `android.intent.category.LAUNCHER` for easier debugging and deployment on standard Android phones.

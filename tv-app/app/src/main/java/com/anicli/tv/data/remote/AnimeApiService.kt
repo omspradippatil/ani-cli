@@ -12,22 +12,25 @@ interface AnimeApiService {
     @POST("api")
     suspend fun searchAnime(
         @Body request: GraphQLRequest,
-        @Header("Referer") referer: String = "https://youtu-chan.com",
-        @Header("Origin") origin: String = "https://youtu-chan.com"
+        @Header("Referer") referer: String = "https://mkissa.to",
+        @Header("Origin") origin: String = "https://mkissa.to",
+        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
     ): GraphQLResponse<SearchData>
 
     @POST("api")
     suspend fun getAnimeInfo(
         @Body request: GraphQLRequest,
-        @Header("Referer") referer: String = "https://youtu-chan.com",
-        @Header("Origin") origin: String = "https://youtu-chan.com"
+        @Header("Referer") referer: String = "https://mkissa.to",
+        @Header("Origin") origin: String = "https://mkissa.to",
+        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
     ): GraphQLResponse<ShowData>
 
     @GET("api")
     suspend fun getWatchInfo(
         @Query("variables") variables: String,
         @Query("extensions") extensions: String,
-        @Header("Referer") referer: String = "https://youtu-chan.com",
-        @Header("Origin") origin: String = "https://youtu-chan.com"
+        @Header("Referer") referer: String = "https://mkissa.to",
+        @Header("Origin") origin: String = "https://mkissa.to",
+        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
     ): GraphQLResponse<EpisodeData>
 }

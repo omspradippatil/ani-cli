@@ -19,14 +19,15 @@ import javax.inject.Singleton
 
 @Singleton
 class RealMediaProvider @Inject constructor(
-    private val apiService: AnimeApiService
+    private val apiService: AnimeApiService,
+    private val okHttpClient: okhttp3.OkHttpClient
 ) : MediaProvider {
 
     override val name: String = "AllAnime (ani-cli native)"
     private val gson = Gson()
 
-    private val SEARCH_GQL = """query( ${'$'}search: SearchInput ${'$'}limit: Int ${'$'}page: Int ${'$'}translationType: VaildTranslationTypeEnumType ${'$'}countryOrigin: VaildCountryOriginEnumType ) { shows( search: ${'$'}search limit: ${'$'}limit page: ${'$'}page translationType: ${'$'}translationType countryOrigin: ${'$'}countryOrigin ) { edges { _id name availableEpisodes airedStart __typename } }}"""
-    private val DETAILS_GQL = """query (${'$'}showId: String!) { show( _id: ${'$'}showId ) { _id availableEpisodesDetail }}"""
+    private val SEARCH_GQL = """query( ${'$'}search: SearchInput ${'$'}limit: Int ${'$'}page: Int ${'$'}translationType: VaildTranslationTypeEnumType ${'$'}countryOrigin: VaildCountryOriginEnumType ) { shows( search: ${'$'}search limit: ${'$'}limit page: ${'$'}page translationType: ${'$'}translationType countryOrigin: ${'$'}countryOrigin ) { edges { _id name thumbnail availableEpisodes airedStart __typename } }}"""
+    private val DETAILS_GQL = """query (${'$'}showId: String!) { show( _id: ${'$'}showId ) { _id thumbnail availableEpisodesDetail }}"""
     private val EPISODE_GQL = """query (${'$'}showId: String!, ${'$'}translationType: VaildTranslationTypeEnumType!, ${'$'}episodeString: String!) { episode( showId: ${'$'}showId translationType: ${'$'}translationType episodeString: ${'$'}episodeString ) { episodeString sourceUrls }}"""
 
     override suspend fun getHomeFeed(): Flow<Result<List<MediaRow>>> = flow {
@@ -59,8 +60,8 @@ class RealMediaProvider @Inject constructor(
                             MediaItem(
                                 id = edge._id,
                                 title = edge.name,
-                                posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
-                                backdropUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                                posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
+                                backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
                                 tags = emptyList() // could extract from airedStart year if needed
                             )
                         }
@@ -92,8 +93,8 @@ class RealMediaProvider @Inject constructor(
                     id = show._id,
                     title = "Anime", // We don't have the title in this specific query, the UI usually holds state from the item click
                     description = "Description loaded.",
-                    posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
-                    backdropUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
+                    posterUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
+                    backdropUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
                     genres = emptyList(),
                     episodes = subEpisodes.map { epNum ->
                         Episode(
@@ -140,8 +141,8 @@ class RealMediaProvider @Inject constructor(
                     MediaItem(
                         id = edge._id,
                         title = edge.name,
-                        posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
-                        backdropUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                        posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                        backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
                         tags = emptyList()
                     )
                 }
@@ -159,7 +160,11 @@ class RealMediaProvider @Inject constructor(
             val mediaId = parts[0]
             val epNumber = parts[1]
             
-            val queryHash = "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+            val dynamicKey = CryptoUtils.fetchDynamicKey(okHttpClient)
+            
+            val queryHash = "f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
+            val aaReq = CryptoUtils.generateAaReq(dynamicKey.key, dynamicKey.epoch, queryHash)
+
             val variablesObj = mapOf(
                 "showId" to mediaId,
                 "translationType" to "sub",
@@ -169,14 +174,18 @@ class RealMediaProvider @Inject constructor(
                 "persistedQuery" to mapOf(
                     "version" to 1,
                     "sha256Hash" to queryHash
-                )
+                ),
+                "aaReq" to aaReq
             )
             
             val variablesStr = gson.toJson(variablesObj)
             val extensionsStr = gson.toJson(extensionsObj)
             
             val response = apiService.getWatchInfo(variablesStr, extensionsStr)
-            val sourceUrlsElem = response.data?.episode?.sourceUrls ?: throw Exception("No source URLs found")
+            val sourceUrlsElem = response.data?.episode?.sourceUrls ?: run {
+                val errorMsg = response.errors?.firstOrNull()?.message ?: "No source URLs found. Data: ${response.data}"
+                throw Exception("API Error: $errorMsg")
+            }
             
             val decryptedStreams = mutableListOf<String>()
             
@@ -188,12 +197,12 @@ class RealMediaProvider @Inject constructor(
                     val jsonObj = gson.fromJson(strValue, JsonObject::class.java)
                     val toBeParsed = jsonObj.get("tobeparsed")?.asString
                     if (toBeParsed != null) {
-                        val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed)
+                        val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed, dynamicKey.key)
                         decryptedStreams.add(decrypted)
                     }
                 } else {
                     // Try to decrypt just in case the string itself is the base64 payload
-                    val decrypted = CryptoUtils.decryptAllAnimeStream(strValue)
+                    val decrypted = CryptoUtils.decryptAllAnimeStream(strValue, dynamicKey.key)
                     if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
                 }
             } else if (sourceUrlsElem.isJsonArray) {
@@ -222,8 +231,8 @@ class RealMediaProvider @Inject constructor(
                                     quality = quality,
                                     subtitles = emptyList(),
                                     headers = mapOf(
-                                        "Referer" to "https://youtu-chan.com",
-                                        "Origin" to "https://youtu-chan.com",
+                                        "Referer" to "https://mkissa.to",
+                                        "Origin" to "https://mkissa.to",
                                         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
                                     )
                                 )
