@@ -102,6 +102,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:$media3_version")
     implementation("androidx.media3:media3-ui:$media3_version")
     implementation("androidx.media3:media3-session:$media3_version")
+    implementation("androidx.media3:media3-datasource-okhttp:$media3_version")
+    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
 
     // Tests
     testImplementation("junit:junit:4.13.2")

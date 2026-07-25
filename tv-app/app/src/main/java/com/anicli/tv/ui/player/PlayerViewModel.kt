@@ -11,9 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import okhttp3.OkHttpClient
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val provider: MediaProvider
+    private val provider: MediaProvider,
+    val okHttpClient: OkHttpClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)

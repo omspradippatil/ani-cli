@@ -10,13 +10,9 @@ import okhttp3.Request
 import java.util.regex.Pattern
 
 object OkRuExtractor {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .build()
     private val gson = Gson()
 
-    suspend fun extract(url: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun extract(url: String, client: OkHttpClient): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         val result = mutableListOf<Pair<String, String>>()
         try {
             val request = Request.Builder()

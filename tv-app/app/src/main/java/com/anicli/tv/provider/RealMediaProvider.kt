@@ -265,7 +265,7 @@ class RealMediaProvider @Inject constructor(
                                     if (url != null) {
                                         var finalUrl: String = url
                                         if (url.contains("mp4upload.com")) {
-                                            val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url)
+                                            val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url, okHttpClient)
                                             if (extracted != null) {
                                                 finalUrl = extracted
                                             }
@@ -293,7 +293,7 @@ class RealMediaProvider @Inject constructor(
                                                 }
                                             } catch(e: Exception) { e.printStackTrace() }
                                         } else if (url.contains("ok.ru")) {
-                                            val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url)
+                                            val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url, okHttpClient)
                                             for (ext in extractedList) {
                                                 parsedSources.add(
                                                     StreamSource(

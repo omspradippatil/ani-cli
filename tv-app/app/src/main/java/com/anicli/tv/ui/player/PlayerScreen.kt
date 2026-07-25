@@ -58,6 +58,7 @@ fun PlayerScreen(
                     VideoPlayer(
                         videoUrl = source.url,
                         headers = source.headers ?: emptyMap(),
+                        okHttpClient = viewModel.okHttpClient,
                         onShowQualitySelector = {
                             showQualitySelector = true
                         }

@@ -7,12 +7,7 @@ import okhttp3.Request
 import java.util.regex.Pattern
 
 object Mp4UploadExtractor {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .build()
-
-    suspend fun extract(url: String): String? = withContext(Dispatchers.IO) {
+    suspend fun extract(url: String, client: OkHttpClient): String? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(url)

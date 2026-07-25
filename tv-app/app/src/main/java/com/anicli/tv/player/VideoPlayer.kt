@@ -24,11 +24,15 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import okhttp3.OkHttpClient
+
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
     videoUrl: String,
     headers: Map<String, String> = emptyMap(),
+    okHttpClient: OkHttpClient,
     modifier: Modifier = Modifier,
     onStateChanged: (PlayerState) -> Unit = {},
     onShowQualitySelector: () -> Unit = {}
@@ -53,10 +57,9 @@ fun VideoPlayer(
 
     LaunchedEffect(videoUrl, headers) {
         val userAgent = headers["User-Agent"] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
-        val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent(userAgent)
             .setDefaultRequestProperties(headers)
-            .setAllowCrossProtocolRedirects(true)
         val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
         
