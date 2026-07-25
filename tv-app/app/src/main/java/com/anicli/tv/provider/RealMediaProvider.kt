@@ -2,6 +2,7 @@ package com.anicli.tv.provider
 
 import com.anicli.tv.data.remote.AnimeApiService
 import com.anicli.tv.data.remote.CryptoUtils
+import com.anicli.tv.data.remote.DynamicKey
 import com.anicli.tv.data.remote.dto.GraphQLRequest
 import com.anicli.tv.domain.model.Episode
 import com.anicli.tv.domain.model.MediaDetail
@@ -25,9 +26,11 @@ class RealMediaProvider @Inject constructor(
 
     override val name: String = "AllAnime (ani-cli native)"
     private val gson = Gson()
+    private var cachedDynamicKey: DynamicKey? = null
+    private var cachedDynamicKeyTime: Long = 0
 
-    private val SEARCH_GQL = """query( ${'$'}search: SearchInput ${'$'}limit: Int ${'$'}page: Int ${'$'}translationType: VaildTranslationTypeEnumType ${'$'}countryOrigin: VaildCountryOriginEnumType ) { shows( search: ${'$'}search limit: ${'$'}limit page: ${'$'}page translationType: ${'$'}translationType countryOrigin: ${'$'}countryOrigin ) { edges { _id name thumbnail availableEpisodes airedStart __typename } }}"""
-    private val DETAILS_GQL = """query (${'$'}showId: String!) { show( _id: ${'$'}showId ) { _id thumbnail availableEpisodesDetail }}"""
+    private val SEARCH_GQL = """query( ${'$'}search: SearchInput ${'$'}limit: Int ${'$'}page: Int ${'$'}translationType: VaildTranslationTypeEnumType ${'$'}countryOrigin: VaildCountryOriginEnumType ) { shows( search: ${'$'}search limit: ${'$'}limit page: ${'$'}page translationType: ${'$'}translationType countryOrigin: ${'$'}countryOrigin ) { edges { _id name englishName thumbnail availableEpisodes airedStart __typename } }}"""
+    private val DETAILS_GQL = """query (${'$'}showId: String!) { show( _id: ${'$'}showId ) { _id name englishName thumbnail availableEpisodesDetail }}"""
     private val EPISODE_GQL = """query (${'$'}showId: String!, ${'$'}translationType: VaildTranslationTypeEnumType!, ${'$'}episodeString: String!) { episode( showId: ${'$'}showId translationType: ${'$'}translationType episodeString: ${'$'}episodeString ) { episodeString sourceUrls }}"""
 
     override suspend fun getHomeFeed(): Flow<Result<List<MediaRow>>> = flow {
@@ -59,7 +62,7 @@ class RealMediaProvider @Inject constructor(
                         items = edges.map { edge ->
                             MediaItem(
                                 id = edge._id,
-                                title = edge.name,
+                                title = edge.englishName?.takeIf { it.isNotBlank() } ?: edge.name,
                                 posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
                                 backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
                                 tags = emptyList() // could extract from airedStart year if needed
@@ -91,7 +94,7 @@ class RealMediaProvider @Inject constructor(
             Result.success(
                 MediaDetail(
                     id = show._id,
-                    title = "Anime", // We don't have the title in this specific query, the UI usually holds state from the item click
+                    title = show.englishName?.takeIf { it.isNotBlank() } ?: show.name ?: "Anime",
                     description = "Description loaded.",
                     posterUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
                     backdropUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
@@ -140,7 +143,7 @@ class RealMediaProvider @Inject constructor(
                 edges.map { edge ->
                     MediaItem(
                         id = edge._id,
-                        title = edge.name,
+                        title = edge.englishName?.takeIf { it.isNotBlank() } ?: edge.name,
                         posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
                         backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
                         tags = emptyList()
@@ -160,10 +163,16 @@ class RealMediaProvider @Inject constructor(
             val mediaId = parts[0]
             val epNumber = parts[1]
             
-            val dynamicKey = CryptoUtils.fetchDynamicKey(okHttpClient)
+            val currentTime = System.currentTimeMillis()
+            var dynamicKey = cachedDynamicKey
+            if (dynamicKey == null || currentTime - cachedDynamicKeyTime > 5 * 60 * 1000) {
+                dynamicKey = CryptoUtils.fetchDynamicKey(okHttpClient)
+                cachedDynamicKey = dynamicKey
+                cachedDynamicKeyTime = currentTime
+            }
             
             val queryHash = "f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
-            val aaReq = CryptoUtils.generateAaReq(dynamicKey.key, dynamicKey.epoch, queryHash)
+            val aaReq = CryptoUtils.generateAaReq(dynamicKey.key, dynamicKey.epoch, queryHash, dynamicKey.serverTimeOffset)
 
             val variablesObj = mapOf(
                 "showId" to mediaId,
@@ -182,31 +191,38 @@ class RealMediaProvider @Inject constructor(
             val extensionsStr = gson.toJson(extensionsObj)
             
             val response = apiService.getWatchInfo(variablesStr, extensionsStr)
-            val sourceUrlsElem = response.data?.episode?.sourceUrls ?: run {
-                val errorMsg = response.errors?.firstOrNull()?.message ?: "No source URLs found. Data: ${response.data}"
-                throw Exception("API Error: $errorMsg")
-            }
-            
             val decryptedStreams = mutableListOf<String>()
+            val data = response.data
             
-            // sourceUrls can be a string representing encrypted JSON or directly an array
-            if (sourceUrlsElem.isJsonPrimitive && sourceUrlsElem.asJsonPrimitive.isString) {
-                val strValue = sourceUrlsElem.asString
-                // if it's not starting with "[", it might be the tobeparsed JSON wrapper
-                if (strValue.contains("tobeparsed")) {
-                    val jsonObj = gson.fromJson(strValue, JsonObject::class.java)
-                    val toBeParsed = jsonObj.get("tobeparsed")?.asString
-                    if (toBeParsed != null) {
-                        val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed, dynamicKey.key)
-                        decryptedStreams.add(decrypted)
-                    }
-                } else {
-                    // Try to decrypt just in case the string itself is the base64 payload
-                    val decrypted = CryptoUtils.decryptAllAnimeStream(strValue, dynamicKey.key)
-                    if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
+            if (data?.tobeparsed != null) {
+                // The API returned the encrypted stream directly at the root of data
+                val decrypted = CryptoUtils.decryptAllAnimeStream(data.tobeparsed, dynamicKey.key)
+                if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
+            } else {
+                val sourceUrlsElem = data?.episode?.sourceUrls ?: run {
+                    val errorMsg = response.errors?.firstOrNull()?.message ?: "No source URLs found. Data: $data"
+                    throw Exception("API Error: $errorMsg")
                 }
-            } else if (sourceUrlsElem.isJsonArray) {
-                decryptedStreams.add(sourceUrlsElem.toString())
+                
+                // sourceUrls can be a string representing encrypted JSON or directly an array
+                if (sourceUrlsElem.isJsonPrimitive && sourceUrlsElem.asJsonPrimitive.isString) {
+                    val strValue = sourceUrlsElem.asString
+                    // if it's not starting with "[", it might be the tobeparsed JSON wrapper
+                    if (strValue.contains("tobeparsed")) {
+                        val jsonObj = gson.fromJson(strValue, JsonObject::class.java)
+                        val toBeParsed = jsonObj.get("tobeparsed")?.asString
+                        if (toBeParsed != null) {
+                            val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed, dynamicKey.key)
+                            decryptedStreams.add(decrypted)
+                        }
+                    } else {
+                        // Try to decrypt just in case the string itself is the base64 payload
+                        val decrypted = CryptoUtils.decryptAllAnimeStream(strValue, dynamicKey.key)
+                        if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
+                    }
+                } else if (sourceUrlsElem.isJsonArray) {
+                    decryptedStreams.add(sourceUrlsElem.toString())
+                }
             }
             
             if (decryptedStreams.isEmpty()) throw Exception("Decryption failed or stream not available")

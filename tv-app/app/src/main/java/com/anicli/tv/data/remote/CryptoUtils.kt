@@ -13,7 +13,11 @@ import javax.crypto.spec.SecretKeySpec
 import kotlin.experimental.xor
 import kotlin.text.Charsets
 
-data class DynamicKey(val epoch: Int, val key: ByteArray)
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+
+data class DynamicKey(val epoch: Int, val key: ByteArray, val serverTimeOffset: Long)
 
 object CryptoUtils {
 
@@ -38,6 +42,19 @@ object CryptoUtils {
         if (epochMatch == null) throw Exception("Failed to find epoch")
         if (partBMatch == null) throw Exception("Failed to find partB")
         if (appUrlMatch == null) throw Exception("Failed to find appUrl")
+
+        val dateHeader = response1.header("Date")
+        var serverTimeOffset = 0L
+        if (dateHeader != null) {
+            try {
+                val format = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US)
+                format.timeZone = TimeZone.getTimeZone("GMT")
+                val serverTime = format.parse(dateHeader)?.time ?: System.currentTimeMillis()
+                serverTimeOffset = serverTime - System.currentTimeMillis()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         val epoch = epochMatch.groupValues[1].toInt()
         val partB = Base64.decode(partBMatch.groupValues[1], Base64.DEFAULT)
@@ -77,11 +94,12 @@ object CryptoUtils {
             key[i] = mask[i] xor partB[i]
         }
 
-        DynamicKey(epoch, key)
+        DynamicKey(epoch, key, serverTimeOffset)
     }
 
-    fun generateAaReq(key: ByteArray, epoch: Int, queryHash: String): String {
-        val ts = (System.currentTimeMillis() / 300000L) * 300000L
+    fun generateAaReq(key: ByteArray, epoch: Int, queryHash: String, serverTimeOffset: Long = 0L): String {
+        val adjustedTime = System.currentTimeMillis() + serverTimeOffset
+        val ts = (adjustedTime / 300000L) * 300000L
         val payloadIv = "$epoch:$queryHash:$ts".toByteArray(Charsets.UTF_8)
         
         val md = MessageDigest.getInstance("SHA-256")
