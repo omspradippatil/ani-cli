@@ -62,12 +62,39 @@ object DataModule {
         val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
 
-        // Bootstrap client for DNS resolution
+        return OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
+            .hostnameVerifier { _, _ -> true }
+            .addInterceptor(logging)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @javax.inject.Named("VideoClient")
+    fun provideVideoOkHttpClient(): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+
+        val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(
+            object : javax.net.ssl.X509TrustManager {
+                override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+            }
+        )
+
+        val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+
         val bootstrapClient = OkHttpClient.Builder()
             .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
             .hostnameVerifier { _, _ -> true }
             .build()
-            
+
         val dns = okhttp3.dnsoverhttps.DnsOverHttps.Builder().client(bootstrapClient)
             .url("https://cloudflare-dns.com/dns-query".toHttpUrl())
             .bootstrapDnsHosts(java.net.InetAddress.getByName("1.1.1.1"), java.net.InetAddress.getByName("1.0.0.1"))

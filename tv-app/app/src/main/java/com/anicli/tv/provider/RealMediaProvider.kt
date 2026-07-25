@@ -23,7 +23,7 @@ import javax.inject.Singleton
 @Singleton
 class RealMediaProvider @Inject constructor(
     private val apiService: AnimeApiService,
-    private val okHttpClient: okhttp3.OkHttpClient
+    @javax.inject.Named("VideoClient") private val okHttpClient: okhttp3.OkHttpClient
 ) : MediaProvider {
 
     override val name: String = "AllAnime (ani-cli native)"

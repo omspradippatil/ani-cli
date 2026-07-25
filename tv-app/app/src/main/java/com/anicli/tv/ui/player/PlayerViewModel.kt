@@ -16,7 +16,7 @@ import okhttp3.OkHttpClient
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val provider: MediaProvider,
-    val okHttpClient: OkHttpClient
+    @javax.inject.Named("VideoClient") val okHttpClient: OkHttpClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
