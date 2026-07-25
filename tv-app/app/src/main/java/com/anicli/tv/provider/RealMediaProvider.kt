@@ -231,34 +231,99 @@ class RealMediaProvider @Inject constructor(
             
             for (streamRaw in decryptedStreams) {
                 try {
-                    // it should be an array of objects like [{"url": "...", "height": 1080}]
-                    // occasionally it's an array of {"sourceUrl": "..."}
-                    val array = gson.fromJson(streamRaw, JsonArray::class.java)
-                    for (i in 0 until array.size()) {
-                        val obj = array.get(i).asJsonObject
-                        val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
-                        val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
-                        
-                        if (url != null) {
-                            parsedSources.add(
-                                StreamSource(
-                                    url = url,
-                                    title = "Quality: ${quality}p",
-                                    quality = quality,
-                                    subtitles = emptyList(),
-                                    headers = mapOf(
-                                        "Referer" to "https://mkissa.to",
-                                        "Origin" to "https://mkissa.to",
-                                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+                    var array: JsonArray? = null
+                    val elem = gson.fromJson(streamRaw, com.google.gson.JsonElement::class.java)
+                    
+                    if (elem.isJsonArray) {
+                        array = elem.asJsonArray
+                    } else if (elem.isJsonObject) {
+                        val obj = elem.asJsonObject
+                        if (obj.has("episode")) {
+                            val epObj = obj.getAsJsonObject("episode")
+                            if (epObj.has("sourceUrls")) {
+                                array = epObj.getAsJsonArray("sourceUrls")
+                            }
+                        } else if (obj.has("sourceUrls")) {
+                            array = obj.getAsJsonArray("sourceUrls")
+                        } else if (obj.has("links")) {
+                            array = obj.getAsJsonArray("links")
+                        }
+                    }
+
+                    if (array != null) {
+                        for (i in 0 until array.size()) {
+                            val obj = array.get(i).asJsonObject
+                            val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
+                            val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
+                            val sourceName = if (obj.has("sourceName")) obj.get("sourceName").asString else "Quality: ${quality}p"
+                            
+                            if (url != null) {
+                                var finalUrl: String = url
+                                if (url.contains("mp4upload.com")) {
+                                    val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url)
+                                    if (extracted != null) {
+                                        finalUrl = extracted
+                                    }
+                                } else if (url.startsWith("/apivtwo/")) {
+                                    try {
+                                        val clockUrl = "https://mkissa.net$url"
+                                        val req = okhttp3.Request.Builder()
+                                            .url(clockUrl)
+                                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                                            .header("Referer", "https://mkissa.to/")
+                                            .build()
+                                        val resp = okhttp3.OkHttpClient().newCall(req).execute()
+                                        val clockJson = resp.body?.string()
+                                        if (clockJson != null) {
+                                            val cObj = gson.fromJson(clockJson, com.google.gson.JsonObject::class.java)
+                                            if (cObj.has("links")) {
+                                                val linksArr = cObj.getAsJsonArray("links")
+                                                if (linksArr != null && linksArr.size() > 0) {
+                                                    val extractedLink = linksArr.get(0).asJsonObject.get("link")?.asString
+                                                    if (extractedLink != null) {
+                                                        finalUrl = extractedLink
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } catch(e: Exception) { e.printStackTrace() }
+                                }
+                                
+                                val isIframe = finalUrl.contains("ok.ru") || 
+                                               (finalUrl.contains("bysekoze.com") && finalUrl.contains("/e/")) ||
+                                               finalUrl.contains("watchanime.uns.bio") ||
+                                               (finalUrl.contains("mp4upload.com") && finalUrl.contains("embed-"))
+                                               
+                                val referer = if (finalUrl.contains("mp4upload.com")) {
+                                    "https://www.mp4upload.com/"
+                                } else {
+                                    "https://mkissa.to"
+                                }
+                                
+                                if (!isIframe) {
+                                    parsedSources.add(
+                                        StreamSource(
+                                            url = finalUrl,
+                                            title = sourceName,
+                                            quality = quality,
+                                            subtitles = emptyList(),
+                                            headers = mapOf(
+                                                "Referer" to referer,
+                                                "Origin" to referer,
+                                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+                                            )
+                                        )
                                     )
-                                )
-                            )
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
+            
+            if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")
             
             Result.success(parsedSources)
         } catch (e: Exception) {

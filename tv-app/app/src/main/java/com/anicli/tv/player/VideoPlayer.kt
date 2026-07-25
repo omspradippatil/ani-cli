@@ -36,7 +36,10 @@ fun VideoPlayer(
     var isPlaying by remember { mutableStateOf(false) }
     
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
+        val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
+            .setEnableDecoderFallback(true)
+            
+        ExoPlayer.Builder(context, renderersFactory).build().apply {
             playWhenReady = true
         }
     }
@@ -44,6 +47,7 @@ fun VideoPlayer(
     LaunchedEffect(videoUrl, headers) {
         val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
             .setDefaultRequestProperties(headers)
+            .setAllowCrossProtocolRedirects(true)
         val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
         
@@ -54,6 +58,10 @@ fun VideoPlayer(
 
     DisposableEffect(Unit) {
         val listener = object : Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                android.util.Log.e("VideoPlayer", "ExoPlayer Error: ${error.message}", error)
+                android.widget.Toast.makeText(context, "Playback Error: ${error.message}", android.widget.Toast.LENGTH_LONG).show()
+            }
             override fun onPlaybackStateChanged(playbackState: Int) {
                 val state = when (playbackState) {
                     Player.STATE_BUFFERING -> PlayerState.BUFFERING
