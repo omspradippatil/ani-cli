@@ -287,6 +287,19 @@ class RealMediaProvider @Inject constructor(
                                             }
                                         }
                                     } catch(e: Exception) { e.printStackTrace() }
+                                } else if (url.contains("ok.ru")) {
+                                    val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url)
+                                    for (ext in extractedList) {
+                                        parsedSources.add(
+                                            StreamSource(
+                                                url = ext.second,
+                                                title = "Ok.ru ${ext.first}",
+                                                quality = ext.first,
+                                                subtitles = emptyList(),
+                                                headers = emptyMap() // ok.ru direct links don't require referer
+                                            )
+                                        )
+                                    }
                                 }
                                 
                                 val isIframe = finalUrl.contains("ok.ru") || 
