@@ -15,6 +15,18 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.anicli.tv.player.VideoPlayer
 
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
+import androidx.tv.foundation.lazy.list.TvLazyColumn
+import androidx.tv.foundation.lazy.list.itemsIndexed
+import androidx.tv.material3.Button
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun PlayerScreen(
@@ -38,15 +50,55 @@ fun PlayerScreen(
                 Text("Loading stream...", color = Color.White)
             }
             is PlayerUiState.Success -> {
-                // Play the first stream for now (usually auto or 1080p)
-                val source = state.sources.firstOrNull()
+                var selectedSourceIndex by remember { mutableIntStateOf(0) }
+                var showQualitySelector by remember { mutableStateOf(false) }
+                
+                val source = state.sources.getOrNull(selectedSourceIndex)
                 if (source != null) {
                     VideoPlayer(
                         videoUrl = source.url,
-                        headers = source.headers ?: emptyMap()
+                        headers = source.headers ?: emptyMap(),
+                        onShowQualitySelector = {
+                            showQualitySelector = true
+                        }
                     )
                 } else {
                     Text("No playable stream found", color = Color.White)
+                }
+                
+                if (showQualitySelector) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.8f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TvLazyColumn(
+                            modifier = Modifier.width(300.dp)
+                        ) {
+                            item {
+                                Text(
+                                    text = "Select Quality/Source",
+                                    color = Color.White,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                            }
+                            itemsIndexed(state.sources) { index, src ->
+                                Button(
+                                    onClick = {
+                                        selectedSourceIndex = index
+                                        showQualitySelector = false
+                                    },
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "${src.title}",
+                                        color = if (selectedSourceIndex == index) Color.Cyan else Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
             is PlayerUiState.Error -> {

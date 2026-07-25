@@ -7,13 +7,16 @@ import okhttp3.Request
 import java.util.regex.Pattern
 
 object Mp4UploadExtractor {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     suspend fun extract(url: String): String? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")
                 .header("Referer", "https://mkissa.to/")
                 .build()
 

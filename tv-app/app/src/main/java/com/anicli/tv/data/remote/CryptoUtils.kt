@@ -25,6 +25,9 @@ object CryptoUtils {
     private const val REFR = "https://mkissa.to"
     private const val CDN = "https://cdn.mkissa.net/all/mk/_app/immutable"
 
+    private var cachedAaMaskHex: String? = null
+    private var cachedAaMaskTime: Long = 0L
+
     suspend fun fetchDynamicKey(client: OkHttpClient): DynamicKey = withContext(Dispatchers.IO) {
         val req1 = Request.Builder()
             .url(REFR)
@@ -37,11 +40,9 @@ object CryptoUtils {
 
         val epochMatch = Regex(""""epoch":([0-9]+)""").find(page)
         val partBMatch = Regex(""""partB":"([^"]*)"""").find(page)
-        val appUrlMatch = Regex("""(/entry/app\.[A-Za-z0-9_.-]+\.js)""").find(page)
 
         if (epochMatch == null) throw Exception("Failed to find epoch")
         if (partBMatch == null) throw Exception("Failed to find partB")
-        if (appUrlMatch == null) throw Exception("Failed to find appUrl")
 
         val dateHeader = response1.header("Date")
         var serverTimeOffset = 0L
@@ -58,31 +59,42 @@ object CryptoUtils {
 
         val epoch = epochMatch.groupValues[1].toInt()
         val partB = Base64.decode(partBMatch.groupValues[1], Base64.DEFAULT)
-        val appUrl = CDN + appUrlMatch.groupValues[1]
-
-        val req2 = Request.Builder()
-            .url(appUrl)
-            .header("User-Agent", AGENT)
-            .build()
-
-        val response2 = client.newCall(req2).execute()
-        if (!response2.isSuccessful) throw Exception("app.js HTTP ${response2.code}")
-        val appJs = response2.body?.string() ?: throw Exception("app.js body is null")
         
-        val chunks = Regex(""""[.][.]/chunks/([A-Za-z0-9_.-]+\.js)"""").findAll(appJs).map { it.groupValues[1] }.toList()
-        if (chunks.isEmpty()) throw Exception("No chunks found in app.js")
-
+        val now = System.currentTimeMillis()
         var aaMaskHex: String? = null
-        for (chunk in chunks.take(8)) {
-            val reqChunk = Request.Builder()
-                .url("$CDN/chunks/$chunk")
+        
+        if (cachedAaMaskHex != null && (now - cachedAaMaskTime) < 3600000L) {
+            aaMaskHex = cachedAaMaskHex
+        } else {
+            val appUrlMatch = Regex("""(/entry/app\.[A-Za-z0-9_.-]+\.js)""").find(page)
+            if (appUrlMatch == null) throw Exception("Failed to find appUrl")
+            val appUrl = CDN + appUrlMatch.groupValues[1]
+
+            val req2 = Request.Builder()
+                .url(appUrl)
                 .header("User-Agent", AGENT)
                 .build()
-            val chunkJs = client.newCall(reqChunk).execute().body?.string() ?: continue
-            val maskMatch = Regex("""([0-9a-f]{64})""").find(chunkJs)
-            if (maskMatch != null) {
-                aaMaskHex = maskMatch.groupValues[1]
-                break
+
+            val response2 = client.newCall(req2).execute()
+            if (!response2.isSuccessful) throw Exception("app.js HTTP ${response2.code}")
+            val appJs = response2.body?.string() ?: throw Exception("app.js body is null")
+            
+            val chunks = Regex(""""[.][.]/chunks/([A-Za-z0-9_.-]+\.js)"""").findAll(appJs).map { it.groupValues[1] }.toList()
+            if (chunks.isEmpty()) throw Exception("No chunks found in app.js")
+
+            for (chunk in chunks.take(8)) {
+                val reqChunk = Request.Builder()
+                    .url("$CDN/chunks/$chunk")
+                    .header("User-Agent", AGENT)
+                    .build()
+                val chunkJs = client.newCall(reqChunk).execute().body?.string() ?: continue
+                val maskMatch = Regex("""([0-9a-f]{64})""").find(chunkJs)
+                if (maskMatch != null) {
+                    aaMaskHex = maskMatch.groupValues[1]
+                    cachedAaMaskHex = aaMaskHex
+                    cachedAaMaskTime = now
+                    break
+                }
             }
         }
 

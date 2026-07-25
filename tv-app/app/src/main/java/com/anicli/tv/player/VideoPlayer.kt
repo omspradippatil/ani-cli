@@ -30,7 +30,8 @@ fun VideoPlayer(
     videoUrl: String,
     headers: Map<String, String> = emptyMap(),
     modifier: Modifier = Modifier,
-    onStateChanged: (PlayerState) -> Unit = {}
+    onStateChanged: (PlayerState) -> Unit = {},
+    onShowQualitySelector: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
@@ -39,13 +40,21 @@ fun VideoPlayer(
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
             
+        val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+            .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+            .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+            
         ExoPlayer.Builder(context, renderersFactory).build().apply {
+            setAudioAttributes(audioAttributes, true)
             playWhenReady = true
         }
     }
 
     LaunchedEffect(videoUrl, headers) {
+        val userAgent = headers["User-Agent"] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
         val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setUserAgent(userAgent)
             .setDefaultRequestProperties(headers)
             .setAllowCrossProtocolRedirects(true)
         val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
@@ -89,11 +98,25 @@ fun VideoPlayer(
                 PlayerView(ctx).apply {
                     player = exoPlayer
                     useController = true
+                    controllerAutoShow = true
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    requestFocus()
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     layoutParams = FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
+                    
+                    setOnKeyListener { _, keyCode, event ->
+                        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && event.action == android.view.KeyEvent.ACTION_UP) {
+                            onShowQualitySelector()
+                            true
+                        } else {
+                            false
+                        }
+                    }
                 }
             },
             modifier = Modifier.fillMaxSize().focusable()

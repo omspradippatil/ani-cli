@@ -15,6 +15,8 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -227,113 +229,119 @@ class RealMediaProvider @Inject constructor(
             
             if (decryptedStreams.isEmpty()) throw Exception("Decryption failed or stream not available")
             
-            val parsedSources = mutableListOf<StreamSource>()
+            val parsedSources = java.util.Collections.synchronizedList(mutableListOf<StreamSource>())
             
-            for (streamRaw in decryptedStreams) {
-                try {
-                    var array: JsonArray? = null
-                    val elem = gson.fromJson(streamRaw, com.google.gson.JsonElement::class.java)
-                    
-                    if (elem.isJsonArray) {
-                        array = elem.asJsonArray
-                    } else if (elem.isJsonObject) {
-                        val obj = elem.asJsonObject
-                        if (obj.has("episode")) {
-                            val epObj = obj.getAsJsonObject("episode")
-                            if (epObj.has("sourceUrls")) {
-                                array = epObj.getAsJsonArray("sourceUrls")
+            kotlinx.coroutines.coroutineScope {
+                val deferredTasks = mutableListOf<kotlinx.coroutines.Deferred<Unit>>()
+                for (streamRaw in decryptedStreams) {
+                    try {
+                        var array: JsonArray? = null
+                        val elem = gson.fromJson(streamRaw, com.google.gson.JsonElement::class.java)
+                        
+                        if (elem.isJsonArray) {
+                            array = elem.asJsonArray
+                        } else if (elem.isJsonObject) {
+                            val obj = elem.asJsonObject
+                            if (obj.has("episode")) {
+                                val epObj = obj.getAsJsonObject("episode")
+                                if (epObj.has("sourceUrls")) {
+                                    array = epObj.getAsJsonArray("sourceUrls")
+                                }
+                            } else if (obj.has("sourceUrls")) {
+                                array = obj.getAsJsonArray("sourceUrls")
+                            } else if (obj.has("links")) {
+                                array = obj.getAsJsonArray("links")
                             }
-                        } else if (obj.has("sourceUrls")) {
-                            array = obj.getAsJsonArray("sourceUrls")
-                        } else if (obj.has("links")) {
-                            array = obj.getAsJsonArray("links")
                         }
-                    }
 
-                    if (array != null) {
-                        for (i in 0 until array.size()) {
-                            val obj = array.get(i).asJsonObject
-                            val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
-                            val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
-                            val sourceName = if (obj.has("sourceName")) obj.get("sourceName").asString else "Quality: ${quality}p"
-                            
-                            if (url != null) {
-                                var finalUrl: String = url
-                                if (url.contains("mp4upload.com")) {
-                                    val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url)
-                                    if (extracted != null) {
-                                        finalUrl = extracted
-                                    }
-                                } else if (url.startsWith("/apivtwo/")) {
-                                    try {
-                                        val clockUrl = "https://mkissa.net$url"
-                                        val req = okhttp3.Request.Builder()
-                                            .url(clockUrl)
-                                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                                            .header("Referer", "https://mkissa.to/")
-                                            .build()
-                                        val resp = okhttp3.OkHttpClient().newCall(req).execute()
-                                        val clockJson = resp.body?.string()
-                                        if (clockJson != null) {
-                                            val cObj = gson.fromJson(clockJson, com.google.gson.JsonObject::class.java)
-                                            if (cObj.has("links")) {
-                                                val linksArr = cObj.getAsJsonArray("links")
-                                                if (linksArr != null && linksArr.size() > 0) {
-                                                    val extractedLink = linksArr.get(0).asJsonObject.get("link")?.asString
-                                                    if (extractedLink != null) {
-                                                        finalUrl = extractedLink
+                        if (array != null) {
+                            for (i in 0 until array.size()) {
+                                deferredTasks.add(async(kotlinx.coroutines.Dispatchers.IO) {
+                                    val obj = array.get(i).asJsonObject
+                                    val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
+                                    val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
+                                    val sourceName = if (obj.has("sourceName")) obj.get("sourceName").asString else "Quality: ${quality}p"
+                                    
+                                    if (url != null) {
+                                        var finalUrl: String = url
+                                        if (url.contains("mp4upload.com")) {
+                                            val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url)
+                                            if (extracted != null) {
+                                                finalUrl = extracted
+                                            }
+                                        } else if (url.startsWith("/apivtwo/")) {
+                                            try {
+                                                val clockUrl = "https://mkissa.net$url"
+                                                val req = okhttp3.Request.Builder()
+                                                    .url(clockUrl)
+                                                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")
+                                                    .header("Referer", "https://mkissa.to/")
+                                                    .build()
+                                                val resp = okHttpClient.newCall(req).execute()
+                                                val clockJson = resp.body?.string()
+                                                if (clockJson != null) {
+                                                    val cObj = gson.fromJson(clockJson, com.google.gson.JsonObject::class.java)
+                                                    if (cObj.has("links")) {
+                                                        val linksArr = cObj.getAsJsonArray("links")
+                                                        if (linksArr != null && linksArr.size() > 0) {
+                                                            val extractedLink = linksArr.get(0).asJsonObject.get("link")?.asString
+                                                            if (extractedLink != null) {
+                                                                finalUrl = extractedLink
+                                                            }
+                                                        }
                                                     }
                                                 }
+                                            } catch(e: Exception) { e.printStackTrace() }
+                                        } else if (url.contains("ok.ru")) {
+                                            val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url)
+                                            for (ext in extractedList) {
+                                                parsedSources.add(
+                                                    StreamSource(
+                                                        url = ext.second,
+                                                        title = "Ok.ru ${ext.first}",
+                                                        quality = ext.first,
+                                                        subtitles = emptyList(),
+                                                        headers = emptyMap()
+                                                    )
+                                                )
                                             }
                                         }
-                                    } catch(e: Exception) { e.printStackTrace() }
-                                } else if (url.contains("ok.ru")) {
-                                    val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url)
-                                    for (ext in extractedList) {
-                                        parsedSources.add(
-                                            StreamSource(
-                                                url = ext.second,
-                                                title = "Ok.ru ${ext.first}",
-                                                quality = ext.first,
-                                                subtitles = emptyList(),
-                                                headers = emptyMap() // ok.ru direct links don't require referer
+                                        
+                                        val isIframe = finalUrl.contains("ok.ru") || 
+                                                       (finalUrl.contains("bysekoze.com") && finalUrl.contains("/e/")) ||
+                                                       finalUrl.contains("watchanime.uns.bio") ||
+                                                       (finalUrl.contains("mp4upload.com") && finalUrl.contains("embed-"))
+                                                       
+                                        val referer = if (finalUrl.contains("mp4upload.com")) {
+                                            "https://www.mp4upload.com/"
+                                        } else {
+                                            "https://mkissa.to"
+                                        }
+                                        
+                                        if (!isIframe) {
+                                            parsedSources.add(
+                                                StreamSource(
+                                                    url = finalUrl,
+                                                    title = sourceName,
+                                                    quality = quality,
+                                                    subtitles = emptyList(),
+                                                    headers = mapOf(
+                                                        "Referer" to referer,
+                                                        "Origin" to referer,
+                                                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+                                                    )
+                                                )
                                             )
-                                        )
+                                        }
                                     }
-                                }
-                                
-                                val isIframe = finalUrl.contains("ok.ru") || 
-                                               (finalUrl.contains("bysekoze.com") && finalUrl.contains("/e/")) ||
-                                               finalUrl.contains("watchanime.uns.bio") ||
-                                               (finalUrl.contains("mp4upload.com") && finalUrl.contains("embed-"))
-                                               
-                                val referer = if (finalUrl.contains("mp4upload.com")) {
-                                    "https://www.mp4upload.com/"
-                                } else {
-                                    "https://mkissa.to"
-                                }
-                                
-                                if (!isIframe) {
-                                    parsedSources.add(
-                                        StreamSource(
-                                            url = finalUrl,
-                                            title = sourceName,
-                                            quality = quality,
-                                            subtitles = emptyList(),
-                                            headers = mapOf(
-                                                "Referer" to referer,
-                                                "Origin" to referer,
-                                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
-                                            )
-                                        )
-                                    )
-                                }
+                                })
                             }
                         }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
+                awaitAll(*deferredTasks.toTypedArray())
             }
             
             if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")
