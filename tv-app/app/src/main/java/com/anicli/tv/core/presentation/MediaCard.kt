@@ -14,16 +14,24 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import coil.compose.AsyncImage
 import com.anicli.tv.domain.model.MediaItem
 
+import androidx.compose.ui.focus.onFocusChanged
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun MediaCard(
     item: MediaItem,
     onClick: () -> Unit,
+    onFocus: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
         onClick = onClick,
         modifier = modifier
+            .onFocusChanged { state ->
+                if (state.isFocused) {
+                    onFocus()
+                }
+            }
             .width(150.dp)
             .padding(8.dp)
             .aspectRatio(2f / 3.5f) // Slightly taller to fit text

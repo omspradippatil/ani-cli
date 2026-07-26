@@ -35,7 +35,8 @@ fun VideoPlayer(
     okHttpClient: OkHttpClient,
     modifier: Modifier = Modifier,
     onStateChanged: (PlayerState) -> Unit = {},
-    onShowQualitySelector: () -> Unit = {}
+    onShowQualitySelector: () -> Unit = {},
+    onControllerVisibilityChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
@@ -126,17 +127,28 @@ fun VideoPlayer(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     
-                    setOnKeyListener { _, keyCode, event ->
-                        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && event.action == android.view.KeyEvent.ACTION_UP) {
-                            onShowQualitySelector()
-                            true
-                        } else {
-                            false
+                    setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+                        onControllerVisibilityChanged(visibility == android.view.View.VISIBLE)
+                    })
+                    
+                    setOnKeyListener { view, keyCode, event ->
+                        val pView = view as PlayerView
+                        if (event.action == android.view.KeyEvent.ACTION_UP) {
+                            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) {
+                                onShowQualitySelector()
+                                return@setOnKeyListener true
+                            } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                                if (!pView.isControllerFullyVisible) {
+                                    pView.showController()
+                                    return@setOnKeyListener true
+                                }
+                            }
                         }
+                        false
                     }
                 }
             },
-            modifier = Modifier.fillMaxSize().focusable()
+            modifier = Modifier.fillMaxSize()
         )
     }
 }

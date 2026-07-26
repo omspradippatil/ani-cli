@@ -27,7 +27,16 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "home") {
+                    NavHost(navController = navController, startDestination = "splash") {
+                        composable("splash") {
+                            com.anicli.tv.ui.splash.SplashScreen(
+                                onSplashFinished = {
+                                    navController.navigate("home") {
+                                        popUpTo("splash") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
                         composable("home") {
                             HomeScreen(
                                 onMediaClick = { mediaId ->

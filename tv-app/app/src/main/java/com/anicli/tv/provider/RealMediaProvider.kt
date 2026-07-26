@@ -291,7 +291,9 @@ class RealMediaProvider @Inject constructor(
                         }
                     }
                 }
-                requests.awaitAll()
+                kotlinx.coroutines.withTimeoutOrNull(8000) {
+                    requests.awaitAll()
+                }
             }
             
             if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")

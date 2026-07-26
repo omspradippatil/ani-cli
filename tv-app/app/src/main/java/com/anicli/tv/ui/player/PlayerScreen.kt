@@ -52,50 +52,71 @@ fun PlayerScreen(
             is PlayerUiState.Success -> {
                 var selectedSourceIndex by remember { mutableIntStateOf(0) }
                 var showQualitySelector by remember { mutableStateOf(false) }
+                var isControllerVisible by remember { mutableStateOf(false) }
                 
                 val source = state.sources.getOrNull(selectedSourceIndex)
-                if (source != null) {
-                    VideoPlayer(
-                        videoUrl = source.url,
-                        headers = source.headers ?: emptyMap(),
-                        okHttpClient = viewModel.okHttpClient,
-                        onShowQualitySelector = {
-                            showQualitySelector = true
-                        }
-                    )
-                } else {
-                    Text("No playable stream found", color = Color.White)
-                }
                 
-                if (showQualitySelector) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.8f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        TvLazyColumn(
-                            modifier = Modifier.width(300.dp)
-                        ) {
-                            item {
-                                Text(
-                                    text = "Select Quality/Source",
-                                    color = Color.White,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (source != null) {
+                        VideoPlayer(
+                            videoUrl = source.url,
+                            headers = source.headers ?: emptyMap(),
+                            okHttpClient = viewModel.okHttpClient,
+                            onShowQualitySelector = {
+                                showQualitySelector = true
+                            },
+                            onControllerVisibilityChanged = { isVisible ->
+                                isControllerVisible = isVisible
                             }
-                            itemsIndexed(state.sources) { index, src ->
-                                Button(
-                                    onClick = {
-                                        selectedSourceIndex = index
-                                        showQualitySelector = false
-                                    },
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                ) {
+                        )
+                    } else {
+                        Text("No playable stream found", color = Color.White, modifier = Modifier.align(Alignment.Center))
+                    }
+                    
+                    // Physical button overlay when controller is visible
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isControllerVisible && !showQualitySelector,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 32.dp, end = 32.dp)
+                    ) {
+                        Button(
+                            onClick = { showQualitySelector = true }
+                        ) {
+                            Text("Select Language / Source")
+                        }
+                    }
+                    
+                    if (showQualitySelector) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.8f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            TvLazyColumn(
+                                modifier = Modifier.width(300.dp)
+                            ) {
+                                item {
                                     Text(
-                                        text = "${src.title}",
-                                        color = if (selectedSourceIndex == index) Color.Cyan else Color.White
+                                        text = "Select Audio/Source",
+                                        color = Color.White,
+                                        modifier = Modifier.padding(bottom = 16.dp)
                                     )
+                                }
+                                itemsIndexed(state.sources) { index, src ->
+                                    Button(
+                                        onClick = {
+                                            selectedSourceIndex = index
+                                            showQualitySelector = false
+                                        },
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "${src.title}",
+                                            color = if (selectedSourceIndex == index) Color.Cyan else Color.White
+                                        )
+                                    }
                                 }
                             }
                         }

@@ -11,4 +11,6 @@ A native Android TV application for streaming anime, using the `ani-cli` logic f
 - **Mobile Friendly**: The `AndroidManifest.xml` includes `android.intent.category.LAUNCHER` for easier debugging and deployment on standard Android phones.
 - **Stream Extractors**: Includes native Kotlin extractors (`Mp4UploadExtractor.kt`, `OkRuExtractor.kt`) to parse direct MP4 streaming links from iframes.
 - **Resilient Video Player**: Uses `androidx.media3.exoplayer` with software decoder fallback (`setEnableDecoderFallback(true)`) to prevent black screens caused by Android Emulator graphics driver glitches (`EGL_BAD_ATTRIBUTE`).
-- **Dynamic HTTP Headers**: Injects provider-specific headers (e.g., `Referer`) into the `DefaultHttpDataSource` natively depending on the parsed stream domain.
+- **Dynamic HTTP Headers & Interceptors**: Injects provider-specific headers (e.g., `Referer`) into the `DefaultHttpDataSource` natively, and uses custom OkHttp interceptors to force `Range` headers to fix ExoPlayer infinite buffering edge-cases.
+- **Load Balancing**: Video extractors run concurrently using Kotlin Coroutines with an 8-second execution window (`withTimeoutOrNull`), preventing slow mirrors from freezing the stream loader.
+- **Cinematic TV UI**: Built using Jetpack Compose for TV (`androidx.tv.material3`), featuring a seamless Splash Screen and a Netflix-style immersive Hero Banner that crossfades high-resolution backdrops natively based on D-Pad focus events.

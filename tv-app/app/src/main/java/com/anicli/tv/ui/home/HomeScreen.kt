@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -27,12 +28,50 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    var focusedItem by remember { mutableStateOf<MediaItem?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadFeed()
     }
+    
+    // Set initial focused item when rows load
+    LaunchedEffect(state.rows) {
+        if (focusedItem == null && state.rows.isNotEmpty()) {
+            focusedItem = state.rows.first().items.firstOrNull()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // Hero Background Image (Crossfade)
+        androidx.compose.animation.Crossfade(
+            targetState = focusedItem?.backdropUrl ?: focusedItem?.posterUrl,
+            animationSpec = androidx.compose.animation.core.tween(1000),
+            label = "HeroCrossfade"
+        ) { url ->
+            if (url != null) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().alpha(0.6f),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        
+        // Gradient overlay
+        Box(
+            modifier = Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                        MaterialTheme.colorScheme.background
+                    ),
+                    startY = 200f
+                )
+            )
+        )
+
         if (state.isLoading) {
             Text(text = "Loading...", modifier = Modifier.align(Alignment.Center))
         } else {
@@ -44,14 +83,12 @@ fun HomeScreen(
                     TopNavigationBar(onSearchClick = onSearchClick)
                 }
                 
-                if (state.rows.isNotEmpty()) {
-                    item {
-                        HeroBanner(item = state.rows.first().items.firstOrNull(), onClick = { onMediaClick(it) })
-                    }
+                item {
+                    HeroBanner(item = focusedItem, onClick = { focusedItem?.let { onMediaClick(it.id) } })
                 }
 
                 items(state.rows) { row ->
-                    HomeRow(row = row, onMediaClick = onMediaClick)
+                    HomeRow(row = row, onMediaClick = onMediaClick, onFocusItem = { focusedItem = it })
                 }
             }
         }
@@ -125,7 +162,7 @@ fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit) {
+fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaItem) -> Unit) {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         Text(
             text = row.title,
@@ -139,7 +176,8 @@ fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit) {
             items(row.items) { item ->
                 MediaCard(
                     item = item,
-                    onClick = { onMediaClick(item.id) }
+                    onClick = { onMediaClick(item.id) },
+                    onFocus = { onFocusItem(item) }
                 )
             }
         }
