@@ -10,12 +10,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 import okhttp3.OkHttpClient
+import com.anicli.tv.data.local.dao.WatchProgressDao
+import com.anicli.tv.data.local.entity.WatchProgressEntity
+import com.anicli.tv.data.repository.FirebaseRepository
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val provider: MediaProvider,
+    private val watchProgressDao: WatchProgressDao,
+    private val firebaseRepository: FirebaseRepository,
     @javax.inject.Named("VideoClient") val okHttpClient: OkHttpClient
 ) : ViewModel() {
 
@@ -38,6 +42,28 @@ class PlayerViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = PlayerUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun saveProgress(mediaId: String, epNum: Int, currentPosition: Long, duration: Long) {
+        if (duration <= 0L || currentPosition <= 0L) return
+        viewModelScope.launch {
+            try {
+                val entity = WatchProgressEntity(
+                    mediaId = mediaId,
+                    episodeId = "$mediaId|$epNum",
+                    mediaTitle = "Unknown Anime", // Placeholder
+                    episodeTitle = "Episode $epNum",
+                    posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${mediaId}.jpg",
+                    progressMs = currentPosition,
+                    totalDurationMs = duration,
+                    lastUpdated = System.currentTimeMillis()
+                )
+                watchProgressDao.insertProgress(entity)
+                firebaseRepository.syncWatchProgressToCloud(listOf(entity))
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

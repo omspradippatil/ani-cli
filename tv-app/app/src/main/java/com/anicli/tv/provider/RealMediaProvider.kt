@@ -37,42 +37,88 @@ class RealMediaProvider @Inject constructor(
 
     override suspend fun getHomeFeed(): Flow<Result<List<MediaRow>>> = flow {
         try {
-            // Fetch recent or popular by sending an empty search query
-            val request = GraphQLRequest(
-                variables = mapOf(
-                    "search" to mapOf(
-                        "allowAdult" to false,
-                        "allowUnknown" to false,
-                        "query" to ""
-                    ),
-                    "limit" to 40,
-                    "page" to 1,
-                    "translationType" to "sub",
-                    "countryOrigin" to "ALL"
-                ),
-                query = SEARCH_GQL
-            )
-            
-            val response = apiService.searchAnime(request)
             val rows = mutableListOf<MediaRow>()
-            
-            val edges = response.data?.shows?.edges
-            if (!edges.isNullOrEmpty()) {
-                rows.add(
-                    MediaRow(
-                        title = "Recent Releases",
-                        items = edges.map { edge ->
-                            MediaItem(
-                                id = edge._id,
-                                title = edge.englishName?.takeIf { it.isNotBlank() } ?: edge.name,
-                                posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
-                                backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
-                                tags = emptyList() // could extract from airedStart year if needed
-                            )
-                        }
+
+            kotlinx.coroutines.coroutineScope {
+                // Fetch Trending
+                val trendingJob = async {
+                    val request = GraphQLRequest(
+                        variables = mapOf(
+                            "search" to mapOf(
+                                "allowAdult" to false,
+                                "allowUnknown" to false,
+                                "query" to "",
+                                "sortBy" to "Trending"
+                            ),
+                            "limit" to 40,
+                            "page" to 1,
+                            "translationType" to "sub",
+                            "countryOrigin" to "ALL"
+                        ),
+                        query = SEARCH_GQL
                     )
-                )
+                    apiService.searchAnime(request)
+                }
+
+                // Fetch Recent
+                val recentJob = async {
+                    val request = GraphQLRequest(
+                        variables = mapOf(
+                            "search" to mapOf(
+                                "allowAdult" to false,
+                                "allowUnknown" to false,
+                                "query" to ""
+                            ),
+                            "limit" to 40,
+                            "page" to 1,
+                            "translationType" to "sub",
+                            "countryOrigin" to "ALL"
+                        ),
+                        query = SEARCH_GQL
+                    )
+                    apiService.searchAnime(request)
+                }
+
+                val trendingResponse = trendingJob.await()
+                val recentResponse = recentJob.await()
+
+                val trendingEdges = trendingResponse.data?.shows?.edges
+                if (!trendingEdges.isNullOrEmpty()) {
+                    rows.add(
+                        MediaRow(
+                            title = "Trending Now",
+                            items = trendingEdges.map { edge ->
+                                MediaItem(
+                                    id = edge._id,
+                                    title = edge.englishName?.takeIf { it.isNotBlank() } ?: edge.name,
+                                    posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
+                                    backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                                    tags = emptyList()
+                                )
+                            }
+                        )
+                    )
+                }
+
+                val recentEdges = recentResponse.data?.shows?.edges
+                if (!recentEdges.isNullOrEmpty()) {
+                    rows.add(
+                        MediaRow(
+                            title = "Recent Releases",
+                            items = recentEdges.map { edge ->
+                                MediaItem(
+                                    id = edge._id,
+                                    title = edge.englishName?.takeIf { it.isNotBlank() } ?: edge.name,
+                                    posterUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg", 
+                                    backdropUrl = edge.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${edge._id}.jpg",
+                                    tags = emptyList()
+                                )
+                            }
+                        )
+                    )
+                }
             }
+
             emit(Result.success(rows))
         } catch (e: Exception) {
             e.printStackTrace()
@@ -168,7 +214,9 @@ class RealMediaProvider @Inject constructor(
             val currentTime = System.currentTimeMillis()
             var dynamicKey = cachedDynamicKey
             if (dynamicKey == null || currentTime - cachedDynamicKeyTime > 5 * 60 * 1000) {
-                dynamicKey = CryptoUtils.fetchDynamicKey(okHttpClient)
+                dynamicKey = kotlinx.coroutines.withTimeoutOrNull(10000) {
+                    CryptoUtils.fetchDynamicKey(okHttpClient)
+                } ?: throw Exception("Failed to fetch stream keys in time. Please try again.")
                 cachedDynamicKey = dynamicKey
                 cachedDynamicKeyTime = currentTime
             }
@@ -179,10 +227,9 @@ class RealMediaProvider @Inject constructor(
             val parsedSources = java.util.Collections.synchronizedList(mutableListOf<StreamSource>())
             
             val types = listOf("sub", "dub")
-            kotlinx.coroutines.withTimeoutOrNull(8000) {
-                kotlinx.coroutines.coroutineScope {
-                    val requests = types.map { translationType ->
-                        async(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.coroutineScope {
+                val requests = types.map { translationType ->
+                    async(kotlinx.coroutines.Dispatchers.IO) {
                             try {
                                 val variablesObj = mapOf(
                                     "showId" to mediaId,
@@ -260,7 +307,8 @@ class RealMediaProvider @Inject constructor(
                                                     try {
                                                         val clockUrl = "https://mkissa.net$url"
                                                         val req = okhttp3.Request.Builder().url(clockUrl).header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0").header("Referer", "https://mkissa.to/").build()
-                                                        val resp = okHttpClient.newCall(req).execute()
+                                                        val fastClient = okHttpClient.newBuilder().connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS).readTimeout(3, java.util.concurrent.TimeUnit.SECONDS).build()
+                                                        val resp = fastClient.newCall(req).execute()
                                                         val clockJson = resp.body?.string()
                                                         if (clockJson != null) {
                                                             val cObj = gson.fromJson(clockJson, com.google.gson.JsonObject::class.java)
@@ -273,7 +321,7 @@ class RealMediaProvider @Inject constructor(
                                                 } else if (url.contains("ok.ru")) {
                                                     val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url, okHttpClient)
                                                     for (ext in extractedList) {
-                                                        parsedSources.add(StreamSource(ext.second, "$typeLabel Ok.ru ${ext.first}", ext.first, emptyList(), emptyMap()))
+                                                        parsedSources.add(StreamSource(ext.second, "$typeLabel Ok.ru ${ext.first}", ext.first, emptyList(), mapOf("Referer" to "https://ok.ru/", "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")))
                                                     }
                                                 }
                                                 
@@ -293,7 +341,6 @@ class RealMediaProvider @Inject constructor(
                         }
                     }
                     requests.awaitAll()
-                }
             }
             
             if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")
@@ -304,7 +351,7 @@ class RealMediaProvider @Inject constructor(
                 if (it.quality.contains("1080")) score += 1000
                 else if (it.quality.contains("720")) score += 700
                 else if (it.quality.contains("480")) score += 400
-                if (it.title.contains("[Sub]")) score += 100
+                if (it.title.contains("[Dub]")) score += 100
                 score
             }
             Result.success(sorted)

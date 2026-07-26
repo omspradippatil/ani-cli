@@ -1,72 +1,37 @@
 package com.anicli.tv
 
+import android.app.UiModeManager
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface as MobileSurface
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.Surface
 import com.anicli.tv.core.theme.AniCliTvTheme
-import com.anicli.tv.ui.details.DetailsScreen
-import com.anicli.tv.ui.home.HomeScreen
-import com.anicli.tv.ui.search.SearchScreen
-import com.anicli.tv.ui.player.PlayerScreen
+import com.anicli.tv.ui.TvApp
+import com.anicli.tv.ui.mobile.MobileApp
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            AniCliTvTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    val navController = rememberNavController()
+        
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        val isTv = uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
 
-                    NavHost(navController = navController, startDestination = "splash") {
-                        composable("splash") {
-                            com.anicli.tv.ui.splash.SplashScreen(
-                                onSplashFinished = {
-                                    navController.navigate("home") {
-                                        popUpTo("splash") { inclusive = true }
-                                    }
-                                }
-                            )
-                        }
-                        composable("home") {
-                            HomeScreen(
-                                onMediaClick = { mediaId ->
-                                    navController.navigate("details/$mediaId")
-                                },
-                                onSearchClick = {
-                                    navController.navigate("search")
-                                }
-                            )
-                        }
-                        composable("search") {
-                            SearchScreen(
-                                onMediaClick = { mediaId ->
-                                    navController.navigate("details/$mediaId")
-                                }
-                            )
-                        }
-                        composable("details/{mediaId}") { backStackEntry ->
-                            val mediaId = backStackEntry.arguments?.getString("mediaId") ?: return@composable
-                            DetailsScreen(
-                                mediaId = mediaId,
-                                onPlayClick = { episodeId ->
-                                    navController.navigate("player/$episodeId")
-                                }
-                            )
-                        }
-                        composable("player/{episodeId}") { backStackEntry ->
-                            val episodeId = backStackEntry.arguments?.getString("episodeId") ?: return@composable
-                            PlayerScreen(episodeId = episodeId)
-                        }
+        setContent {
+            if (isTv) {
+                AniCliTvTheme {
+                    TvApp()
+                }
+            } else {
+                MaterialTheme {
+                    MobileSurface(modifier = Modifier.fillMaxSize()) {
+                        MobileApp()
                     }
                 }
             }

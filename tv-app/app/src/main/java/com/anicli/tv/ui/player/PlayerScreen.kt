@@ -31,7 +31,8 @@ import androidx.tv.material3.Button
 @Composable
 fun PlayerScreen(
     episodeId: String,
-    viewModel: PlayerViewModel = hiltViewModel()
+    viewModel: PlayerViewModel = hiltViewModel(),
+    onNextEpisode: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -56,6 +57,11 @@ fun PlayerScreen(
                 
                 val source = state.sources.getOrNull(selectedSourceIndex)
                 
+                val parts = episodeId.split("|")
+                val mediaId = parts.getOrNull(0) ?: ""
+                val epNum = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                val nextEpId = "$mediaId|${epNum + 1}"
+                
                 Box(modifier = Modifier.fillMaxSize()) {
                     if (source != null) {
                         VideoPlayer(
@@ -65,8 +71,17 @@ fun PlayerScreen(
                             onShowQualitySelector = {
                                 showQualitySelector = true
                             },
+                            onNextEpisode = {
+                                onNextEpisode(nextEpId)
+                            },
+                            onSettings = {
+                                showQualitySelector = true
+                            },
                             onControllerVisibilityChanged = { isVisible ->
                                 isControllerVisible = isVisible
+                            },
+                            onSaveProgress = { pos, dur ->
+                                viewModel.saveProgress(mediaId, epNum, pos, dur)
                             }
                         )
                     } else {

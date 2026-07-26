@@ -11,10 +11,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.anicli.tv.data.local.dao.WatchProgressDao
+import com.anicli.tv.data.repository.FirebaseRepository
+import com.anicli.tv.domain.model.MediaItem
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val provider: MediaProvider
+    private val provider: MediaProvider,
+    private val watchProgressDao: WatchProgressDao,
+    private val firebaseRepository: FirebaseRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
@@ -23,13 +30,43 @@ class HomeViewModel @Inject constructor(
     fun loadFeed() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            provider.getHomeFeed().collect { result ->
-                result.onSuccess { rows ->
-                    _state.update { it.copy(rows = rows, isLoading = false) }
+            
+            // Sync cloud progress if logged in
+            try {
+                val cloudProgress = firebaseRepository.fetchCloudWatchProgress()
+                for (prog in cloudProgress) {
+                    watchProgressDao.insertProgress(prog)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            combine(
+                provider.getHomeFeed(),
+                watchProgressDao.getAllProgress()
+            ) { feedResult, progressList ->
+                feedResult.onSuccess { baseRows ->
+                    val finalRows = mutableListOf<MediaRow>()
+                    
+                    if (progressList.isNotEmpty()) {
+                        val continueItems = progressList.map { 
+                            MediaItem(
+                                id = it.mediaId, 
+                                title = it.mediaTitle, 
+                                posterUrl = it.posterUrl
+                            )
+                        }
+                        finalRows.add(MediaRow("Continue Watching", continueItems))
+                    }
+                    
+                    finalRows.addAll(baseRows)
+                    _state.update { it.copy(rows = finalRows, isLoading = false) }
                 }.onFailure { error ->
                     _state.update { it.copy(error = error.message, isLoading = false) }
                 }
-            }
+            }.catch { e ->
+                _state.update { it.copy(error = e.message, isLoading = false) }
+            }.collect { }
         }
     }
 }

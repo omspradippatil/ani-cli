@@ -18,6 +18,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -61,10 +62,25 @@ object DataModule {
 
         val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+        
+        // Simple Rate Limiting Interceptor (Max 1 request per 500ms to avoid API bans)
+        val lastRequestTime = AtomicLong(0)
+        val rateLimitInterceptor = okhttp3.Interceptor { chain ->
+            synchronized(this) {
+                val now = System.currentTimeMillis()
+                val elapsed = now - lastRequestTime.get()
+                if (elapsed < 500) {
+                    Thread.sleep(500 - elapsed)
+                }
+                lastRequestTime.set(System.currentTimeMillis())
+            }
+            chain.proceed(chain.request())
+        }
 
         return OkHttpClient.Builder()
             .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
             .hostnameVerifier { _, _ -> true }
+            .addInterceptor(rateLimitInterceptor)
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -95,10 +111,18 @@ object DataModule {
             .hostnameVerifier { _, _ -> true }
             .build()
 
-        val dns = okhttp3.dnsoverhttps.DnsOverHttps.Builder().client(bootstrapClient)
+        val baseDns = okhttp3.dnsoverhttps.DnsOverHttps.Builder().client(bootstrapClient)
             .url("https://dns.google/dns-query".toHttpUrl())
             .bootstrapDnsHosts(java.net.InetAddress.getByName("8.8.8.8"), java.net.InetAddress.getByName("8.8.4.4"))
             .build()
+            
+        val dns = object : okhttp3.Dns {
+            override fun lookup(hostname: String): List<java.net.InetAddress> {
+                val all = baseDns.lookup(hostname)
+                val ipv4Only = all.filterIsInstance<java.net.Inet4Address>()
+                return ipv4Only.ifEmpty { all }
+            }
+        }
 
         val forceRangeInterceptor = okhttp3.Interceptor { chain ->
             val originalRequest = chain.request()

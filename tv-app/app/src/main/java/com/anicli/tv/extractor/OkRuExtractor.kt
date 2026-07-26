@@ -20,7 +20,8 @@ object OkRuExtractor {
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")
                 .build()
 
-            val response = client.newCall(request).execute()
+            val fastClient = client.newBuilder().connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS).readTimeout(10, java.util.concurrent.TimeUnit.SECONDS).build()
+            val response = fastClient.newCall(request).execute()
             val html = response.body?.string() ?: return@withContext emptyList()
 
             val pattern = Pattern.compile("data-options=\"([^\"]+)\"")

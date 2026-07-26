@@ -15,7 +15,8 @@ object Mp4UploadExtractor {
                 .header("Referer", "https://mkissa.to/")
                 .build()
 
-            val response = client.newCall(request).execute()
+            val fastClient = client.newBuilder().connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS).readTimeout(8, java.util.concurrent.TimeUnit.SECONDS).build()
+            val response = fastClient.newCall(request).execute()
             val html = response.body?.string() ?: return@withContext null
 
             val pattern = Pattern.compile("src:\\s*\"([^\"]+)\"")
