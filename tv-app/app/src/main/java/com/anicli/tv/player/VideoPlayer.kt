@@ -112,11 +112,9 @@ fun VideoPlayer(
         val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
         
-        exoPlayer.setMediaItem(mediaSource.mediaItem)
         exoPlayer.setMediaSource(mediaSource)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
-        exoPlayer.play()
     }
 
     DisposableEffect(Unit) {

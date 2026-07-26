@@ -115,21 +115,31 @@ fun Sidebar(
         horizontalAlignment = if (isExpanded) Alignment.Start else Alignment.CenterHorizontally
     ) {
         // Profile Section
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 32.dp, top = 16.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color.Gray),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
-            }
-            if (isExpanded) {
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text("Welcome", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    Text("Premium Member", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF5252))
+        Surface(
+            onClick = { onItemSelected("Settings"); onSettingsClick() },
+            modifier = Modifier.padding(bottom = 32.dp, top = 16.dp).fillMaxWidth(),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.White.copy(alpha = 0.2f)
+            ),
+            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp))
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color.Gray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
+                }
+                if (isExpanded) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("Welcome", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text("Login / Register", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF5252))
+                    }
                 }
             }
         }

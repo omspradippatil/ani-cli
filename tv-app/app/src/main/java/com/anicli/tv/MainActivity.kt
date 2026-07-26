@@ -21,7 +21,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-        val isTv = uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+        val isTv = uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION || 
+                   packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
 
         setContent {
             if (isTv) {

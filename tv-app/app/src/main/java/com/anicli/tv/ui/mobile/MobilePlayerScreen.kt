@@ -47,9 +47,13 @@ fun MobilePlayerScreen(
                 if (source != null) {
                     val context = LocalContext.current
                     val exoPlayer = remember {
-                        ExoPlayer.Builder(context).build().apply {
+                        val dataSourceFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(viewModel.okHttpClient)
+                        ExoPlayer.Builder(context)
+                            .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory))
+                            .build().apply {
                             val mediaItem = MediaItem.fromUri(source.url)
-                            setMediaItem(mediaItem)
+                            val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory).createMediaSource(mediaItem)
+                            setMediaSource(mediaSource)
                             prepare()
                             playWhenReady = true
                         }
