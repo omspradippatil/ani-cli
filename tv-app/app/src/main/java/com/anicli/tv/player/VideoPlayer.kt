@@ -44,13 +44,27 @@ fun VideoPlayer(
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
             
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                32000, // min buffer
+                120000, // max buffer (2 mins)
+                2500, // buffer for playback
+                5000 // buffer for playback after rebuffer
+            ).build()
+            
+        val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(context)
+        
         val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
             .setUsage(androidx.media3.common.C.USAGE_MEDIA)
             .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
-            
-        ExoPlayer.Builder(context, renderersFactory).build().apply {
+
+        ExoPlayer.Builder(context, renderersFactory)
+            .setLoadControl(loadControl)
+            .setTrackSelector(trackSelector)
+            .build().apply {
             setAudioAttributes(audioAttributes, true)
+            volume = 1f // Force max volume
             playWhenReady = true
         }
     }

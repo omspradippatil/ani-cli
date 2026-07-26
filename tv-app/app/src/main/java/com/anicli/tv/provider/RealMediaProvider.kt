@@ -158,7 +158,7 @@ class RealMediaProvider @Inject constructor(
         }
     }
 
-    override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
+        override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
         return try {
             val parts = episodeId.split("|")
             if (parts.size != 2) throw Exception("Invalid Episode ID format")
@@ -176,180 +176,140 @@ class RealMediaProvider @Inject constructor(
             val queryHash = "f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
             val aaReq = CryptoUtils.generateAaReq(dynamicKey.key, dynamicKey.epoch, queryHash, dynamicKey.serverTimeOffset)
 
-            val variablesObj = mapOf(
-                "showId" to mediaId,
-                "translationType" to "sub",
-                "episodeString" to epNumber
-            )
-            val extensionsObj = mapOf(
-                "persistedQuery" to mapOf(
-                    "version" to 1,
-                    "sha256Hash" to queryHash
-                ),
-                "aaReq" to aaReq
-            )
-            
-            val variablesStr = gson.toJson(variablesObj)
-            val extensionsStr = gson.toJson(extensionsObj)
-            
-            val response = apiService.getWatchInfo(variablesStr, extensionsStr)
-            val decryptedStreams = mutableListOf<String>()
-            val data = response.data
-            
-            if (data?.tobeparsed != null) {
-                // The API returned the encrypted stream directly at the root of data
-                val decrypted = CryptoUtils.decryptAllAnimeStream(data.tobeparsed, dynamicKey.key)
-                if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
-            } else {
-                val sourceUrlsElem = data?.episode?.sourceUrls ?: run {
-                    val errorMsg = response.errors?.firstOrNull()?.message ?: "No source URLs found. Data: $data"
-                    throw Exception("API Error: $errorMsg")
-                }
-                
-                // sourceUrls can be a string representing encrypted JSON or directly an array
-                if (sourceUrlsElem.isJsonPrimitive && sourceUrlsElem.asJsonPrimitive.isString) {
-                    val strValue = sourceUrlsElem.asString
-                    // if it's not starting with "[", it might be the tobeparsed JSON wrapper
-                    if (strValue.contains("tobeparsed")) {
-                        val jsonObj = gson.fromJson(strValue, JsonObject::class.java)
-                        val toBeParsed = jsonObj.get("tobeparsed")?.asString
-                        if (toBeParsed != null) {
-                            val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed, dynamicKey.key)
-                            decryptedStreams.add(decrypted)
-                        }
-                    } else {
-                        // Try to decrypt just in case the string itself is the base64 payload
-                        val decrypted = CryptoUtils.decryptAllAnimeStream(strValue, dynamicKey.key)
-                        if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
-                    }
-                } else if (sourceUrlsElem.isJsonArray) {
-                    decryptedStreams.add(sourceUrlsElem.toString())
-                }
-            }
-            
-            if (decryptedStreams.isEmpty()) throw Exception("Decryption failed or stream not available")
-            
             val parsedSources = java.util.Collections.synchronizedList(mutableListOf<StreamSource>())
             
+            val types = listOf("sub", "dub")
             kotlinx.coroutines.coroutineScope {
-                val deferredTasks = mutableListOf<kotlinx.coroutines.Deferred<Unit>>()
-                for (streamRaw in decryptedStreams) {
-                    try {
-                        var array: JsonArray? = null
-                        val elem = gson.fromJson(streamRaw, com.google.gson.JsonElement::class.java)
-                        
-                        if (elem.isJsonArray) {
-                            array = elem.asJsonArray
-                        } else if (elem.isJsonObject) {
-                            val obj = elem.asJsonObject
-                            if (obj.has("episode")) {
-                                val epObj = obj.getAsJsonObject("episode")
-                                if (epObj.has("sourceUrls")) {
-                                    array = epObj.getAsJsonArray("sourceUrls")
+                val requests = types.map { translationType ->
+                    async(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val variablesObj = mapOf(
+                                "showId" to mediaId,
+                                "translationType" to translationType,
+                                "episodeString" to epNumber
+                            )
+                            val extensionsObj = mapOf(
+                                "persistedQuery" to mapOf(
+                                    "version" to 1,
+                                    "sha256Hash" to queryHash
+                                ),
+                                "aaReq" to aaReq
+                            )
+                            
+                            val response = apiService.getWatchInfo(gson.toJson(variablesObj), gson.toJson(extensionsObj))
+                            val data = response.data
+                            val decryptedStreams = mutableListOf<String>()
+                            
+                            if (data?.tobeparsed != null) {
+                                val decrypted = CryptoUtils.decryptAllAnimeStream(data.tobeparsed, dynamicKey.key)
+                                if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
+                            } else {
+                                val sourceUrlsElem = data?.episode?.sourceUrls
+                                if (sourceUrlsElem != null && sourceUrlsElem.isJsonPrimitive && sourceUrlsElem.asJsonPrimitive.isString) {
+                                    val strValue = sourceUrlsElem.asString
+                                    if (strValue.contains("tobeparsed")) {
+                                        val jsonObj = gson.fromJson(strValue, com.google.gson.JsonObject::class.java)
+                                        val toBeParsed = jsonObj.get("tobeparsed")?.asString
+                                        if (toBeParsed != null) {
+                                            val decrypted = CryptoUtils.decryptAllAnimeStream(toBeParsed, dynamicKey.key)
+                                            decryptedStreams.add(decrypted)
+                                        }
+                                    } else {
+                                        val decrypted = CryptoUtils.decryptAllAnimeStream(strValue, dynamicKey.key)
+                                        if (decrypted.isNotEmpty()) decryptedStreams.add(decrypted)
+                                    }
+                                } else if (sourceUrlsElem != null && sourceUrlsElem.isJsonArray) {
+                                    decryptedStreams.add(sourceUrlsElem.toString())
                                 }
-                            } else if (obj.has("sourceUrls")) {
-                                array = obj.getAsJsonArray("sourceUrls")
-                            } else if (obj.has("links")) {
-                                array = obj.getAsJsonArray("links")
                             }
-                        }
+                            
+                            for (streamRaw in decryptedStreams) {
+                                var array: com.google.gson.JsonArray? = null
+                                val elem = gson.fromJson(streamRaw, com.google.gson.JsonElement::class.java)
+                                
+                                if (elem.isJsonArray) {
+                                    array = elem.asJsonArray
+                                } else if (elem.isJsonObject) {
+                                    val obj = elem.asJsonObject
+                                    if (obj.has("episode") && !obj.get("episode").isJsonNull) {
+                                        val epObj = obj.getAsJsonObject("episode")
+                                        if (epObj.has("sourceUrls") && !epObj.get("sourceUrls").isJsonNull) array = epObj.getAsJsonArray("sourceUrls")
+                                    } else if (obj.has("sourceUrls") && !obj.get("sourceUrls").isJsonNull) {
+                                        array = obj.getAsJsonArray("sourceUrls")
+                                    } else if (obj.has("links") && !obj.get("links").isJsonNull) {
+                                        array = obj.getAsJsonArray("links")
+                                    }
+                                }
 
-                        if (array != null) {
-                            for (i in 0 until array.size()) {
-                                deferredTasks.add(async(kotlinx.coroutines.Dispatchers.IO) {
-                                    val obj = array.get(i).asJsonObject
-                                    val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
-                                    val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
-                                    val sourceName = if (obj.has("sourceName")) obj.get("sourceName").asString else "Quality: ${quality}p"
-                                    
-                                    if (url != null) {
-                                        var finalUrl: String = url
-                                        if (url.contains("mp4upload.com")) {
-                                            val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url, okHttpClient)
-                                            if (extracted != null) {
-                                                finalUrl = extracted
-                                            }
-                                        } else if (url.startsWith("/apivtwo/")) {
-                                            try {
-                                                val clockUrl = "https://mkissa.net$url"
-                                                val req = okhttp3.Request.Builder()
-                                                    .url(clockUrl)
-                                                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")
-                                                    .header("Referer", "https://mkissa.to/")
-                                                    .build()
-                                                val resp = okHttpClient.newCall(req).execute()
-                                                val clockJson = resp.body?.string()
-                                                if (clockJson != null) {
-                                                    val cObj = gson.fromJson(clockJson, com.google.gson.JsonObject::class.java)
-                                                    if (cObj.has("links")) {
+                                if (array != null) {
+                                    for (i in 0 until array.size()) {
+                                        val obj = array.get(i).asJsonObject
+                                        val url = if (obj.has("link")) obj.get("link").asString else if (obj.has("url")) obj.get("url").asString else if (obj.has("sourceUrl")) obj.get("sourceUrl").asString else null
+                                        val quality = if (obj.has("resolutionStr")) obj.get("resolutionStr").asString else if (obj.has("height")) obj.get("height").asString else "Auto"
+                                        
+                                        val typeLabel = if (translationType == "dub") "[Dub]" else "[Sub]"
+                                        val sourceName = if (obj.has("sourceName")) "$typeLabel ${obj.get("sourceName").asString}" else "$typeLabel Quality: ${quality}p"
+                                        
+                                        if (url != null) {
+                                            var finalUrl: String = url
+                                            if (url.contains("mp4upload.com")) {
+                                                val extracted = com.anicli.tv.extractor.Mp4UploadExtractor.extract(url, okHttpClient)
+                                                if (extracted != null) finalUrl = extracted
+                                            } else if (url.startsWith("/apivtwo/")) {
+                                                try {
+                                                    val clockUrl = "https://mkissa.net$url"
+                                                    val req = okhttp3.Request.Builder().url(clockUrl).header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0").header("Referer", "https://mkissa.to/").build()
+                                                    val resp = okHttpClient.newCall(req).execute()
+                                                    val clockJson = resp.body?.string()
+                                                    if (clockJson != null) {
+                                                        val cObj = gson.fromJson(clockJson, com.google.gson.JsonObject::class.java)
                                                         val linksArr = cObj.getAsJsonArray("links")
                                                         if (linksArr != null && linksArr.size() > 0) {
-                                                            val extractedLink = linksArr.get(0).asJsonObject.get("link")?.asString
-                                                            if (extractedLink != null) {
-                                                                finalUrl = extractedLink
-                                                            }
+                                                            finalUrl = linksArr.get(0).asJsonObject.get("link")?.asString ?: url
                                                         }
                                                     }
+                                                } catch(e: Exception) {}
+                                            } else if (url.contains("ok.ru")) {
+                                                val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url, okHttpClient)
+                                                for (ext in extractedList) {
+                                                    parsedSources.add(StreamSource(ext.second, "$typeLabel Ok.ru ${ext.first}", ext.first, emptyList(), emptyMap()))
                                                 }
-                                            } catch(e: Exception) { e.printStackTrace() }
-                                        } else if (url.contains("ok.ru")) {
-                                            val extractedList = com.anicli.tv.extractor.OkRuExtractor.extract(url, okHttpClient)
-                                            for (ext in extractedList) {
-                                                parsedSources.add(
-                                                    StreamSource(
-                                                        url = ext.second,
-                                                        title = "Ok.ru ${ext.first}",
-                                                        quality = ext.first,
-                                                        subtitles = emptyList(),
-                                                        headers = emptyMap()
-                                                    )
-                                                )
+                                            }
+                                            
+                                            val isIframe = finalUrl.contains("ok.ru") || finalUrl.contains("/e/") || finalUrl.contains("embed-") || finalUrl.contains("watchanime")
+                                            val referer = if (finalUrl.contains("mp4upload")) "https://www.mp4upload.com/" else "https://mkissa.to"
+                                            
+                                            if (!isIframe) {
+                                                parsedSources.add(StreamSource(finalUrl, sourceName, quality, emptyList(), mapOf("Referer" to referer, "Origin" to referer, "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")))
                                             }
                                         }
-                                        
-                                        val isIframe = finalUrl.contains("ok.ru") || 
-                                                       (finalUrl.contains("bysekoze.com") && finalUrl.contains("/e/")) ||
-                                                       finalUrl.contains("watchanime.uns.bio") ||
-                                                       (finalUrl.contains("mp4upload.com") && finalUrl.contains("embed-"))
-                                                       
-                                        val referer = if (finalUrl.contains("mp4upload.com")) {
-                                            "https://www.mp4upload.com/"
-                                        } else {
-                                            "https://mkissa.to"
-                                        }
-                                        
-                                        if (!isIframe) {
-                                            parsedSources.add(
-                                                StreamSource(
-                                                    url = finalUrl,
-                                                    title = sourceName,
-                                                    quality = quality,
-                                                    subtitles = emptyList(),
-                                                    headers = mapOf(
-                                                        "Referer" to referer,
-                                                        "Origin" to referer,
-                                                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
-                                                    )
-                                                )
-                                            )
-                                        }
                                     }
-                                })
+                                }
                             }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
                     }
                 }
-                awaitAll(*deferredTasks.toTypedArray())
+                requests.awaitAll()
             }
             
             if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")
             
-            Result.success(parsedSources)
+            // Sort to put highest quality first, then Dub/Sub based on something if needed
+            val sorted = parsedSources.toList().sortedByDescending { 
+                var score = 0
+                if (it.quality.contains("1080")) score += 1000
+                else if (it.quality.contains("720")) score += 700
+                else if (it.quality.contains("480")) score += 400
+                if (it.title.contains("[Sub]")) score += 100
+                score
+            }
+            Result.success(sorted)
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
         }
     }
 }
+

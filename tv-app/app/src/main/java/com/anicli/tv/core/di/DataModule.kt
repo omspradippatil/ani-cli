@@ -96,13 +96,26 @@ object DataModule {
             .build()
 
         val dns = okhttp3.dnsoverhttps.DnsOverHttps.Builder().client(bootstrapClient)
-            .url("https://cloudflare-dns.com/dns-query".toHttpUrl())
-            .bootstrapDnsHosts(java.net.InetAddress.getByName("1.1.1.1"), java.net.InetAddress.getByName("1.0.0.1"))
+            .url("https://dns.google/dns-query".toHttpUrl())
+            .bootstrapDnsHosts(java.net.InetAddress.getByName("8.8.8.8"), java.net.InetAddress.getByName("8.8.4.4"))
             .build()
+
+        val forceRangeInterceptor = okhttp3.Interceptor { chain ->
+            val originalRequest = chain.request()
+            if (originalRequest.header("Range") == null) {
+                val newRequest = originalRequest.newBuilder()
+                    .header("Range", "bytes=0-")
+                    .build()
+                chain.proceed(newRequest)
+            } else {
+                chain.proceed(originalRequest)
+            }
+        }
 
         return OkHttpClient.Builder()
             .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
             .hostnameVerifier { _, _ -> true }
+            .addInterceptor(forceRangeInterceptor)
             .addInterceptor(logging)
             .dns(dns)
             .connectTimeout(30, TimeUnit.SECONDS)
