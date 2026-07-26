@@ -23,7 +23,8 @@ import javax.inject.Singleton
 @Singleton
 class RealMediaProvider @Inject constructor(
     private val apiService: AnimeApiService,
-    @javax.inject.Named("VideoClient") private val okHttpClient: okhttp3.OkHttpClient
+    @javax.inject.Named("VideoClient") private val okHttpClient: okhttp3.OkHttpClient,
+    private val sharedPreferences: android.content.SharedPreferences
 ) : MediaProvider {
 
     override val name: String = "AllAnime (ani-cli native)"
@@ -147,7 +148,7 @@ class RealMediaProvider @Inject constructor(
                     posterUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
                     backdropUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
                     genres = emptyList(),
-                    episodes = subEpisodes.map { epNum ->
+                    episodes = subEpisodes.sortedBy { it.toFloatOrNull() ?: 0f }.map { epNum ->
                         Episode(
                             id = "${show._id}|$epNum",
                             title = "Episode $epNum",
@@ -346,12 +347,17 @@ class RealMediaProvider @Inject constructor(
             if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")
             
             // Sort to put highest quality first, then Dub/Sub based on something if needed
+            val preferredLanguage = sharedPreferences.getString("pref_language", "dub") ?: "dub"
+
             val sorted = parsedSources.toList().sortedByDescending { 
                 var score = 0
                 if (it.quality.contains("1080")) score += 1000
                 else if (it.quality.contains("720")) score += 700
                 else if (it.quality.contains("480")) score += 400
-                if (it.title.contains("[Dub]")) score += 100
+                
+                if (preferredLanguage == "dub" && it.title.contains("[Dub]")) score += 5000
+                else if (preferredLanguage == "sub" && it.title.contains("[Sub]")) score += 5000
+                
                 score
             }
             Result.success(sorted)

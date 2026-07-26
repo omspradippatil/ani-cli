@@ -32,6 +32,35 @@ fun MobileSettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            val preferredLanguage by viewModel.preferredLanguage.collectAsState()
+            
+            Text("Default Audio Language", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Button(
+                    onClick = { viewModel.setPreferredLanguage("dub") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (preferredLanguage == "dub") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = if (preferredLanguage == "dub") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Text("English (Dub)")
+                }
+                Button(
+                    onClick = { viewModel.setPreferredLanguage("sub") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (preferredLanguage == "sub") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = if (preferredLanguage == "sub") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Text("Japanese (Sub)")
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(32.dp))
+
             if (userEmail != null) {
                 Text("Logged in as: $userEmail", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(16.dp))

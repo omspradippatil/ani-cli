@@ -91,12 +91,26 @@ fun MobileDetailsScreen(
                     }
                 }
                 
-                items(detail.episodes) { ep ->
-                    ListItem(
-                        headlineContent = { Text("Episode ${ep.number}") },
-                        modifier = Modifier.clickable { onPlayClick(ep.id) }
-                    )
-                    Divider()
+                item {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(detail.episodes) { ep ->
+                            Surface(
+                                modifier = Modifier.clickable { onPlayClick(ep.id) },
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    text = "Ep ${ep.number}",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }

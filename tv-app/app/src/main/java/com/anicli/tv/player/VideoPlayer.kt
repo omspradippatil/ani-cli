@@ -39,6 +39,7 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import okhttp3.OkHttpClient
 
 
+@android.annotation.SuppressLint("UnsafeOptInUsageError")
 @Composable
 fun VideoPlayer(
     videoUrl: String,

@@ -11,7 +11,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor() : ViewModel() {
+class SettingsViewModel @Inject constructor(
+    private val sharedPreferences: android.content.SharedPreferences
+) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     
     private val _userEmail = MutableStateFlow<String?>(auth.currentUser?.email)
@@ -21,6 +23,13 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
         auth.addAuthStateListener { firebaseAuth ->
             _userEmail.value = firebaseAuth.currentUser?.email
         }
+    }
+    
+    val preferredLanguage = MutableStateFlow(sharedPreferences.getString("pref_language", "dub") ?: "dub")
+
+    fun setPreferredLanguage(lang: String) {
+        sharedPreferences.edit().putString("pref_language", lang).apply()
+        preferredLanguage.value = lang
     }
     
     fun signOut() {

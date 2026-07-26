@@ -23,7 +23,7 @@ import androidx.media3.ui.PlayerView
 import com.anicli.tv.ui.player.PlayerUiState
 import com.anicli.tv.ui.player.PlayerViewModel
 
-@OptIn(UnstableApi::class)
+@android.annotation.SuppressLint("UnsafeOptInUsageError")
 @Composable
 fun MobilePlayerScreen(
     episodeId: String,

@@ -38,6 +38,30 @@ fun SettingsScreen(
         Text("Settings", style = androidx.tv.material3.MaterialTheme.typography.displayMedium, color = Color.White)
         Spacer(modifier = Modifier.height(32.dp))
 
+        val preferredLanguage by viewModel.preferredLanguage.collectAsState()
+        Text("Default Audio Language", color = Color.White, style = androidx.tv.material3.MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Button(
+                onClick = { viewModel.setPreferredLanguage("dub") },
+                colors = androidx.tv.material3.ButtonDefaults.colors(
+                    containerColor = if (preferredLanguage == "dub") androidx.tv.material3.MaterialTheme.colorScheme.primary else Color.DarkGray
+                )
+            ) {
+                Text("English (Dub)")
+            }
+            Button(
+                onClick = { viewModel.setPreferredLanguage("sub") },
+                colors = androidx.tv.material3.ButtonDefaults.colors(
+                    containerColor = if (preferredLanguage == "sub") androidx.tv.material3.MaterialTheme.colorScheme.primary else Color.DarkGray
+                )
+            ) {
+                Text("Japanese (Sub)")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(48.dp))
+
         if (userEmail != null) {
             Text("Logged in as: $userEmail", color = Color.White)
             Spacer(modifier = Modifier.height(16.dp))

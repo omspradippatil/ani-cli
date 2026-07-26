@@ -20,9 +20,17 @@ import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
+import android.content.SharedPreferences
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DataModule {
+
+    @Provides
+    @Singleton
+    fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
+        return context.getSharedPreferences("anicli_tv_prefs", Context.MODE_PRIVATE)
+    }
 
     @Provides
     @Singleton
