@@ -31,9 +31,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("release.keystore")
-            storePassword = "password"
+            storePassword = "anicli123"
             keyAlias = "anicli"
-            keyPassword = "password"
+            keyPassword = "anicli123"
         }
     }
 
