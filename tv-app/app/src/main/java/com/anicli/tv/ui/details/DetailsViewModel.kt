@@ -6,7 +6,7 @@ import com.anicli.tv.data.local.dao.FavoriteDao
 import com.anicli.tv.data.local.entity.FavoriteEntity
 import com.anicli.tv.data.repository.FirebaseRepository
 import com.anicli.tv.domain.model.MediaDetail
-import com.anicli.tv.domain.provider.MediaProvider
+import com.anicli.tv.domain.provider.ProviderSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DetailsViewModel @Inject constructor(
-    private val provider: MediaProvider,
+    private val providerSelector: ProviderSelector,
     private val favoriteDao: FavoriteDao,
     private val firebaseRepository: FirebaseRepository
 ) : ViewModel() {
@@ -36,7 +36,8 @@ class DetailsViewModel @Inject constructor(
                 }
             }
 
-            val result = provider.getDetails(mediaId)
+            // Use the currently active provider
+            val result = providerSelector.getActiveProvider().getDetails(mediaId)
             result.onSuccess { detail ->
                 _state.update { it.copy(detail = detail, isLoading = false) }
             }.onFailure { error ->

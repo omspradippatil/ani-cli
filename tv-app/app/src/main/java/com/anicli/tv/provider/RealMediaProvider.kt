@@ -32,6 +32,19 @@ class RealMediaProvider @Inject constructor(
     private var cachedDynamicKey: DynamicKey? = null
     private var cachedDynamicKeyTime: Long = 0
 
+    private suspend fun getDynamicKey(): DynamicKey {
+        val currentTime = System.currentTimeMillis()
+        var dynamicKey = cachedDynamicKey
+        if (dynamicKey == null || currentTime - cachedDynamicKeyTime > 5 * 60 * 1000) {
+            dynamicKey = kotlinx.coroutines.withTimeoutOrNull(10000) {
+                CryptoUtils.fetchDynamicKey(okHttpClient)
+            } ?: throw Exception("Failed to fetch stream keys in time. Please try again.")
+            cachedDynamicKey = dynamicKey
+            cachedDynamicKeyTime = currentTime
+        }
+        return dynamicKey
+    }
+
     private val SEARCH_GQL = """query( ${'$'}search: SearchInput ${'$'}limit: Int ${'$'}page: Int ${'$'}translationType: VaildTranslationTypeEnumType ${'$'}countryOrigin: VaildCountryOriginEnumType ) { shows( search: ${'$'}search limit: ${'$'}limit page: ${'$'}page translationType: ${'$'}translationType countryOrigin: ${'$'}countryOrigin ) { edges { _id name englishName thumbnail availableEpisodes airedStart __typename } }}"""
     private val DETAILS_GQL = """query (${'$'}showId: String!) { show( _id: ${'$'}showId ) { _id name englishName thumbnail availableEpisodesDetail }}"""
     private val EPISODE_GQL = """query (${'$'}showId: String!, ${'$'}translationType: VaildTranslationTypeEnumType!, ${'$'}episodeString: String!) { episode( showId: ${'$'}showId translationType: ${'$'}translationType episodeString: ${'$'}episodeString ) { episodeString sourceUrls }}"""
@@ -58,7 +71,7 @@ class RealMediaProvider @Inject constructor(
                         ),
                         query = SEARCH_GQL
                     )
-                    apiService.searchAnime(request)
+                    apiService.searchAnime(request, buildId = getDynamicKey().buildId)
                 }
 
                 // Fetch Recent
@@ -77,7 +90,7 @@ class RealMediaProvider @Inject constructor(
                         ),
                         query = SEARCH_GQL
                     )
-                    apiService.searchAnime(request)
+                    apiService.searchAnime(request, buildId = getDynamicKey().buildId)
                 }
 
                 val trendingResponse = trendingJob.await()
@@ -134,7 +147,7 @@ class RealMediaProvider @Inject constructor(
                 query = DETAILS_GQL
             )
             
-            val response = apiService.getAnimeInfo(request)
+            val response = apiService.getAnimeInfo(request, buildId = getDynamicKey().buildId)
             val show = response.data?.show ?: throw Exception("Show details not found")
             
             // AllAnime returns a map of translation type (e.g. "sub", "dub", "raw") to a list of episodes
@@ -148,11 +161,11 @@ class RealMediaProvider @Inject constructor(
                     posterUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
                     backdropUrl = show.thumbnail ?: "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${show._id}.jpg",
                     genres = emptyList(),
-                    episodes = subEpisodes.sortedBy { it.toFloatOrNull() ?: 0f }.map { epNum ->
+                    episodes = subEpisodes.sortedBy { it.toFloatOrNull() ?: 0f }.mapIndexed { index, epNum ->
                         Episode(
                             id = "${show._id}|$epNum",
-                            title = "Episode $epNum",
-                            number = epNum.toFloatOrNull()?.toInt() ?: 0,
+                            title = "Episode ${index + 1}",
+                            number = index + 1,
                             thumbnail = null,
                             isFiller = false
                         )
@@ -184,7 +197,7 @@ class RealMediaProvider @Inject constructor(
                 ),
                 query = SEARCH_GQL
             )
-            val searchResponse = apiService.searchAnime(request)
+            val searchResponse = apiService.searchAnime(request, buildId = getDynamicKey().buildId)
             
             val edges = searchResponse.data?.shows?.edges ?: emptyList()
             
@@ -212,18 +225,10 @@ class RealMediaProvider @Inject constructor(
             val mediaId = parts[0]
             val epNumber = parts[1]
             
-            val currentTime = System.currentTimeMillis()
-            var dynamicKey = cachedDynamicKey
-            if (dynamicKey == null || currentTime - cachedDynamicKeyTime > 5 * 60 * 1000) {
-                dynamicKey = kotlinx.coroutines.withTimeoutOrNull(10000) {
-                    CryptoUtils.fetchDynamicKey(okHttpClient)
-                } ?: throw Exception("Failed to fetch stream keys in time. Please try again.")
-                cachedDynamicKey = dynamicKey
-                cachedDynamicKeyTime = currentTime
-            }
+            val dynamicKey = getDynamicKey()
             
             val queryHash = "f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
-            val aaReq = CryptoUtils.generateAaReq(dynamicKey.key, dynamicKey.epoch, queryHash, dynamicKey.serverTimeOffset)
+            val aaReq = CryptoUtils.generateAaReq(dynamicKey.key, dynamicKey.epoch, queryHash, dynamicKey.serverTimeOffset, dynamicKey.buildId, dynamicKey.lane)
 
             val parsedSources = java.util.Collections.synchronizedList(mutableListOf<StreamSource>())
             
@@ -242,10 +247,11 @@ class RealMediaProvider @Inject constructor(
                                         "version" to 1,
                                         "sha256Hash" to queryHash
                                     ),
+                                    "k" to dynamicKey.lane,
                                     "aaReq" to aaReq
                                 )
                                 
-                                val response = apiService.getWatchInfo(gson.toJson(variablesObj), gson.toJson(extensionsObj))
+                                val response = apiService.getWatchInfo(gson.toJson(variablesObj), gson.toJson(extensionsObj), buildId = dynamicKey.buildId)
                                 val data = response.data
                                 val decryptedStreams = mutableListOf<String>()
                                 

@@ -14,7 +14,8 @@ interface AnimeApiService {
         @Body request: GraphQLRequest,
         @Header("Referer") referer: String = "https://mkissa.to",
         @Header("Origin") origin: String = "https://mkissa.to",
-        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0",
+        @Header("x-build-id") buildId: String? = null
     ): GraphQLResponse<SearchData>
 
     @POST("api")
@@ -22,7 +23,8 @@ interface AnimeApiService {
         @Body request: GraphQLRequest,
         @Header("Referer") referer: String = "https://mkissa.to",
         @Header("Origin") origin: String = "https://mkissa.to",
-        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0",
+        @Header("x-build-id") buildId: String? = null
     ): GraphQLResponse<ShowData>
 
     @GET("api")
@@ -31,6 +33,7 @@ interface AnimeApiService {
         @Query("extensions") extensions: String,
         @Header("Referer") referer: String = "https://mkissa.to",
         @Header("Origin") origin: String = "https://mkissa.to",
-        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+        @Header("User-Agent") userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0",
+        @Header("x-build-id") buildId: String? = null
     ): GraphQLResponse<EpisodeData>
 }

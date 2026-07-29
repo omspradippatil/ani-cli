@@ -137,8 +137,8 @@ fun Sidebar(
                 if (isExpanded) {
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("Welcome", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                        Text("Login / Register", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF5252))
+                        Text("Profile Menu", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text("Click to Login/Register", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF5252))
                     }
                 }
             }

@@ -100,6 +100,7 @@ fun VideoPlayer(
             if (exoPlayer.isPlaying) {
                 currentPosition = exoPlayer.currentPosition
                 duration = exoPlayer.duration.coerceAtLeast(0L)
+                onSaveProgress(currentPosition, duration)
             }
             delay(1000)
         }
@@ -110,8 +111,12 @@ fun VideoPlayer(
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent(userAgent)
             .setDefaultRequestProperties(headers)
+        val mediaItemBuilder = MediaItem.Builder().setUri(Uri.parse(videoUrl))
+        if (!videoUrl.contains(".mp4") && !videoUrl.contains("mp4upload")) {
+            mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+        }
         val mediaSource = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
+            .createMediaSource(mediaItemBuilder.build())
         
         exoPlayer.setMediaSource(mediaSource)
         exoPlayer.prepare()
@@ -131,6 +136,9 @@ fun VideoPlayer(
         }
         exoPlayer.addListener(listener)
         onDispose {
+            if (currentPosition > 0 && duration > 0) {
+                onSaveProgress(currentPosition, duration)
+            }
             exoPlayer.removeListener(listener)
             exoPlayer.release()
         }

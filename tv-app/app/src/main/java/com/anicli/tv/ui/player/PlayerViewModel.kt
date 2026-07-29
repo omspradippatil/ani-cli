@@ -3,7 +3,7 @@ package com.anicli.tv.ui.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anicli.tv.domain.model.StreamSource
-import com.anicli.tv.domain.provider.MediaProvider
+import com.anicli.tv.domain.provider.ProviderSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ import com.anicli.tv.data.repository.FirebaseRepository
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val provider: MediaProvider,
+    private val providerSelector: ProviderSelector,
     private val watchProgressDao: WatchProgressDao,
     private val firebaseRepository: FirebaseRepository,
     @javax.inject.Named("VideoClient") val okHttpClient: OkHttpClient
@@ -30,7 +30,8 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = PlayerUiState.Loading
             try {
-                val result = provider.getStreamSources(episodeId)
+                // Use the currently active provider for stream resolution
+                val result = providerSelector.getActiveProvider().getStreamSources(episodeId)
                 result.onSuccess { sources ->
                     if (sources.isNotEmpty()) {
                         _uiState.value = PlayerUiState.Success(sources)

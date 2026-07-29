@@ -3,7 +3,7 @@ package com.anicli.tv.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anicli.tv.domain.model.MediaItem
-import com.anicli.tv.domain.provider.MediaProvider
+import com.anicli.tv.domain.provider.ProviderSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val provider: MediaProvider
+    private val providerSelector: ProviderSelector
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SearchState())
@@ -34,7 +34,8 @@ class SearchViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             delay(500) // debounce
-            val result = provider.search(query)
+            // Always use the currently active provider
+            val result = providerSelector.getActiveProvider().search(query)
             result.onSuccess { items ->
                 _state.update { it.copy(results = items, isLoading = false) }
             }.onFailure { error ->

@@ -3,7 +3,7 @@ package com.anicli.tv.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anicli.tv.domain.model.MediaRow
-import com.anicli.tv.domain.provider.MediaProvider
+import com.anicli.tv.domain.provider.ProviderSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.catch
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val provider: MediaProvider,
+    private val providerSelector: ProviderSelector,
     private val watchProgressDao: WatchProgressDao,
     private val firebaseRepository: FirebaseRepository
 ) : ViewModel() {
@@ -41,6 +41,9 @@ class HomeViewModel @Inject constructor(
                 e.printStackTrace()
             }
 
+            // Always get the active provider at the time loadFeed() is called
+            val provider = providerSelector.getActiveProvider()
+
             combine(
                 provider.getHomeFeed(),
                 watchProgressDao.getAllProgress()
@@ -60,7 +63,7 @@ class HomeViewModel @Inject constructor(
                     }
                     
                     finalRows.addAll(baseRows)
-                    _state.update { it.copy(rows = finalRows, isLoading = false) }
+                    _state.update { it.copy(rows = finalRows, isLoading = false, activeProviderName = provider.name) }
                 }.onFailure { error ->
                     _state.update { it.copy(error = error.message, isLoading = false) }
                 }
@@ -74,5 +77,6 @@ class HomeViewModel @Inject constructor(
 data class HomeState(
     val isLoading: Boolean = false,
     val rows: List<MediaRow> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val activeProviderName: String = ""
 )
