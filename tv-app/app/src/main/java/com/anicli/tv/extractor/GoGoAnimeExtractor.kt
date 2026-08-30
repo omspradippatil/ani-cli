@@ -37,8 +37,8 @@ object GoGoAnimeExtractor {
      * Extract direct HLS stream URLs from a GoGoCDN / VidStreaming / GoGoPlay embed URL.
      * Returns a list of (quality_label, m3u8_url) pairs sorted best quality first.
      */
-    fun extract(embedUrl: String, client: OkHttpClient): List<Pair<String, String>> {
-        return try {
+    suspend fun extract(embedUrl: String, client: OkHttpClient): List<Pair<String, String>> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
             val sources = mutableListOf<Pair<String, String>>()
 
             // Normalize the embed URL
@@ -52,15 +52,15 @@ object GoGoAnimeExtractor {
             val embedReq = Request.Builder()
                 .url(normalizedUrl)
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0")
-                .header("Referer", "https://gogoanime.by/")
+                .header("Referer", "https://gogoanimes.fi/")
                 .build()
-            val embedHtml = client.newCall(embedReq).execute().body?.string() ?: return emptyList()
+            val embedHtml = client.newCall(embedReq).execute().body?.string() ?: return@withContext emptyList()
 
             // Extract the crypto_key, second_key, iv from the page's script data-value attribute
             // ani-cli pattern: grep data-value from the video iframe page
             val dataValue = extractDataValue(embedHtml) ?: run {
                 Log.w(TAG, "Could not find data-value in embed page")
-                return emptyList()
+                return@withContext emptyList()
             }
 
             // Extract the id param from embed URL
@@ -70,14 +70,14 @@ object GoGoAnimeExtractor {
                 ?: extractIdFromPath(parsedUrl.path)
                 ?: run {
                     Log.w(TAG, "Could not extract ID from embed URL: $normalizedUrl")
-                    return emptyList()
+                    return@withContext emptyList()
                 }
 
             // Decrypt the data-value with key1
-            val decryptedData = aesDecrypt(dataValue, ENCRYPTION_KEY, ENCRYPTION_IV) ?: return emptyList()
+            val decryptedData = aesDecrypt(dataValue, ENCRYPTION_KEY, ENCRYPTION_IV) ?: return@withContext emptyList()
 
             // Re-encrypt the id with key1 for the ajax request
-            val encryptedId = aesEncrypt(idParam, ENCRYPTION_KEY, ENCRYPTION_IV) ?: return emptyList()
+            val encryptedId = aesEncrypt(idParam, ENCRYPTION_KEY, ENCRYPTION_IV) ?: return@withContext emptyList()
 
             // Build the encrypt-ajax.php request URL
             val ajaxUrl = "$cdnBase/encrypt-ajax.php?id=${java.net.URLEncoder.encode(encryptedId, "UTF-8")}&alias=$idParam&${decryptedData.split("&").drop(1).joinToString("&")}"
@@ -89,7 +89,7 @@ object GoGoAnimeExtractor {
                 .header("X-Requested-With", "XMLHttpRequest")
                 .build()
 
-            val ajaxResponse = client.newCall(ajaxReq).execute().body?.string() ?: return emptyList()
+            val ajaxResponse = client.newCall(ajaxReq).execute().body?.string() ?: return@withContext emptyList()
 
             // Decrypt the ajax response with key2
             val responseJson = try {

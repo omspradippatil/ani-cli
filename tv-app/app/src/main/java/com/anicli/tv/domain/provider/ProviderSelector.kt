@@ -31,15 +31,12 @@ class ProviderSelector @Inject constructor(
 
     /** Returns the currently active provider based on the user's preference. */
     fun getActiveProvider(): MediaProvider {
-        return when (sharedPreferences.getString(PREF_KEY, PROVIDER_GOGOANIME)) {
-            PROVIDER_ALLANIME -> allAnimeProvider
-            else              -> goGoAnimeProvider
-        }
+        // GoGoAnime is currently heavily obfuscated/broken, forcing AllAnime
+        return allAnimeProvider
     }
 
     /** Returns the current active provider name key. */
-    fun getActiveProviderKey(): String =
-        sharedPreferences.getString(PREF_KEY, PROVIDER_GOGOANIME) ?: PROVIDER_GOGOANIME
+    fun getActiveProviderKey(): String = PROVIDER_ALLANIME
 
     /** Switches to the specified provider and persists the choice. */
     fun setActiveProvider(providerKey: String) {

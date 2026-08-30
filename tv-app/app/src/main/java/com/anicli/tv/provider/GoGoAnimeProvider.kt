@@ -38,10 +38,11 @@ class GoGoAnimeProvider @Inject constructor(
     companion object {
         private const val TAG = "GoGoAnimeProvider"
         const val PREF_DOMAIN = "pref_gogoanime_domain"
-        private const val DEFAULT_DOMAIN = "gogoanime.by"
+        private const val DEFAULT_DOMAIN = "gogoanimes.fi"
 
         /** Ordered fallback mirror list — tried in sequence if primary fails */
         private val FALLBACK_DOMAINS = listOf(
+            "gogoanimes.fi",
             "gogoanime.by",
             "gogoanime3.co",
             "anitaku.pe",
@@ -62,12 +63,12 @@ class GoGoAnimeProvider @Inject constructor(
 
     // ─── HTTP helpers ─────────────────────────────────────────────────────────
 
-    private fun get(url: String, referer: String? = null): String {
+    private suspend fun get(url: String, referer: String? = null): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val reqBuilder = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
         if (referer != null) reqBuilder.header("Referer", referer)
-        return okHttpClient.newCall(reqBuilder.build()).execute().body?.string() ?: ""
+        okHttpClient.newCall(reqBuilder.build()).execute().body?.string() ?: ""
     }
 
     // ─── MediaProvider implementation ─────────────────────────────────────────
@@ -161,7 +162,7 @@ class GoGoAnimeProvider @Inject constructor(
                     subtitles = emptyList(),
                     headers = mapOf(
                         "Referer" to embedUrl,
-                        "Origin" to "https://gogoanime.by",
+                        "Origin" to "https://gogoanimes.fi",
                         "User-Agent" to USER_AGENT
                     )
                 )
@@ -180,7 +181,7 @@ class GoGoAnimeProvider @Inject constructor(
      * Parses a generic anime list page (home, popular, new-season).
      * Looks for <ul class="items"><li> elements with poster and title.
      */
-    private fun scrapeListPage(url: String): List<MediaItem> {
+    private suspend fun scrapeListPage(url: String): List<MediaItem> {
         return try {
             val html = get(url)
             parseSearchResults(html)
@@ -252,15 +253,19 @@ class GoGoAnimeProvider @Inject constructor(
         val genres = genrePattern.findAll(html).map { it.groupValues[1].trim() }.toList()
 
         // Episode pages: id="episode_page" contains <a ep_start="X" ep_end="Y">
-        // Parse episode count from the ep_end attribute of the last anchor
         val epEndPattern = Regex("""ep_end=["'](\d+)["']""")
         val epNumbers = epEndPattern.findAll(html).map { it.groupValues[1].toIntOrNull() ?: 0 }.toList()
-        val maxEp = epNumbers.maxOrNull() ?: 0
-
+        
         // Also try to get episode starts to handle shows that don't start at 1
         val epStartPattern = Regex("""ep_start=["'](\d+)["']""")
         val epStarts = epStartPattern.findAll(html).map { it.groupValues[1].toIntOrNull() ?: 1 }.toList()
-        val startEp = epStarts.minOrNull()?.coerceAtLeast(1) ?: 1
+
+        // GoGoAnime mirrors like gogoanimes.fi list episodes directly in hrefs now
+        val inlineEpPattern = Regex("""href=["']/$slug-episode-(\d+)["']""")
+        val inlineEps = inlineEpPattern.findAll(html).map { it.groupValues[1].toIntOrNull() ?: 0 }.toList()
+
+        val maxEp = (epNumbers + inlineEps).maxOrNull() ?: 0
+        val startEp = (epStarts + inlineEps.filter { it > 0 }).minOrNull()?.coerceAtLeast(1) ?: 1
 
         val episodes = (startEp..maxEp).map { epNum ->
             Episode(
