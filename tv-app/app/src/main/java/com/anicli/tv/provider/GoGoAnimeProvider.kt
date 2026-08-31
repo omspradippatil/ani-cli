@@ -27,10 +27,14 @@ import javax.inject.Singleton
  * Supported domains (at time of writing):
  *   gogoanime.by, gogoanime3.co, gogoanime.gg, anitaku.pe
  */
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+
 @Singleton
 class GoGoAnimeProvider @Inject constructor(
     @Named("VideoClient") private val okHttpClient: OkHttpClient,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    @ApplicationContext private val context: Context
 ) : MediaProvider {
 
     override val name: String = "GoGoAnime"
@@ -38,7 +42,7 @@ class GoGoAnimeProvider @Inject constructor(
     companion object {
         private const val TAG = "GoGoAnimeProvider"
         const val PREF_DOMAIN = "pref_gogoanime_domain"
-        private const val DEFAULT_DOMAIN = "gogoanimes.fi"
+        private const val DEFAULT_DOMAIN = "gogoanime3.co"
 
         /** Ordered fallback mirror list — tried in sequence if primary fails */
         private val FALLBACK_DOMAINS = listOf(
@@ -49,7 +53,7 @@ class GoGoAnimeProvider @Inject constructor(
             "gogoanime.gg"
         )
 
-        private val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+        private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
     }
 
     // ─── Domain resolution ────────────────────────────────────────────────────
@@ -63,12 +67,8 @@ class GoGoAnimeProvider @Inject constructor(
 
     // ─── HTTP helpers ─────────────────────────────────────────────────────────
 
-    private suspend fun get(url: String, referer: String? = null): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        val reqBuilder = Request.Builder()
-            .url(url)
-            .header("User-Agent", USER_AGENT)
-        if (referer != null) reqBuilder.header("Referer", referer)
-        okHttpClient.newCall(reqBuilder.build()).execute().body?.string() ?: ""
+    private suspend fun get(url: String, referer: String? = null): String {
+        return WebViewHelper.getHtml(context, url) ?: ""
     }
 
     // ─── MediaProvider implementation ─────────────────────────────────────────
