@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ani-cli Stream - Ultra-fast, ad-free anime streaming with high-res art, instant HLS playback, and dual-audio sub/dub.">
+  <meta name="theme-color" content="#06070a">
+  <title>ani-cli Stream | Watch Anime Online in HD</title>
+
+  <!-- Google Fonts: Inter & Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Artplayer & Hls.js Styles & Engines -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.css">
+  <link rel="stylesheet" href="/css/app.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       Header Navigation
+       ========================================================================== -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/" class="logo-group" id="nav-logo-btn">
+        <div class="logo-icon-wrap">
+          <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </div>
+        <span class="logo-title">ani-cli <span class="logo-badge">STREAM</span></span>
+      </a>
+
+      <!-- Search Wrapper with Live Floating Dropdown -->
+      <div class="search-wrapper">
+        <div class="search-input-box">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="global-search-input" class="search-input" placeholder="Search anime, movies, series..." autocomplete="off">
+        </div>
+        <div class="search-dropdown" id="search-dropdown"></div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav>
+        <ul class="nav-links">
+          <li><a href="/" class="nav-link active" id="nav-home-btn">Home</a></li>
+          <li><a href="#trending-section" class="nav-link" id="nav-trending-btn">Trending</a></li>
+          <li><a href="#popular-section" class="nav-link" id="nav-popular-btn">Popular</a></li>
+          <li><a href="#top-rated-section" class="nav-link" id="nav-top-btn">Top Airing</a></li>
+        </ul>
+      </nav>
+
+      <!-- TV APK Download Button -->
+      <a href="/download/tv-apk" class="btn-apk-header" title="Download Android TV App">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+          <polyline points="17 2 12 7 7 2"></polyline>
+        </svg>
+        <span>TV App APK</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       VIEW 1: Browse / Home Page
+       ========================================================================== -->
+  <div id="home-view">
+    <!-- Hero Spotlight Carousel -->
+    <section class="hero-spotlight" id="hero-spotlight">
+      <div class="hero-backdrop" id="hero-backdrop"></div>
+      <div class="hero-gradient-overlay"></div>
+      
+      <div class="hero-content">
+        <div class="hero-badges-row">
+          <span class="hero-rank-pill" id="hero-rank">🔥 #1 Spotlight</span>
+          <span class="hero-rating-pill" id="hero-score">★ 8.8</span>
+          <span class="hero-meta-pill" id="hero-episodes">24 Episodes</span>
+          <span class="hero-meta-pill">Ultra HD</span>
+        </div>
+        <h1 class="hero-title" id="hero-title">Loading Featured Anime...</h1>
+        <p class="hero-desc" id="hero-desc">Stream top anime series seamlessly with high-definition multi-source audio and subtitles.</p>
+        
+        <div class="hero-cta-group">
+          <button class="btn-hero-play" id="hero-play-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Watch Episode 1
+          </button>
+          <button class="btn-hero-info" id="hero-info-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            View Details
+          </button>
+        </div>
+      </div>
+
+      <!-- Carousel Dots -->
+      <div class="hero-indicators" id="hero-indicators"></div>
+    </section>
+
+    <!-- Main Content Rows -->
+    <main class="main-wrapper">
+      <!-- Genre Quick-Filter Bar -->
+      <div class="genre-bar" id="genre-bar">
+        <button class="genre-chip active" data-genre="All">All Genres</button>
+        <button class="genre-chip" data-genre="Action">Action</button>
+        <button class="genre-chip" data-genre="Adventure">Adventure</button>
+        <button class="genre-chip" data-genre="Shounen">Shounen</button>
+        <button class="genre-chip" data-genre="Fantasy">Fantasy</button>
+        <button class="genre-chip" data-genre="Sci-Fi">Sci-Fi</button>
+        <button class="genre-chip" data-genre="Comedy">Comedy</button>
+        <button class="genre-chip" data-genre="Supernatural">Supernatural</button>
+        <button class="genre-chip" data-genre="Romance">Romance</button>
+        <button class="genre-chip" data-genre="Drama">Drama</button>
+      </div>
+
+      <!-- Continue Watching Section (Dynamic) -->
+      <section id="continue-watching-section" style="display: none;">
+        <div class="section-head">
+          <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Continue Watching
+          </h2>
+        </div>
+        <div class="anime-grid" id="continue-grid"></div>
+      </section>
+
+      <!-- Trending Section -->
+      <section id="trending-section">
+        <div class="section-head">
+          <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            Trending Now
+          </h2>
+        </div>
+        <div class="anime-grid" id="trending-grid">
+          <!-- Skeletons while loading -->
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </section>
+
+      <!-- Popular Section -->
+      <section id="popular-section">
+        <div class="section-head">
+          <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            Popular This Season
+          </h2>
+        </div>
+        <div class="anime-grid" id="popular-grid">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </section>
+
+      <!-- Top Rated Section -->
+      <section id="top-rated-section">
+        <div class="section-head">
+          <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            All-Time Highest Rated
+          </h2>
+        </div>
+        <div class="anime-grid" id="top-rated-grid">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 2: Cinema Watch Page View
+       ========================================================================== -->
+  <div id="watch-view" class="watch-page" style="display: none;">
+    <!-- Breadcrumbs -->
+    <div class="watch-breadcrumbs">
+      <a id="btn-back-home">&larr; Back to Browse</a>
+      <span>/</span>
+      <span id="crumb-anime-title">Anime</span>
+      <span>/</span>
+      <span class="current" id="crumb-episode-num">Episode 1</span>
+    </div>
+
+    <!-- Cinema 2-Column Grid -->
+    <div class="cinema-layout">
+      <!-- Left Column: Video Player & Controls & Details -->
+      <div class="cinema-main">
+        <div class="player-stage">
+          <div class="player-ambient-glow" id="player-ambient-glow"></div>
+          <div id="artplayer-mount"></div>
+        </div>
+
+        <!-- Toolbar Under Player -->
+        <div class="player-toolbar">
+          <div class="toolbar-episode-info">
+            <h2 id="current-ep-title">Episode 1</h2>
+            <p id="current-anime-title-sub">Series Title</p>
+          </div>
+
+          <div class="toolbar-controls">
+            <!-- Audio Mode Switcher (SUB / DUB) -->
+            <div class="audio-switcher-group">
+              <button class="audio-btn active" id="btn-audio-sub">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>
+                SUB
+              </button>
+              <button class="audio-btn" id="btn-audio-dub">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                DUB
+              </button>
+            </div>
+
+            <!-- Previous / Next Episode -->
+            <button class="nav-ep-btn" id="btn-prev-ep">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+              Prev
+            </button>
+            <button class="nav-ep-btn" id="btn-next-ep">
+              Next
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Anime Details Card -->
+        <div class="anime-detail-card">
+          <img src="" alt="Poster" class="detail-poster" id="detail-poster-img">
+          <div class="detail-info">
+            <h1 class="detail-title" id="detail-anime-title">Anime Title</h1>
+            <div class="detail-native-title" id="detail-anime-native">Native Title</div>
+            <div class="detail-tags-row" id="detail-tags-container"></div>
+            <p class="detail-synopsis" id="detail-synopsis-text">Anime plot synopsis...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Episode Selector & Recommendations -->
+      <aside class="cinema-sidebar">
+        <!-- Episode Navigator Panel -->
+        <div class="episodes-panel">
+          <div class="episodes-panel-head">
+            <div class="episodes-panel-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              Episodes
+            </div>
+            <span style="font-size: 0.8rem; color: var(--text-muted);" id="episodes-total-count">0 EP</span>
+          </div>
+
+          <input type="text" id="episode-search-filter" class="episodes-filter-input" placeholder="Filter ep number...">
+
+          <!-- Range Pagination Tabs (e.g. 1-50, 51-100) -->
+          <div class="range-tabs-row" id="range-tabs-container"></div>
+
+          <!-- Episode Tiles Grid -->
+          <div class="episodes-scroll-list" id="episodes-scroll-list"></div>
+        </div>
+
+        <!-- Recommendations Panel -->
+        <div class="recs-panel">
+          <div class="episodes-panel-title" style="margin-bottom: 1rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+            You Might Also Like
+          </div>
+          <div id="recs-list-container"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       VIEW 3: Search Results Page View
+       ========================================================================== -->
+  <div id="search-view" class="main-wrapper" style="display: none; margin-top: 74px;">
+    <div class="section-head">
+      <h2 class="section-title" id="search-results-heading">Search Results</h2>
+    </div>
+    <div class="anime-grid" id="search-grid"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/player.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

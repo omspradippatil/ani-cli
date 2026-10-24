@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/download/tv-apk",
+      "destination": "/download/ani-cli-production-signed.apk"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/$1"
+    }
+  ]
+}

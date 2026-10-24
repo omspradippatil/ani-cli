@@ -1,0 +1,189 @@
+// website/services/anilist.js
+// Free public GraphQL API from AniList (No API key needed)
+
+const ANILIST_URL = 'https://graphql.anilist.co';
+
+async function fetchAniList(query, variables = {}) {
+  try {
+    const res = await fetch(ANILIST_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'ani-cli-web/1.0'
+      },
+      body: JSON.stringify({ query, variables })
+    });
+    if (!res.ok) throw new Error(`AniList HTTP ${res.status}`);
+    const json = await res.json();
+    return json.data;
+  } catch (err) {
+    console.error('AniList fetch error:', err.message);
+    throw err;
+  }
+}
+
+const MEDIA_FIELDS = `
+  id
+  idMal
+  title {
+    romaji
+    english
+    native
+    userPreferred
+  }
+  coverImage {
+    extraLarge
+    large
+    medium
+    color
+  }
+  bannerImage
+  format
+  status
+  episodes
+  duration
+  seasonYear
+  season
+  averageScore
+  genres
+  description(asHtml: false)
+  nextAiringEpisode {
+    episode
+    airingAt
+    timeUntilAiring
+  }
+`;
+
+/**
+ * Get trending anime
+ */
+async function getTrending(page = 1, perPage = 20) {
+  const query = `
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo {
+          hasNextPage
+          currentPage
+        }
+        media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const data = await fetchAniList(query, { page, perPage });
+  return data?.Page?.media || [];
+}
+
+/**
+ * Get popular anime this season or all time
+ */
+async function getPopular(page = 1, perPage = 20) {
+  const query = `
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const data = await fetchAniList(query, { page, perPage });
+  return data?.Page?.media || [];
+}
+
+/**
+ * Get top rated anime
+ */
+async function getTopRated(page = 1, perPage = 20) {
+  const query = `
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(type: ANIME, sort: SCORE_DESC, isAdult: false) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const data = await fetchAniList(query, { page, perPage });
+  return data?.Page?.media || [];
+}
+
+/**
+ * Search anime by title keyword
+ */
+async function searchAnime(keyword, page = 1, perPage = 20) {
+  const query = `
+    query ($search: String, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(type: ANIME, search: $search, sort: SEARCH_MATCH, isAdult: false) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const data = await fetchAniList(query, { search: keyword, page, perPage });
+  return data?.Page?.media || [];
+}
+
+/**
+ * Get detailed info for a single anime by ID
+ */
+async function getAnimeDetails(id) {
+  const query = `
+    query ($id: Int) {
+      Media(id: $id, type: ANIME) {
+        ${MEDIA_FIELDS}
+        studios(isMain: true) {
+          nodes {
+            name
+          }
+        }
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              title {
+                romaji
+                english
+                userPreferred
+              }
+              coverImage {
+                medium
+                large
+              }
+              format
+              type
+            }
+          }
+        }
+        recommendations(perPage: 10) {
+          nodes {
+            mediaRecommendation {
+              id
+              title {
+                userPreferred
+              }
+              coverImage {
+                large
+              }
+              averageScore
+            }
+          }
+        }
+      }
+    }
+  `;
+  const data = await fetchAniList(query, { id: Number(id) });
+  return data?.Media || null;
+}
+
+module.exports = {
+  getTrending,
+  getPopular,
+  getTopRated,
+  searchAnime,
+  getAnimeDetails
+};

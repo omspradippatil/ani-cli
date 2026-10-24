@@ -1,0 +1,9 @@
+# Replace with your actual domain name (e.g. anime.yourdomain.com)
+# your-domain.com {
+#     reverse_proxy anime-stream:3000
+# }
+
+# Or serve on any IP / Port 80 directly
+:80 {
+    reverse_proxy anime-stream:3000
+}
