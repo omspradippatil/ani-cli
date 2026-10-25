@@ -87,7 +87,6 @@ fun VideoPlayer(
     var showQualityDialog by remember { mutableStateOf(false) }
     var captionsEnabled by remember { mutableStateOf(true) }
     var isMuted by remember { mutableStateOf(false) }
-    var clearVoiceEnabled by remember { mutableStateOf(true) }
 
     // Ensure device audio stream is unmuted and at full volume on startup
     LaunchedEffect(Unit) {
@@ -128,7 +127,6 @@ fun VideoPlayer(
                 buildUponParameters()
                     .setForceLowestBitrate(false)
                     .setAllowMultipleAdaptiveSelections(true)
-                    .setMaxAudioChannelCount(2) // Stereo downmixing: mixes center-channel dialogue directly into left/right speakers so voices are 100% audible
             )
         }
     }
@@ -136,8 +134,6 @@ fun VideoPlayer(
     val exoPlayer = remember {
         val renderersFactory = DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-            .setEnableAudioTrackPlaybackParams(true)
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(40000, 100000, 2500, 5000)
@@ -152,7 +148,6 @@ fun VideoPlayer(
             .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .build().apply {
-                // handleAudioFocus=true ensures Android TV OS routes audio cleanly to speakers
                 setAudioAttributes(audioAttributes, true)
                 volume = 1.0f
                 playWhenReady = true
@@ -212,18 +207,6 @@ fun VideoPlayer(
         val newMuted = !isMuted
         isMuted = newMuted
         exoPlayer.volume = if (newMuted) 0f else 1.0f
-    }
-
-    fun toggleClearVoice() {
-        val newEnabled = !clearVoiceEnabled
-        clearVoiceEnabled = newEnabled
-        val paramsBuilder = trackSelector.buildUponParameters()
-        if (newEnabled) {
-            paramsBuilder.setMaxAudioChannelCount(2)
-        } else {
-            paramsBuilder.setMaxAudioChannelCount(Int.MAX_VALUE)
-        }
-        trackSelector.setParameters(paramsBuilder)
     }
 
     // Update progress ticker
@@ -697,7 +680,7 @@ fun VideoPlayer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             // Skip Intro
                             Button(
                                 onClick = {
@@ -763,76 +746,15 @@ fun VideoPlayer(
                                     Text("Episodes", fontWeight = FontWeight.Bold)
                                 }
                             }
-
-                            // Quality Button
-                            Button(
-                                onClick = { showQualityDialog = true },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = KuroNamiColors.SurfaceHigh,
-                                    focusedContainerColor = KuroNamiColors.Crimson
-                                ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.HighQuality,
-                                        contentDescription = null,
-                                        tint = KuroNamiColors.CyanSoft,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Quality (${if (selectedQuality == "Auto") "Auto" else selectedQuality})", fontWeight = FontWeight.Bold)
-                                }
-                            }
-
-                            // Captions Toggle
-                            Button(
-                                onClick = { toggleCaptions() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = if (captionsEnabled) KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
-                                    focusedContainerColor = KuroNamiColors.Crimson
-                                ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        if (captionsEnabled) Icons.Filled.ClosedCaption else Icons.Filled.ClosedCaptionDisabled,
-                                        contentDescription = null,
-                                        tint = if (captionsEnabled) KuroNamiColors.Cyan else Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(if (captionsEnabled) "Captions: ON" else "Captions: OFF", fontWeight = FontWeight.Bold)
-                                }
-                            }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            // Clear Voice Dialogue Enhancer
-                            Button(
-                                onClick = { toggleClearVoice() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = if (clearVoiceEnabled) KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
-                                    focusedContainerColor = KuroNamiColors.Crimson
-                                ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        if (clearVoiceEnabled) "Voice: CLEAR" else "Voice: RAW",
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (clearVoiceEnabled) KuroNamiColors.Cyan else Color.White
-                                    )
-                                }
-                            }
-
-                            // Volume / Unmute Quick Toggle
-                            Button(
-                                onClick = { toggleMute() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = KuroNamiColors.SurfaceHigh,
-                                    focusedContainerColor = KuroNamiColors.Crimson
-                                ),
+                        // Volume / Unmute Quick Toggle
+                        Button(
+                            onClick = { toggleMute() },
+                            colors = ButtonDefaults.colors(
+                                containerColor = KuroNamiColors.SurfaceHigh,
+                                focusedContainerColor = KuroNamiColors.Crimson
+                            ),
                                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -967,7 +889,6 @@ fun VideoPlayer(
             }
         }
     }
-}
 
 fun formatTime(timeMs: Long): String {
     val totalSeconds = (timeMs / 1000).coerceAtLeast(0L)
