@@ -121,6 +121,24 @@ fun MediaCard(
                         )
                     }
                 }
+
+                // Continue Watching Progress Bar
+                if (item.progressPercent != null && item.progressPercent > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .align(Alignment.BottomStart)
+                            .background(Color.Black.copy(alpha = 0.6f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = item.progressPercent.coerceIn(0.01f, 1f))
+                                .fillMaxHeight()
+                                .background(KuroNamiColors.Crimson)
+                        )
+                    }
+                }
             }
 
             Column(

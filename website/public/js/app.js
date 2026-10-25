@@ -215,6 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Build Genre Checkboxes in Browse Filter Sidebar
   buildGenreMatrix();
 
+  // Safe initial default for hero play button
+  if (heroPlayBtn) {
+    heroPlayBtn.onclick = () => navigateTo('watch?anime=20&ep=1');
+  }
+
   // Initialize Auth & Data
   initAuth().then(() => {
     initRouting();
@@ -521,10 +526,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path === 'watch') {
       views.watch.classList.remove('hidden');
       const animeId = params.get('anime') || params.get('id');
-      const epNum = params.get('ep') || 1;
+      const epNum = parseInt(params.get('ep')) || 1;
       const mode = params.get('mode') || state.currentMode || 'sub';
       if (animeId) {
-        loadWatchRoom(animeId, epNum, mode);
+        if (state.currentAnime && String(state.currentAnime.id) === String(animeId)) {
+          // Anime already loaded in current watch room, simply switch episode
+          if (state.currentEpisodeIndex !== epNum - 1 || state.currentMode !== mode) {
+            state.currentMode = mode;
+            window.playEpisodeAtIndex(epNum - 1);
+          }
+        } else {
+          loadWatchRoom(animeId, epNum, mode);
+        }
       } else {
         navigateTo('home');
       }
@@ -559,7 +572,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnFullscreenDown) {
     btnFullscreenDown.addEventListener('click', () => {
       if (state.player && state.player.art) {
-        state.player.art.fullscreen = !state.player.art.fullscreen;
+        try {
+          state.player.art.fullscreen = !state.player.art.fullscreen;
+        } catch(e) {
+          state.player.art.fullscreenWeb = !state.player.art.fullscreenWeb;
+        }
       }
     });
   }
@@ -1151,7 +1168,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Load stream into Artplayer
       const posterUrl = anime.bannerImage || anime.coverImage?.extraLarge || '';
-      state.player.loadStream(currentEp.id, mode, posterUrl);
+      state.player.loadStream(currentEp.id, mode, posterUrl).then(() => {
+        if (state.player && state.player.art) {
+          state.player.art.on('fullscreen', (isFull) => {
+            if (btnFullscreenDown) {
+              btnFullscreenDown.innerHTML = isFull
+                ? '<span class="material-symbols-outlined text-[16px]">fullscreen_exit</span><span>Exit Fullscreen</span>'
+                : '<span class="material-symbols-outlined text-[16px]">fullscreen</span><span>Fullscreen</span>';
+            }
+          });
+        }
+      }).catch(err => {
+        console.error('[WatchRoom] Error loading stream into player:', err);
+      });
 
       // Load recommendations
       loadRecommendations(anime.recommendations?.nodes || []);
@@ -1234,7 +1263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Scroll active into view
     const activeTile = episodesScrollList.querySelector(`.ep-tile[data-idx="${activeIndex}"]`);
-    if (activeTile) {
+    if (activeTile && typeof activeTile.scrollIntoView === 'function') {
       activeTile.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }
@@ -1267,8 +1296,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderEpisodeTiles(episodes, index);
 
-    // Update URL Hash without reload
-    window.location.hash = `watch?anime=${state.currentAnime.id}&ep=${epNum}&mode=${state.currentMode}`;
+    // Update URL without triggering recursive hashchange re-render
+    try {
+      history.replaceState(null, '', `#watch?anime=${state.currentAnime.id}&ep=${epNum}&mode=${state.currentMode}`);
+    } catch {}
 
     const posterUrl = state.currentAnime.bannerImage || state.currentAnime.coverImage?.extraLarge || '';
     state.player.loadStream(ep.id, state.currentMode, posterUrl);

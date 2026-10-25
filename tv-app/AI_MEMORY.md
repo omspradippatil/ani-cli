@@ -70,7 +70,11 @@
     - Configured `AudioManager.STREAM_MUSIC` volume initialization on startup (boosting emulator default volume from 3 to 12/15).
     - Enabled software decoder fallback in ExoPlayer (`setEnableDecoderFallback(true)` and `EXTENSION_RENDERER_MODE_PREFER`) for AAC/Opus audio tracks.
     - Disabled blocking audio focus muting (`handleAudioFocus = false`) and added explicit `exoPlayer.volume = 1.0f`.
-  - **KuroNami Theme (`#0C0E14` Obsidian, `#FF2A5F` Crimson, `#00E3FD` Cyan)**:
-    - Updated `Theme.kt`, `HomeScreen.kt`, `SearchScreen.kt`, `DetailsScreen.kt`, and `SettingsScreen.kt` to match the web platform color scheme.
-    - Rebuilt `HeroBanner` with multi-stop vignette gradients and gold rating badges.
-    - Assembled production release APKs at `ani-cli-production-signed.apk` and `website/public/download/ani-cli-production-signed.apk`.
+  - **Om CLI Precision Brand & Complete Web Feature Parity (2026-10-25)**:
+    - **Om CLI Branding**: Updated sidebar and logo in `HomeScreen.kt` with "Om CLI", "PRECISION STREAM", and emerald `100% FREE` badge.
+    - **Hero Spotlight Badges**: Added `#1 SPOTLIGHT`, `4K HDR`, `SIMULCAST`, and `DUAL AUDIO` badges, along with "Watch Episode 1" and "Add to Watchlist" action buttons.
+    - **Genre Presets Chips Bar**: Added horizontal filter strip (`All Genres`, `Action`, `Dark Fantasy`, `Shounen`, `Cyberpunk / Sci-Fi`, `Supernatural`, `Drama`, `Comedy`, `Romance`) with live catalog filtering in `HomeViewModel`.
+    - **Continue Watching Progress**: Enhanced `MediaCard` and `MediaItem` to display an emerald/crimson 4dp progress bar showing real watched progress percentages.
+    - **Details Screen Enhancements**: Added `SUB (JA / EN)` vs `DUB (EN)` switcher pill, "Resume Episode X" button using `WatchProgressDao`, and range pagination tabs (`1-25`, `26-50`...) when series episode count exceeds 25.
+    - **Cinema Video Player Upgrades**: Added breadcrumbs trail (`Home / Anime / {Title} / Episode {N}`), in-player SUB/DUB audio toggle, in-player Episode Queue drawer dialog for instant episode jumping without leaving playback, and automated next episode playback on `Player.STATE_ENDED`.
+    - **Build & Compilation**: Verified clean build of `assembleDebug` (73MB) and `assembleRelease` (55MB) output to `ani-cli-production-signed.apk` and `website/public/download/ani-cli-production-signed.apk`.

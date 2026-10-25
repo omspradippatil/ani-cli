@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
+import androidx.tv.foundation.lazy.list.items
 import androidx.tv.foundation.lazy.list.itemsIndexed
 import androidx.tv.material3.*
 import com.anicli.tv.core.theme.KuroNamiColors
@@ -27,12 +28,16 @@ fun PlayerScreen(
     onBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val audioMode by viewModel.audioMode.collectAsState()
 
     var showQualitySelector by remember { mutableStateOf(false) }
+    var showEpisodeDrawer by remember { mutableStateOf(false) }
 
     BackHandler {
         if (showQualitySelector) {
             showQualitySelector = false
+        } else if (showEpisodeDrawer) {
+            showEpisodeDrawer = false
         } else {
             onBack()
         }
@@ -68,7 +73,7 @@ fun PlayerScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Episode $epNum",
+                        "Episode $epNum  •  Audio: ${audioMode.uppercase()}",
                         color = KuroNamiColors.OnSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -91,8 +96,15 @@ fun PlayerScreen(
                             headers = source.headers ?: emptyMap(),
                             subtitles = source.subtitles,
                             okHttpClient = viewModel.okHttpClient,
+                            audioMode = audioMode,
+                            onToggleAudioMode = {
+                                viewModel.toggleAudioMode()
+                            },
                             onShowQualitySelector = {
                                 showQualitySelector = true
+                            },
+                            onShowEpisodeList = {
+                                showEpisodeDrawer = true
                             },
                             onNextEpisode = {
                                 onNextEpisode(nextEpId)
@@ -125,25 +137,64 @@ fun PlayerScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .width(420.dp)
+                                    .width(440.dp)
                                     .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
                                     .border(1.5.dp, KuroNamiColors.Crimson, RoundedCornerShape(16.dp))
                                     .padding(32.dp)
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = "Select Audio & Streaming Source",
+                                        text = "Audio & Streaming Sources",
                                         color = Color.White,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
                                     Text(
-                                        text = "Direct CDN streams are faster with zero transcoding lag",
+                                        text = "Direct Edge HLS streams with synchronized dual audio",
                                         color = KuroNamiColors.OnSurfaceVariant,
                                         style = MaterialTheme.typography.bodySmall,
                                         modifier = Modifier.padding(bottom = 20.dp)
                                     )
+
+                                    // Audio Mode Quick Pill Selector
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { viewModel.setAudioMode("sub") },
+                                            colors = ButtonDefaults.colors(
+                                                containerColor = if (audioMode == "sub") KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
+                                                focusedContainerColor = KuroNamiColors.Crimson
+                                            ),
+                                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                "SUB (JA / EN)",
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (audioMode == "sub") KuroNamiColors.Cyan else Color.White
+                                            )
+                                        }
+                                        Button(
+                                            onClick = { viewModel.setAudioMode("dub") },
+                                            colors = ButtonDefaults.colors(
+                                                containerColor = if (audioMode == "dub") KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
+                                                focusedContainerColor = KuroNamiColors.Crimson
+                                            ),
+                                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                "DUB (EN)",
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (audioMode == "dub") KuroNamiColors.Cyan else Color.White
+                                            )
+                                        }
+                                    }
 
                                     TvLazyColumn(
                                         modifier = Modifier.fillMaxWidth(),
@@ -198,6 +249,97 @@ fun PlayerScreen(
                                         shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
                                     ) {
                                         Text("Close", color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // In-Player Episode Queue Drawer Dialog
+                    if (showEpisodeDrawer) {
+                        BackHandler { showEpisodeDrawer = false }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.85f)),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(360.dp)
+                                    .background(KuroNamiColors.SurfaceLow)
+                                    .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f))
+                                    .padding(24.dp)
+                            ) {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Episode Queue",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "${viewModel.cachedEpisodes.size} EP",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = KuroNamiColors.Cyan,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    TvLazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(viewModel.cachedEpisodes) { ep ->
+                                            val isCurrentEp = ep.number == epNum
+                                            Button(
+                                                onClick = {
+                                                    showEpisodeDrawer = false
+                                                    onNextEpisode(ep.id)
+                                                },
+                                                colors = ButtonDefaults.colors(
+                                                    containerColor = if (isCurrentEp) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHigh,
+                                                    focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                                ),
+                                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "EP ${ep.number}: ${ep.title}",
+                                                        color = Color.White,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = if (isCurrentEp) FontWeight.Bold else FontWeight.Normal,
+                                                        maxLines = 1,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    if (isCurrentEp) {
+                                                        Text(
+                                                            text = "PLAYING",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = KuroNamiColors.CyanSoft,
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            modifier = Modifier.padding(start = 8.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

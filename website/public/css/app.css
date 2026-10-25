@@ -199,16 +199,28 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
+  gap: 6px !important;
   overflow: visible !important;
+  box-sizing: border-box !important;
 }
 
-.art-video-player .art-controls-left,
-.art-video-player .art-controls-right {
+.art-video-player .art-controls-left {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
   overflow: visible !important;
-  flex-shrink: 0 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.art-video-player .art-controls-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  z-index: 50 !important;
 }
 
 .art-video-player .art-icon-btn {
@@ -280,18 +292,26 @@ body {
   opacity: 1 !important;
   visibility: visible !important;
   cursor: pointer !important;
+  order: 99 !important;
 }
 
 .art-video-player .art-control-fullscreen svg {
-  width: 22px !important;
-  height: 22px !important;
+  width: 24px !important;
+  height: 24px !important;
   fill: #00e3fd !important; /* Cyan highlight for unmistakable visibility */
-  filter: drop-shadow(0 0 6px rgba(0, 227, 253, 0.6)) !important;
+  filter: drop-shadow(0 0 8px rgba(0, 227, 253, 0.8)) !important;
   transition: transform 0.2s ease !important;
 }
 
 .art-video-player .art-control-fullscreen:hover svg {
-  transform: scale(1.15) !important;
+  transform: scale(1.2) !important;
+}
+
+/* Ensure controls stay clearly visible in fullscreen */
+.art-video-player.art-fullscreen .art-bottom,
+.art-video-player.art-hover .art-bottom {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .art-video-player .art-progress-played {

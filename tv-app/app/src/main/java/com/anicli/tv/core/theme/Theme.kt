@@ -21,6 +21,7 @@ object KuroNamiColors {
     val OnSurfaceVariant = Color(0xFF9EA3B0)
     val Outline = Color(0xFF383D4D)
     val Gold = Color(0xFFFFD54F)
+    val Emerald = Color(0xFF10B981)
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)

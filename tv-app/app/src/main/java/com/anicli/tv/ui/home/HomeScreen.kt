@@ -77,7 +77,7 @@ fun HomeScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Loading KuroNami Stream...",
+                            text = "Loading Om CLI Precision Stream...",
                             style = MaterialTheme.typography.titleMedium,
                             color = KuroNamiColors.Cyan
                         )
@@ -93,7 +93,17 @@ fun HomeScreen(
                     item {
                         HeroBanner(
                             item = focusedItem,
-                            onClick = { focusedItem?.let { onMediaClick(it.id) } }
+                            isWatchlisted = state.favoriteMediaIds.contains(focusedItem?.id ?: ""),
+                            onClick = { focusedItem?.let { onMediaClick(it.id) } },
+                            onToggleWatchlist = { focusedItem?.let { viewModel.toggleWatchlist(it) } }
+                        )
+                    }
+
+                    // Quick Category Presets Chips Bar (Matching Web /genre-bar)
+                    item {
+                        GenreChipsBar(
+                            selectedGenre = state.selectedGenre,
+                            onGenreSelect = { viewModel.selectGenre(it) }
                         )
                     }
 
@@ -122,7 +132,7 @@ fun Sidebar(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(if (isExpanded) 240.dp else 80.dp)
+            .width(if (isExpanded) 250.dp else 80.dp)
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(KuroNamiColors.SurfaceLow, KuroNamiColors.Obsidian)
@@ -135,34 +145,43 @@ fun Sidebar(
             .padding(16.dp),
         horizontalAlignment = if (isExpanded) Alignment.Start else Alignment.CenterHorizontally
     ) {
-        // App Logo & Brand Header
+        // Om CLI Brand Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 24.dp, top = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp, top = 4.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(KuroNamiColors.Crimson),
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(KuroNamiColors.SurfaceHigh)
+                    .border(1.dp, KuroNamiColors.Crimson.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = "Logo",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(KuroNamiColors.Crimson)
                 )
             }
             if (isExpanded) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(
-                        text = "KuroNami",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "OM ",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "CLI",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = KuroNamiColors.CrimsonContainer,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
                     Text(
                         text = "PRECISION STREAM",
                         style = MaterialTheme.typography.labelSmall,
@@ -173,7 +192,25 @@ fun Sidebar(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // 100% FREE Badge
+        if (isExpanded) {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 10.dp)
+                    .background(KuroNamiColors.Emerald.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                    .border(1.dp, KuroNamiColors.Emerald.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "100% FREE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = KuroNamiColors.Emerald,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         // Navigation Items
         DrawerItem(
@@ -189,6 +226,13 @@ fun Sidebar(
             isSelected = selectedItem == "Home",
             isExpanded = isExpanded,
             onClick = { onItemSelected("Home") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.Bookmark,
+            text = "My Watchlist",
+            isSelected = selectedItem == "My Watchlist",
+            isExpanded = isExpanded,
+            onClick = { onItemSelected("My Watchlist") }
         )
         DrawerItem(
             icon = Icons.AutoMirrored.Filled.List,
@@ -251,7 +295,69 @@ fun DrawerItem(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
+fun GenreChipsBar(
+    selectedGenre: String,
+    onGenreSelect: (String) -> Unit
+) {
+    val genres = listOf(
+        "All" to "All Genres",
+        "Action" to "Action",
+        "Fantasy" to "Dark Fantasy",
+        "Shounen" to "Shounen",
+        "Sci-Fi" to "Cyberpunk / Sci-Fi",
+        "Supernatural" to "Supernatural",
+        "Drama" to "Drama",
+        "Comedy" to "Comedy",
+        "Romance" to "Romance"
+    )
+
+    TvLazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 48.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(end = 48.dp)
+    ) {
+        items(genres) { (key, label) ->
+            val isSelected = selectedGenre == key
+            var isFocused by remember { mutableStateOf(false) }
+
+            Surface(
+                onClick = { onGenreSelect(key) },
+                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(20.dp)),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = if (isSelected) KuroNamiColors.Crimson else KuroNamiColors.SurfaceLow,
+                    contentColor = if (isSelected) Color.White else KuroNamiColors.OnSurfaceVariant,
+                    focusedContainerColor = KuroNamiColors.CrimsonContainer,
+                    focusedContentColor = Color.White
+                ),
+                modifier = Modifier
+                    .onFocusChanged { isFocused = it.isFocused }
+                    .border(
+                        width = 1.dp,
+                        color = if (isFocused) KuroNamiColors.Cyan else KuroNamiColors.Outline.copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun HeroBanner(
+    item: MediaItem?,
+    isWatchlisted: Boolean = false,
+    onClick: (String) -> Unit,
+    onToggleWatchlist: () -> Unit = {}
+) {
     if (item == null) return
     var isFocused by remember { mutableStateOf(false) }
 
@@ -321,45 +427,79 @@ fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(32.dp)
-                        .fillMaxWidth(0.65f)
+                        .fillMaxWidth(0.68f)
                 ) {
-                    // Quick Pill
+                    // Web-Matched Badges Row (#1 Spotlight, 4K HDR, Simulcast Exclusive, Dual Audio)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = 4.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .background(KuroNamiColors.Crimson, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .background(KuroNamiColors.CrimsonContainer, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "FEATURED SPOTLIGHT",
+                                text = "#1 SPOTLIGHT",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         }
 
+                        Box(
+                            modifier = Modifier
+                                .background(KuroNamiColors.SurfaceHighest.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "4K HDR",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .background(KuroNamiColors.CyanContainer, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "SIMULCAST",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KuroNamiColors.Cyan,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .background(KuroNamiColors.SurfaceHighest.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "DUAL AUDIO",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KuroNamiColors.CyanSoft,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
                         if (!item.rating.isNullOrBlank()) {
                             Text(
-                                text = item.rating,
+                                text = "★ ${item.rating}",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = KuroNamiColors.Gold,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-
-                        if (!item.releaseYear.isNullOrBlank()) {
-                            Text(
-                                text = "•  ${item.releaseYear}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = KuroNamiColors.OnSurfaceVariant
-                            )
-                        }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = item.title,
@@ -370,20 +510,23 @@ fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = item.description ?: "Stream anime in ultra-crisp HD with synced dual-audio playback on KuroNami.",
+                        text = item.description ?: "Stream anime in ultra-crisp HD with synced dual-audio playback on Om CLI.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = KuroNamiColors.OnSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    // Action pill
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Action pill buttons
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         Box(
                             modifier = Modifier
                                 .background(
@@ -401,10 +544,41 @@ fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Watch Now",
+                                    text = "Watch Episode 1",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Surface(
+                            onClick = onToggleWatchlist,
+                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                            colors = ClickableSurfaceDefaults.colors(
+                                containerColor = KuroNamiColors.SurfaceLow,
+                                contentColor = Color.White,
+                                focusedContainerColor = KuroNamiColors.SurfaceHighest,
+                                focusedContentColor = Color.White
+                            ),
+                            modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Icon(
+                                    if (isWatchlisted) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                    contentDescription = null,
+                                    tint = if (isWatchlisted) KuroNamiColors.Crimson else Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isWatchlisted) "In Watchlist" else "Add to Watchlist",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }

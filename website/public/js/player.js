@@ -21,6 +21,74 @@ class AnimePlayer {
     this.currentEpisodeId = episodeId;
     this.currentMode = mode;
 
+    const mount = document.querySelector(this.mountSelector);
+    if (!mount) {
+      console.error('[Player] Mount selector not found:', this.mountSelector);
+      return;
+    }
+
+    // If a player instance already exists and is healthy, switch URL directly
+    // This avoids unmounting DOM, prevents audio leaks, and keeps fullscreen state intact!
+    if (this.art && !this.art.isDestroy) {
+      if (this.art.notice) {
+        this.art.notice.show = 'Loading episode stream...';
+      }
+      try {
+        const res = await fetch(`/api/stream/${episodeId}?mode=${mode}`);
+        const json = await res.json();
+        if (!json.success || !json.data) {
+          throw new Error(json.error || 'Failed to fetch episode stream');
+        }
+        const streamData = json.data;
+        const streamUrl = streamData.proxyM3u8;
+
+        // Prepare Subtitle
+        let subUrl = '';
+        if (streamData.subtitles && streamData.subtitles.length > 0) {
+          const primarySub = streamData.subtitles.find(s => s.default) || streamData.subtitles[0];
+          subUrl = primarySub.proxySrc || primarySub.src || '';
+        }
+
+        if (posterUrl) this.art.poster = posterUrl;
+        if (subUrl && this.art.subtitle) {
+          this.art.subtitle.switch(subUrl);
+          this.art.subtitle.show = true;
+        } else if (this.art.subtitle) {
+          this.art.subtitle.show = false;
+        }
+
+        // Update in-player SUB / DUB toggle button
+        const modeBtn = this.art.template.$controls?.querySelector('.art-btn-mode');
+        if (modeBtn) {
+          modeBtn.textContent = mode.toUpperCase();
+        }
+
+        // Switch stream URL
+        await this.art.switchUrl(streamUrl);
+        if (this.art.notice) {
+          this.art.notice.show = `Loaded Episode (${mode.toUpperCase()})`;
+        }
+        return streamData;
+      } catch (err) {
+        console.error('[Player] Switch stream error:', err);
+        if (this.art.notice) {
+          this.art.notice.show = `Error: ${err.message}`;
+        }
+        throw err;
+      }
+    }
+
+    // FIRST: Stop all existing audio and clean up previous instance
+    this.stop();
+
+    // Show loading state in mount element
+    mount.innerHTML = `
+      <div class="w-full h-full flex flex-col items-center justify-center bg-black/95 text-white gap-3 select-none">
+        <div class="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+        <span class="font-mono text-xs text-gray-400 tracking-wider">Connecting to Stream Node...</span>
+      </div>
+    `;
+
     try {
       const res = await fetch(`/api/stream/${episodeId}?mode=${mode}`);
       const json = await res.json();
@@ -50,20 +118,22 @@ class AnimePlayer {
         subUrl = primarySub.proxySrc || primarySub.src || '';
       }
 
-      // Destroy previous player instance if exists
-      this.stop();
+      // Create a fresh dedicated stage element inside mount to guarantee NO DOM collision
+      mount.innerHTML = '<div id="artplayer-inner-stage" class="w-full h-full" style="width:100%;height:100%;"></div>';
 
       const self = this;
 
       // Create new Artplayer instance
       this.art = new window.Artplayer({
-        container: this.mountSelector,
+        container: '#artplayer-inner-stage',
         url: streamUrl,
         type: 'm3u8',
         customType: {
           m3u8: function (video, url, art) {
             if (window.Hls && window.Hls.isSupported()) {
-              if (art.hls) art.hls.destroy();
+              if (art.hls) {
+                try { art.hls.destroy(); } catch (e) {}
+              }
 
               const hls = new window.Hls({
                 enableWorker: true,
@@ -76,7 +146,9 @@ class AnimePlayer {
               art.hls = hls;
 
               art.on('destroy', () => {
-                if (hls) hls.destroy();
+                if (hls) {
+                  try { hls.destroy(); } catch (e) {}
+                }
               });
 
               hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
@@ -115,7 +187,7 @@ class AnimePlayer {
                       break;
                     default:
                       console.error('[Player] Fatal unrecoverable error:', data);
-                      hls.destroy();
+                      try { hls.destroy(); } catch (e) {}
                       break;
                   }
                 }
@@ -130,7 +202,7 @@ class AnimePlayer {
         isLive: false,
         muted: false,
         autoplay: true,
-        pip: true,
+        pip: false,
         autoSize: false,
         autoMini: false,
         screenshot: false, // Streamlined to prevent controls bar overflow
@@ -140,7 +212,7 @@ class AnimePlayer {
         playbackRate: true,
         aspectRatio: false,
         fullscreen: true,
-        fullscreenWeb: true,
+        fullscreenWeb: false,
         subtitleOffset: true,
         miniProgressBar: true,
         mutex: true,
@@ -249,7 +321,16 @@ class AnimePlayer {
       return streamData;
     } catch (err) {
       console.error('[Player] Error loading stream:', err);
-      alert(`Streaming Error: ${err.message}`);
+      if (mount) {
+        mount.innerHTML = `
+          <div class="w-full h-full flex flex-col items-center justify-center bg-black/95 text-white gap-3 p-6 text-center select-none">
+            <span class="material-symbols-outlined text-[36px] text-red-400">error</span>
+            <div class="text-sm font-bold text-white">Stream Currently Unavailable</div>
+            <div class="text-xs text-gray-400 max-w-sm">${err.message || 'The video provider did not return stream for this episode.'}</div>
+            <button class="mt-2 px-4 py-2 rounded-lg bg-surface-container-high border border-white/[0.1] text-xs font-mono font-bold text-secondary hover:text-white" onclick="window.location.reload()">Retry Stream</button>
+          </div>
+        `;
+      }
       throw err;
     }
   }
@@ -266,17 +347,38 @@ class AnimePlayer {
         }
         if (this.art.video) {
           this.art.video.pause();
+          this.art.video.muted = true;
           this.art.video.removeAttribute('src');
           this.art.video.load();
         }
-        this.art.destroy(false);
+        this.art.destroy(true);
       } catch (err) {
         console.warn('[Player] Error during stop:', err);
       }
       this.art = null;
     }
-    const mount = document.querySelector(this.mountSelector);
-    if (mount) mount.innerHTML = '';
+
+    // Stop and silence ALL audio & video elements anywhere in the mount or page
+    try {
+      const mount = document.querySelector(this.mountSelector);
+      const mediaList = mount ? mount.querySelectorAll('video, audio') : document.querySelectorAll('video, audio');
+      mediaList.forEach(media => {
+        try {
+          media.pause();
+          media.muted = true;
+          media.removeAttribute('src');
+          media.load();
+        } catch (e) {}
+      });
+      if (mount) mount.innerHTML = '';
+    } catch (e) {}
+
+    // Clean any lingering Artplayer instances
+    if (window.Artplayer && Array.isArray(window.Artplayer.instances)) {
+      window.Artplayer.instances.slice().forEach(inst => {
+        try { inst.destroy(true); } catch (e) {}
+      });
+    }
   }
 }
 

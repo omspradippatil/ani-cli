@@ -14,11 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.anicli.tv.data.local.dao.WatchProgressDao
+import com.anicli.tv.data.local.entity.WatchProgressEntity
 
 @HiltViewModel
 class DetailsViewModel @Inject constructor(
     private val providerSelector: ProviderSelector,
     private val favoriteDao: FavoriteDao,
+    private val watchProgressDao: WatchProgressDao,
     private val firebaseRepository: FirebaseRepository
 ) : ViewModel() {
 
@@ -34,6 +37,14 @@ class DetailsViewModel @Inject constructor(
                 favoriteDao.isFavorite(mediaId).collect { isFav ->
                     _state.update { it.copy(isFavorite = isFav) }
                 }
+            }
+
+            // Check existing watch progress
+            try {
+                val progress = watchProgressDao.getProgressForMedia(mediaId)
+                _state.update { it.copy(watchProgress = progress) }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             // Use the currently active provider
@@ -73,5 +84,6 @@ data class DetailsState(
     val isLoading: Boolean = false,
     val detail: MediaDetail? = null,
     val isFavorite: Boolean = false,
+    val watchProgress: WatchProgressEntity? = null,
     val error: String? = null
 )

@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
 import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
+import androidx.tv.foundation.lazy.list.itemsIndexed
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -43,6 +44,7 @@ fun DetailsScreen(
 ) {
     BackHandler { onBack() }
     val state by viewModel.state.collectAsState()
+    var selectedChunkIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(mediaId) {
         viewModel.loadDetails(mediaId)
@@ -109,13 +111,13 @@ fun DetailsScreen(
 
             TvLazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 180.dp, bottom = 48.dp)
+                contentPadding = PaddingValues(top = 160.dp, bottom = 48.dp)
             ) {
                 item {
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 48.dp)
-                            .fillMaxWidth(0.68f)
+                            .fillMaxWidth(0.70f)
                     ) {
                         // Title
                         Text(
@@ -127,17 +129,30 @@ fun DetailsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Genre Tag Row
+                        // Genre Tag Row & Dual Audio Badge
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            detail.genres.forEach { genre ->
+                            Box(
+                                modifier = Modifier
+                                    .background(KuroNamiColors.CyanContainer, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "DUAL AUDIO [SUB & DUB]",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = KuroNamiColors.Cyan,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+
+                            detail.genres.take(4).forEach { genre ->
                                 Box(
                                     modifier = Modifier
                                         .background(KuroNamiColors.SurfaceHigh, RoundedCornerShape(6.dp))
                                         .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                        .padding(horizontal = 10.dp, vertical = 3.dp)
                                 ) {
                                     Text(
                                         text = genre,
@@ -162,33 +177,82 @@ fun DetailsScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Action Buttons
+                        // Action Buttons: Resume / Play Ep 1 / Watchlist
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             val firstEp = detail.episodes.firstOrNull()
-                            Button(
-                                onClick = { onPlayClick(firstEp?.id ?: "") },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = KuroNamiColors.Crimson,
-                                    focusedContainerColor = KuroNamiColors.CrimsonContainer
-                                ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            val watchProg = state.watchProgress
+
+                            if (watchProg != null && watchProg.episodeId.isNotBlank()) {
+                                Button(
+                                    onClick = { onPlayClick(watchProg.episodeId) },
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = KuroNamiColors.Crimson,
+                                        focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                    ),
+                                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
                                 ) {
-                                    Icon(
-                                        Icons.Filled.PlayArrow,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (firstEp != null) "Play Episode 1" else "Play",
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.PlayArrow,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Resume (${watchProg.episodeTitle.ifBlank { "Next" }})",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+
+                                if (firstEp != null && firstEp.id != watchProg.episodeId) {
+                                    Button(
+                                        onClick = { onPlayClick(firstEp.id) },
+                                        colors = ButtonDefaults.colors(
+                                            containerColor = KuroNamiColors.SurfaceHigh,
+                                            focusedContainerColor = KuroNamiColors.SurfaceHighest
+                                        ),
+                                        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
+                                    ) {
+                                        Text(
+                                            text = "Play Episode 1",
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                Button(
+                                    onClick = { onPlayClick(firstEp?.id ?: "") },
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = KuroNamiColors.Crimson,
+                                        focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                    ),
+                                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.PlayArrow,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = if (firstEp != null) "Play Episode 1" else "Play",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
                                 }
                             }
 
@@ -222,36 +286,122 @@ fun DetailsScreen(
                     }
                 }
 
+                // Episode List Header & Range Tabs
                 item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 48.dp, top = 40.dp, bottom = 12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(4.dp)
-                                .height(20.dp)
-                                .background(KuroNamiColors.Crimson, RoundedCornerShape(2.dp))
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Episodes (${detail.episodes.size})",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                    val episodeChunks = detail.episodes.chunked(25)
+                    Column(modifier = Modifier.padding(start = 48.dp, end = 48.dp, top = 36.dp, bottom = 12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(4.dp)
+                                        .height(20.dp)
+                                        .background(KuroNamiColors.Crimson, RoundedCornerShape(2.dp))
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Episode Queue (${detail.episodes.size})",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Audio Switcher Pill
+                            Row(
+                                modifier = Modifier
+                                    .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(8.dp))
+                                    .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                    .padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(KuroNamiColors.CyanContainer, RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = "SUB (JA / EN)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = KuroNamiColors.Cyan,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .background(KuroNamiColors.SurfaceHigh, RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = "DUB (EN)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = KuroNamiColors.OnSurfaceVariant,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        // Range Pagination Tabs if episodes > 25
+                        if (episodeChunks.size > 1) {
+                            TvLazyRow(
+                                modifier = Modifier.padding(top = 14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                itemsIndexed(episodeChunks) { index, chunk ->
+                                    val startEp = index * 25 + 1
+                                    val endEp = (index * 25) + chunk.size
+                                    val isSelected = selectedChunkIndex == index
+                                    var isFocused by remember { mutableStateOf(false) }
+
+                                    Surface(
+                                        onClick = { selectedChunkIndex = index },
+                                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                                        colors = ClickableSurfaceDefaults.colors(
+                                            containerColor = if (isSelected) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHigh,
+                                            contentColor = Color.White,
+                                            focusedContainerColor = KuroNamiColors.CrimsonContainer,
+                                            focusedContentColor = Color.White
+                                        ),
+                                        modifier = Modifier
+                                            .onFocusChanged { isFocused = it.isFocused }
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (isFocused) KuroNamiColors.Cyan else Color.Transparent,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                    ) {
+                                        Text(
+                                            text = "$startEp - $endEp",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Medium,
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
                 item {
+                    val episodeChunks = detail.episodes.chunked(25)
+                    val activeEpisodes = episodeChunks.getOrElse(selectedChunkIndex) { detail.episodes }
+
                     TvLazyRow(
                         modifier = Modifier.padding(horizontal = 40.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        items(detail.episodes) { episode ->
+                        items(activeEpisodes) { episode ->
+                            val isWatched = state.watchProgress?.episodeId == episode.id
                             EpisodeCard(
                                 episode = episode,
                                 fallbackThumbnail = detail.backdropUrl.takeIf { it.isNotBlank() } ?: detail.posterUrl,
+                                isWatched = isWatched,
                                 onClick = { onPlayClick(episode.id) }
                             )
                         }
@@ -275,6 +425,7 @@ fun DetailsScreen(
 fun EpisodeCard(
     episode: Episode,
     fallbackThumbnail: String,
+    isWatched: Boolean = false,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -361,6 +512,17 @@ fun EpisodeCard(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Watched indicator bar at bottom
+            if (isWatched) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(KuroNamiColors.Crimson)
                 )
             }
         }

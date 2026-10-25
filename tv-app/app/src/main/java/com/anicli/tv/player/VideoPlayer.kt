@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
@@ -63,7 +64,10 @@ fun VideoPlayer(
     subtitles: List<Subtitle> = emptyList(),
     okHttpClient: OkHttpClient,
     modifier: Modifier = Modifier,
+    audioMode: String = "sub",
+    onToggleAudioMode: () -> Unit = {},
     onShowQualitySelector: () -> Unit = {},
+    onShowEpisodeList: () -> Unit = {},
     onNextEpisode: () -> Unit = {},
     onControllerVisibilityChanged: (Boolean) -> Unit = {},
     onSaveProgress: (Long, Long) -> Unit = { _, _ -> }
@@ -196,6 +200,8 @@ fun VideoPlayer(
                 if (playbackState == Player.STATE_READY) {
                     duration = exoPlayer.duration.coerceAtLeast(0L)
                     exoPlayer.volume = 1.0f
+                } else if (playbackState == Player.STATE_ENDED) {
+                    onNextEpisode()
                 }
             }
             override fun onIsPlayingChanged(playing: Boolean) {
@@ -308,6 +314,39 @@ fun VideoPlayer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
+                        // Web Breadcrumb Trail (Home / Anime / Title / Episode)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            Text(
+                                text = "Home",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KuroNamiColors.OnSurfaceVariant
+                            )
+                            Text(text = " / ", style = MaterialTheme.typography.labelSmall, color = KuroNamiColors.Outline)
+                            Text(
+                                text = "Anime",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KuroNamiColors.OnSurfaceVariant
+                            )
+                            Text(text = " / ", style = MaterialTheme.typography.labelSmall, color = KuroNamiColors.Outline)
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                            Text(text = " / ", style = MaterialTheme.typography.labelSmall, color = KuroNamiColors.Outline)
+                            Text(
+                                text = episodeTitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KuroNamiColors.Cyan,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
@@ -329,7 +368,7 @@ fun VideoPlayer(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = title,
                             style = MaterialTheme.typography.headlineLarge,
@@ -343,11 +382,27 @@ fun VideoPlayer(
                         )
                     }
 
-                    // Top Right Badges
+                    // Top Right Badges & Audio Switcher
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Quick SUB / DUB Toggle Pill
+                        Button(
+                            onClick = onToggleAudioMode,
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (audioMode == "sub") KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
+                                focusedContainerColor = KuroNamiColors.Crimson
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                        ) {
+                            Text(
+                                text = if (audioMode == "sub") "AUDIO: SUB (JA)" else "AUDIO: DUB (EN)",
+                                fontWeight = FontWeight.Bold,
+                                color = if (audioMode == "sub") KuroNamiColors.Cyan else Color.White
+                            )
+                        }
+
                         Box(
                             modifier = Modifier
                                 .background(KuroNamiColors.SurfaceHigh, RoundedCornerShape(8.dp))
@@ -370,7 +425,7 @@ fun VideoPlayer(
                             ),
                             shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
                         ) {
-                            Text("Audio / Source", fontWeight = FontWeight.Bold)
+                            Text("Sources", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -564,6 +619,27 @@ fun VideoPlayer(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("Next Episode", fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            // Episode Drawer Toggle Button
+                            Button(
+                                onClick = onShowEpisodeList,
+                                colors = ButtonDefaults.colors(
+                                    containerColor = KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.Crimson
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.List,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Episodes", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

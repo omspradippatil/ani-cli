@@ -121,16 +121,26 @@ router.get('/anime/:id', async (req, res) => {
     if (!details) return res.status(404).json({ success: false, error: 'Anime not found' });
 
     // Search HiAnime to find matching episodes
-    const titles = [
+    const baseTitles = [
       details.title.english,
       details.title.romaji,
       details.title.userPreferred
     ].filter(Boolean);
 
+    const candidateTitles = new Set();
+    for (const t of baseTitles) {
+      candidateTitles.add(t);
+      candidateTitles.add(t.replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim());
+      const prefix = t.split(/[:\-]/)[0].trim();
+      if (prefix.length >= 3) candidateTitles.add(prefix);
+      const noSeason = t.replace(/\b(Season \d+|Part \d+|\b\d+(?:st|nd|rd|th) Season\b)\b/gi, '').trim();
+      if (noSeason.length >= 3) candidateTitles.add(noSeason);
+    }
+
     let episodes = [];
     let hiAnimeMatch = null;
 
-    for (const title of titles) {
+    for (const title of candidateTitles) {
       const searchRes = await hianime.search(title);
       if (searchRes.length > 0) {
         hiAnimeMatch = searchRes[0];
