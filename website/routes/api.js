@@ -128,6 +128,7 @@ router.get('/anime/:id', async (req, res) => {
     ].filter(Boolean);
 
     const titleParam = req.query.title;
+    const candidateTitles = new Set();
     if (titleParam) {
       candidateTitles.add(titleParam);
       candidateTitles.add(titleParam.replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim());
