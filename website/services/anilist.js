@@ -3,6 +3,20 @@
 
 const ANILIST_URL = 'https://graphql.anilist.co';
 
+let trendingSeed = [];
+let popularSeed = [];
+let topRatedSeed = [];
+
+try {
+  trendingSeed = require('../data/trending_seed.json');
+} catch (_) {}
+try {
+  popularSeed = require('../data/popular_seed.json');
+} catch (_) {}
+try {
+  topRatedSeed = require('../data/top_rated_seed.json');
+} catch (_) {}
+
 async function fetchAniList(query, variables = {}) {
   try {
     const res = await fetch(ANILIST_URL, {
@@ -10,9 +24,7 @@ async function fetchAniList(query, variables = {}) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Referer': 'https://anilist.co',
-        'Origin': 'https://anilist.co',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
       },
       body: JSON.stringify({ query, variables })
     });
@@ -61,55 +73,73 @@ const MEDIA_FIELDS = `
  * Get trending anime
  */
 async function getTrending(page = 1, perPage = 20) {
-  const query = `
-    query ($page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        pageInfo {
-          hasNextPage
-          currentPage
-        }
-        media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
-          ${MEDIA_FIELDS}
+  try {
+    const query = `
+      query ($page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            hasNextPage
+            currentPage
+          }
+          media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
+            ${MEDIA_FIELDS}
+          }
         }
       }
-    }
-  `;
-  const data = await fetchAniList(query, { page, perPage });
-  return data?.Page?.media || [];
+    `;
+    const data = await fetchAniList(query, { page, perPage });
+    const media = data?.Page?.media;
+    if (media && media.length > 0) return media;
+  } catch (err) {
+    console.warn('[AniList] getTrending fallback to seed:', err.message);
+  }
+  return trendingSeed.slice(0, perPage);
 }
 
 /**
  * Get popular anime this season or all time
  */
 async function getPopular(page = 1, perPage = 20) {
-  const query = `
-    query ($page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
-          ${MEDIA_FIELDS}
+  try {
+    const query = `
+      query ($page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) {
+            ${MEDIA_FIELDS}
+          }
         }
       }
-    }
-  `;
-  const data = await fetchAniList(query, { page, perPage });
-  return data?.Page?.media || [];
+    `;
+    const data = await fetchAniList(query, { page, perPage });
+    const media = data?.Page?.media;
+    if (media && media.length > 0) return media;
+  } catch (err) {
+    console.warn('[AniList] getPopular fallback to seed:', err.message);
+  }
+  return popularSeed.slice(0, perPage);
 }
 
 /**
  * Get top rated anime
  */
 async function getTopRated(page = 1, perPage = 20) {
-  const query = `
-    query ($page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(type: ANIME, sort: SCORE_DESC, isAdult: false) {
-          ${MEDIA_FIELDS}
+  try {
+    const query = `
+      query ($page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          media(type: ANIME, sort: SCORE_DESC, isAdult: false) {
+            ${MEDIA_FIELDS}
+          }
         }
       }
-    }
-  `;
-  const data = await fetchAniList(query, { page, perPage });
-  return data?.Page?.media || [];
+    `;
+    const data = await fetchAniList(query, { page, perPage });
+    const media = data?.Page?.media;
+    if (media && media.length > 0) return media;
+  } catch (err) {
+    console.warn('[AniList] getTopRated fallback to seed:', err.message);
+  }
+  return topRatedSeed.slice(0, perPage);
 }
 
 /**
@@ -133,53 +163,59 @@ async function searchAnime(keyword, page = 1, perPage = 20) {
  * Get detailed info for a single anime by ID
  */
 async function getAnimeDetails(id) {
-  const query = `
-    query ($id: Int) {
-      Media(id: $id, type: ANIME) {
-        ${MEDIA_FIELDS}
-        studios(isMain: true) {
-          nodes {
-            name
-          }
-        }
-        relations {
-          edges {
-            relationType
-            node {
-              id
-              title {
-                romaji
-                english
-                userPreferred
-              }
-              coverImage {
-                medium
-                large
-              }
-              format
-              type
+  try {
+    const query = `
+      query ($id: Int) {
+        Media(id: $id, type: ANIME) {
+          ${MEDIA_FIELDS}
+          studios(isMain: true) {
+            nodes {
+              name
             }
           }
-        }
-        recommendations(perPage: 10) {
-          nodes {
-            mediaRecommendation {
-              id
-              title {
-                userPreferred
+          relations {
+            edges {
+              relationType
+              node {
+                id
+                title {
+                  romaji
+                  english
+                  userPreferred
+                }
+                coverImage {
+                  medium
+                  large
+                }
+                format
+                type
               }
-              coverImage {
-                large
+            }
+          }
+          recommendations(perPage: 10) {
+            nodes {
+              mediaRecommendation {
+                id
+                title {
+                  userPreferred
+                }
+                coverImage {
+                  large
+                }
+                averageScore
               }
-              averageScore
             }
           }
         }
       }
-    }
-  `;
-  const data = await fetchAniList(query, { id: Number(id) });
-  return data?.Media || null;
+    `;
+    const data = await fetchAniList(query, { id: Number(id) });
+    if (data?.Media) return data.Media;
+  } catch (err) {
+    console.warn(`[AniList] getAnimeDetails(${id}) fallback:`, err.message);
+  }
+  const allSeeds = [...trendingSeed, ...popularSeed, ...topRatedSeed];
+  return allSeeds.find(a => a.id == id) || null;
 }
 
 /**
