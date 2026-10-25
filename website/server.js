@@ -47,8 +47,8 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server only if run directly (standalone or Docker, not imported by Vercel)
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+// Start Server only if run directly (standalone or Docker, not imported by Vercel serverless)
+if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`===============================================`);
     console.log(`🚀 Om CLI Anime Streaming Server is live!`);

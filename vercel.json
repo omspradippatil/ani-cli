@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/website/api/index.js"
+    },
+    {
+      "source": "/download/tv-apk",
+      "destination": "/website/public/download/ani-cli-production-signed.apk"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/website/public/$1"
+    }
+  ]
+}

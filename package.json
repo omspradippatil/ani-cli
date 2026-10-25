@@ -1,0 +1,17 @@
+{
+  "name": "om-cli-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Om CLI Anime Streaming Platform & API",
+  "main": "website/server.js",
+  "scripts": {
+    "start": "node website/server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0"
+  }
+}
