@@ -876,22 +876,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const backdropUrl = item.bannerImage || item.coverImage?.extraLarge || '';
-    heroBackdrop.style.backgroundImage = `url('${backdropUrl}')`;
-    heroTitle.textContent = item.title?.english || item.title?.romaji || 'Anime Showcase';
-    heroStudioMeta.textContent = `${item.studios?.nodes?.[0]?.name || 'Studio Animation'} • Winter Arc`;
-    heroScore.innerHTML = `<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span> ${(item.averageScore ? (item.averageScore / 10).toFixed(1) : '8.8')} RATING`;
-    heroYear.textContent = item.seasonYear || item.startDate?.year || '2025';
-    heroFormat.textContent = item.format || 'TV SERIES';
-    heroEpisodes.textContent = `${item.episodes || 24} Episodes`;
+    if (heroBackdrop) heroBackdrop.style.backgroundImage = `url('${backdropUrl}')`;
+    if (heroTitle) heroTitle.textContent = item.title?.english || item.title?.romaji || 'Anime Showcase';
+    if (heroStudioMeta) heroStudioMeta.textContent = `${item.studios?.nodes?.[0]?.name || 'Studio Animation'} • Winter Arc`;
+    if (heroScore) heroScore.innerHTML = `<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span> ${(item.averageScore ? (item.averageScore / 10).toFixed(1) : '8.8')} RATING`;
+    if (heroYear) heroYear.textContent = item.seasonYear || item.startDate?.year || '2025';
+    if (heroFormat) heroFormat.textContent = item.format || 'TV SERIES';
+    if (heroEpisodes) heroEpisodes.textContent = `${item.episodes || 24} Episodes`;
 
     const genres = item.genres || ['Action', 'Fantasy'];
-    heroGenres.innerHTML = genres.slice(0, 3).map(g => `
-      <span class="px-2 py-0.5 rounded bg-surface-container text-white text-xs">${g}</span>
-    `).join('');
+    if (heroGenres) {
+      heroGenres.innerHTML = genres.slice(0, 3).map(g => `
+        <span class="px-2 py-0.5 rounded bg-surface-container text-white text-xs">${g}</span>
+      `).join('');
+    }
 
     const cleanDesc = (item.description || 'Denji finds himself unexpectedly enchanted in a neon Tokyo underworld as deadly secrets ignite an epic clash.')
       .replace(/<[^>]*>/g, '');
-    heroDesc.textContent = cleanDesc;
+    if (heroDesc) heroDesc.textContent = cleanDesc;
 
     // Watermark Japanese Title
     const watermarkEl = document.getElementById('hero-watermark');
@@ -1414,34 +1416,38 @@ document.addEventListener('DOMContentLoaded', () => {
       state.currentAnime = anime;
       state.currentAnime.episodes = episodes;
 
-      // Update Breadcrumbs & Info
+      // Update Breadcrumbs & Info safely
       const genre = anime.genres?.[0] || 'Anime';
-      crumbAnimeGenre.textContent = genre;
-      crumbAnimeTitle.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
-      crumbEpisodeNum.textContent = `Episode ${episodeNum}`;
+      if (crumbAnimeGenre) crumbAnimeGenre.textContent = genre;
+      if (crumbAnimeTitle) crumbAnimeTitle.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
+      if (crumbEpisodeNum) crumbEpisodeNum.textContent = `Episode ${episodeNum}`;
 
-      detailPosterImg.src = anime.coverImage?.extraLarge || anime.coverImage?.large || '';
-      detailAnimeTitle.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
-      detailAnimeNative.textContent = anime.title?.native || '';
-      detailAnimeScore.textContent = `★ ${(anime.averageScore ? (anime.averageScore / 10).toFixed(1) : '9.0')}`;
+      if (detailPosterImg) detailPosterImg.src = anime.coverImage?.extraLarge || anime.coverImage?.large || '';
+      if (detailAnimeTitle) detailAnimeTitle.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
+      if (detailAnimeNative) detailAnimeNative.textContent = anime.title?.native || '';
+      if (detailAnimeScore) detailAnimeScore.textContent = `★ ${(anime.averageScore ? (anime.averageScore / 10).toFixed(1) : '9.0')}`;
 
-      detailTagsContainer.innerHTML = (anime.genres || []).map(g => `
-        <span class="px-2 py-0.5 rounded bg-surface-container-high border border-white/[0.08] text-white text-[11px] font-medium">${g}</span>
-      `).join('');
+      if (detailTagsContainer) {
+        detailTagsContainer.innerHTML = (anime.genres || []).map(g => `
+          <span class="px-2 py-0.5 rounded bg-surface-container-high border border-white/[0.08] text-white text-[11px] font-medium">${g}</span>
+        `).join('');
+      }
 
-      detailSynopsisText.innerHTML = (anime.description || 'No synopsis provided.').replace(/<[^>]*>/g, '');
+      if (detailSynopsisText) {
+        detailSynopsisText.innerHTML = (anime.description || 'No synopsis provided.').replace(/<[^>]*>/g, '');
+      }
 
       // Check Watchlist status
       updateWatchlistButtonState(anime.id);
 
       // Render Episode Queue
-      episodesTotalCount.textContent = `${episodes.length} EP`;
+      if (episodesTotalCount) episodesTotalCount.textContent = `${episodes.length} EP`;
       renderEpisodeQueue(episodes, state.currentEpisodeIndex);
 
       // Load Current Episode Stream
       const currentEp = episodes[state.currentEpisodeIndex] || { id: `${animeId}-${episodeNum}`, number: episodeNum };
-      currentEpTitle.textContent = `Episode ${currentEp.number || episodeNum}`;
-      currentAnimeTitleSub.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
+      if (currentEpTitle) currentEpTitle.textContent = `Episode ${currentEp.number || episodeNum}`;
+      if (currentAnimeTitleSub) currentAnimeTitleSub.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
 
       // Load stream into Artplayer with cross-device resume
       let resumeTime = Number(startTime) || 0;
@@ -1576,8 +1582,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ep = episodes[index];
     const epNum = ep.number || index + 1;
 
-    crumbEpisodeNum.textContent = `Episode ${epNum}`;
-    currentEpTitle.textContent = `Episode ${epNum}`;
+    if (crumbEpisodeNum) crumbEpisodeNum.textContent = `Episode ${epNum}`;
+    if (currentEpTitle) currentEpTitle.textContent = `Episode ${epNum}`;
 
     renderEpisodeTiles(episodes, index);
 
@@ -1654,8 +1660,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function updateWatchlistButtonState(animeId) {
     if (!state.auth.token) {
-      textWatchlistStatus.textContent = 'Add to Watchlist';
-      iconWatchlistStatus.textContent = 'bookmark_add';
+      if (textWatchlistStatus) textWatchlistStatus.textContent = 'Add to Watchlist';
+      if (iconWatchlistStatus) iconWatchlistStatus.textContent = 'bookmark_add';
       return;
     }
 
@@ -1670,13 +1676,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isListed = json.data.some(w => String(w.anime_id) === String(animeId));
         if (isListed) {
-          textWatchlistStatus.textContent = 'In Watchlist';
-          iconWatchlistStatus.textContent = 'bookmark_added';
-          btnToggleWatchlist.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container/20 border border-primary/40 text-primary text-xs font-semibold transition-all';
+          if (textWatchlistStatus) textWatchlistStatus.textContent = 'In Watchlist';
+          if (iconWatchlistStatus) iconWatchlistStatus.textContent = 'bookmark_added';
+          if (btnToggleWatchlist) btnToggleWatchlist.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container/20 border border-primary/40 text-primary text-xs font-semibold transition-all';
         } else {
-          textWatchlistStatus.textContent = 'Add to Watchlist';
-          iconWatchlistStatus.textContent = 'bookmark_add';
-          btnToggleWatchlist.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.08] text-gray-300 hover:text-primary text-xs font-semibold transition-all';
+          if (textWatchlistStatus) textWatchlistStatus.textContent = 'Add to Watchlist';
+          if (iconWatchlistStatus) iconWatchlistStatus.textContent = 'bookmark_add';
+          if (btnToggleWatchlist) btnToggleWatchlist.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.08] text-gray-300 hover:text-primary text-xs font-semibold transition-all';
         }
       }
     } catch {}
@@ -1824,10 +1830,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const { stats, user } = profJson.data;
         if (user) updateAuthUI(user);
         if (stats) {
-          statTotalEpisodes.innerHTML = `${stats.totalEpisodesWatched || 0} <span class="text-primary text-sm font-normal">Eps</span>`;
-          statTotalDays.textContent = `${stats.totalDaysWatched || '0.0'} Days`;
-          statCompletedShows.innerHTML = `${stats.completedSeriesCount || 0} <span class="text-secondary text-sm font-normal">Shows</span>`;
-          statWatchlistCount.innerHTML = `${stats.watchlistCount || 0} <span class="text-tertiary text-sm font-normal">Titles</span>`;
+          if (statTotalEpisodes) statTotalEpisodes.innerHTML = `${stats.totalEpisodesWatched || 0} <span class="text-primary text-sm font-normal">Eps</span>`;
+          if (statTotalDays) statTotalDays.textContent = `${stats.totalDaysWatched || '0.0'} Days`;
+          if (statCompletedShows) statCompletedShows.innerHTML = `${stats.completedSeriesCount || 0} <span class="text-secondary text-sm font-normal">Shows</span>`;
+          if (statWatchlistCount) statWatchlistCount.innerHTML = `${stats.watchlistCount || 0} <span class="text-tertiary text-sm font-normal">Titles</span>`;
           const statMeanScore = document.getElementById('stat-mean-score');
           if (statMeanScore) {
             statMeanScore.innerHTML = `${stats.meanScore || '--'} <span class="text-yellow-400 text-sm font-normal">★</span>`;
