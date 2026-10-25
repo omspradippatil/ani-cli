@@ -399,3 +399,104 @@ body {
   animation: shimmer 1.5s infinite;
 }
 
+/* ==========================================================================
+   MOBILE RESPONSIVENESS & TOUCH OPTIMIZATIONS
+   ========================================================================== */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe Area Insets for Modern Mobile Screens (Notches & Dynamic Island) */
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Prevent unwanted content hiding behind the fixed bottom nav on mobile */
+@media (max-width: 767px) {
+  #home-view,
+  #browse-view,
+  #watch-view,
+  #account-view {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Mobile Bottom Navigation Bar Styles & Kinetic Active State */
+#mobile-bottom-nav {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.mobile-nav-btn {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.mobile-nav-btn.active {
+  color: #ff4f73 !important;
+}
+
+.mobile-nav-btn.active .material-symbols-outlined {
+  transform: scale(1.15);
+  color: #ff4f73 !important;
+  font-variation-settings: 'FILL' 1;
+  filter: drop-shadow(0 0 10px rgba(255, 79, 115, 0.5));
+}
+
+.mobile-nav-btn.active span:last-child {
+  color: #ffffff !important;
+}
+
+/* Mobile Touch Momentum & Horizontal Rail Scroll */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Interactive touch buttons active feedback */
+button:active,
+.mobile-nav-btn:active,
+.genre-chip:active,
+.browse-chip:active {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
+}
+
+/* Artplayer Mobile Controls Optimization */
+@media (max-width: 640px) {
+  .art-video-player .art-controls {
+    padding: 0 6px 6px !important;
+    gap: 4px !important;
+  }
+  .art-video-player .art-controls-left {
+    gap: 2px !important;
+  }
+  .art-video-player .art-controls-right {
+    gap: 4px !important;
+  }
+  .art-video-player .art-btn-mode,
+  .art-video-player .art-btn-skip,
+  .art-video-player .art-btn-cc,
+  .art-video-player .art-btn-quality {
+    font-size: 10px !important;
+    padding: 2px 5px !important;
+  }
+  .art-video-player .art-icon-btn {
+    padding: 2px 4px !important;
+  }
+}
+
+

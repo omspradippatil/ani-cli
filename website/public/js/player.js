@@ -23,7 +23,7 @@ class AnimePlayer {
   /**
    * Initializes or updates Artplayer with a stream
    */
-  async loadStream(episodeId, mode = 'sub', posterUrl = '') {
+  async loadStream(episodeId, mode = 'sub', posterUrl = '', resumeTime = 0) {
     this.currentEpisodeId = episodeId;
     this.currentMode = mode;
 
@@ -71,6 +71,9 @@ class AnimePlayer {
 
         // Switch stream URL
         await this.art.switchUrl(streamUrl);
+        if (resumeTime > 0) {
+          this.art.currentTime = resumeTime;
+        }
         if (this.art.notice) {
           this.art.notice.show = `Loaded Episode (${mode.toUpperCase()})`;
         }
@@ -108,14 +111,16 @@ class AnimePlayer {
 
       console.log(`[Player] Loaded stream for episode ${episodeId} (${mode}):`, streamUrl);
 
-      // Check saved progress
-      let savedTime = 0;
-      try {
-        const saved = JSON.parse(localStorage.getItem(`ani_progress_${episodeId}`));
-        if (saved && saved.time && saved.time < saved.duration - 15) {
-          savedTime = saved.time;
-        }
-      } catch {}
+      // Check saved progress: priority to cross-device resumeTime, then local localStorage
+      let savedTime = resumeTime || 0;
+      if (!savedTime) {
+        try {
+          const saved = JSON.parse(localStorage.getItem(`ani_progress_${episodeId}`));
+          if (saved && saved.time && saved.time < saved.duration - 15) {
+            savedTime = saved.time;
+          }
+        } catch {}
+      }
 
       // Prepare Subtitles
       let subUrl = '';

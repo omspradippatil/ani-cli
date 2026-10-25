@@ -46,6 +46,87 @@ async function getAuthUser(request, db) {
   return user || null;
 }
 
+function bytesToHex(bytes) {
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+async function hashPassword(password, saltHex = null) {
+  const enc = new TextEncoder();
+  const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: 10000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256
+  );
+  return {
+    hash: bytesToHex(new Uint8Array(derivedBits)),
+    salt: bytesToHex(salt)
+  };
+}
+
+async function calculateUserStats(userId, db) {
+  try {
+    const histRow = await db.prepare('SELECT COUNT(*) as count, COALESCE(SUM(progress_seconds), 0) as totalSeconds FROM watch_history WHERE user_id = ?').bind(userId).first();
+    const totalEpisodesWatched = histRow?.count || 0;
+    const totalSeconds = histRow?.totalSeconds || 0;
+    const totalDaysWatched = (totalSeconds / 86400).toFixed(1);
+
+    const completedRow = await db.prepare("SELECT COUNT(*) as count FROM watchlist WHERE user_id = ? AND LOWER(status) = 'completed'").bind(userId).first();
+    const completedSeriesCount = completedRow?.count || 0;
+
+    const wlRow = await db.prepare('SELECT COUNT(*) as count, AVG(score) as avgScore FROM watchlist WHERE user_id = ?').bind(userId).first();
+    const watchlistCount = wlRow?.count || 0;
+    const meanScore = (wlRow?.avgScore && Number(wlRow.avgScore) > 0) ? Number(wlRow.avgScore).toFixed(1) : '--';
+
+    return {
+      totalEpisodesWatched,
+      totalDaysWatched,
+      completedSeriesCount,
+      watchlistCount,
+      meanScore,
+      episodesWatched: totalEpisodesWatched,
+      watchTimeHours: Math.round(totalSeconds / 3600),
+      completedCount: completedSeriesCount
+    };
+  } catch (err) {
+    console.error('Error calculating user stats:', err);
+    return {
+      totalEpisodesWatched: 0,
+      totalDaysWatched: '0.0',
+      completedSeriesCount: 0,
+      watchlistCount: 0,
+      meanScore: '--',
+      episodesWatched: 0,
+      watchTimeHours: 0,
+      completedCount: 0
+    };
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -71,11 +152,127 @@ export default {
     // =========================================================================
 
     try {
+      // --- AUTH: REGISTER ---
+      if (pathname === '/api/auth/register' && method === 'POST') {
+        const body = await request.json();
+        const username = body.username ? String(body.username).trim() : '';
+        const email = body.email ? String(body.email).trim().toLowerCase() : null;
+        const password = String(body.password || '');
+
+        if (!username || username.length < 3) {
+          return jsonResponse({ success: false, error: 'Username must be at least 3 characters' }, 400);
+        }
+        if (!password || password.length < 6) {
+          return jsonResponse({ success: false, error: 'Password must be at least 6 characters' }, 400);
+        }
+
+        // Check if username or email already exists in D1 SQLite
+        const existing = await db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR (email IS NOT NULL AND LOWER(email) = LOWER(?))').bind(username, email || '').first();
+        if (existing) {
+          return jsonResponse({ success: false, error: 'Username or email already registered' }, 400);
+        }
+
+        const { hash, salt } = await hashPassword(password);
+        const now = Date.now();
+        const avatar = `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(username)}`;
+
+        const insertRes = await db.prepare(`
+          INSERT INTO users (username, email, password_hash, salt, avatar, tier, level, created_at)
+          VALUES (?, ?, ?, ?, ?, 'Community Otaku', 1, ?)
+        `).bind(username, email, hash, salt, avatar, now).run();
+
+        const user = await db.prepare('SELECT id, username, email, avatar, tier, level, created_at FROM users WHERE id = ?').bind(insertRes.meta.last_row_id).first();
+
+        // Seed initial default playback settings
+        await db.prepare(`
+          INSERT INTO user_settings (user_id, preferred_audio, auto_next, auto_skip_intro, auto_play, preferred_quality, updated_at)
+          VALUES (?, 'sub', 1, 1, 1, 'auto', ?)
+        `).bind(user.id, now).run();
+
+        // Issue 30-day persistent session token
+        const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+        const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
+        await db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').bind(token, user.id, expiresAt).run();
+
+        const stats = {
+          totalEpisodesWatched: 0,
+          totalDaysWatched: '0.0',
+          completedSeriesCount: 0,
+          watchlistCount: 0,
+          meanScore: '--'
+        };
+
+        return jsonResponse({
+          success: true,
+          token,
+          user,
+          data: {
+            user,
+            token,
+            settings: { preferred_audio: 'sub', auto_next: 1, auto_skip_intro: 1, auto_play: 1, preferred_quality: 'auto' },
+            stats
+          }
+        });
+      }
+
+      // --- AUTH: LOGIN ---
+      if (pathname === '/api/auth/login' && method === 'POST') {
+        const body = await request.json();
+        const loginIdentity = String(body.username || body.login || '').trim();
+        const password = String(body.password || '');
+
+        if (!loginIdentity || !password) {
+          return jsonResponse({ success: false, error: 'Username/email and password are required' }, 400);
+        }
+
+        const userWithSecret = await db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)').bind(loginIdentity, loginIdentity).first();
+        if (!userWithSecret) {
+          return jsonResponse({ success: false, error: 'Invalid username/email or password' }, 401);
+        }
+
+        const { hash } = await hashPassword(password, userWithSecret.salt);
+        if (hash !== userWithSecret.password_hash) {
+          return jsonResponse({ success: false, error: 'Invalid username/email or password' }, 401);
+        }
+
+        const user = {
+          id: userWithSecret.id,
+          username: userWithSecret.username,
+          email: userWithSecret.email,
+          avatar: userWithSecret.avatar,
+          tier: userWithSecret.tier || 'Community Otaku',
+          level: userWithSecret.level || 1,
+          created_at: userWithSecret.created_at
+        };
+
+        const now = Date.now();
+        const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+        const expiresAt = now + (30 * 24 * 60 * 60 * 1000);
+        await db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').bind(token, user.id, expiresAt).run();
+
+        const settings = await db.prepare('SELECT * FROM user_settings WHERE user_id = ?').bind(user.id).first() || {
+          preferred_audio: 'sub', auto_next: 1, auto_skip_intro: 1, auto_play: 1, preferred_quality: 'auto'
+        };
+
+        const stats = await calculateUserStats(user.id, db);
+
+        return jsonResponse({
+          success: true,
+          token,
+          user,
+          data: {
+            user,
+            token,
+            settings,
+            stats
+          }
+        });
+      }
+
       // --- AUTH: DEMO LOGIN ---
       if (pathname === '/api/auth/demo' && method === 'POST') {
         let user = await db.prepare('SELECT id, username, email, avatar, tier, level, created_at FROM users WHERE id = 1').first();
         if (!user) {
-          // Auto-seed demo if missing
           const now = Date.now();
           await db.prepare(`
             INSERT OR IGNORE INTO users (id, username, email, password_hash, salt, avatar, tier, level, created_at)
@@ -92,6 +289,8 @@ export default {
           preferred_audio: 'sub', auto_next: 1, auto_skip_intro: 1, auto_play: 1, preferred_quality: 'auto'
         };
 
+        const stats = await calculateUserStats(user.id, db);
+
         return jsonResponse({
           success: true,
           token,
@@ -100,7 +299,7 @@ export default {
             user,
             token,
             settings,
-            stats: { episodesWatched: 12, watchTimeHours: 5, completedCount: 2, watchlistCount: 8 }
+            stats
           }
         });
       }
@@ -128,12 +327,13 @@ export default {
         const user = await getAuthUser(request, db);
         if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
         const settings = await db.prepare('SELECT * FROM user_settings WHERE user_id = ?').bind(user.id).first();
+        const stats = await calculateUserStats(user.id, db);
         return jsonResponse({
           success: true,
           data: {
             user,
             settings,
-            stats: { episodesWatched: 12, watchTimeHours: 5, completedCount: 2, watchlistCount: 8 }
+            stats
           }
         });
       }
@@ -198,6 +398,69 @@ export default {
             updated_at = excluded.updated_at
         `).bind(user.id, animeId, animeTitle, poster, format, score, status, now).run();
         return jsonResponse({ success: true, message: 'Watchlist updated' });
+      }
+
+      // --- USER: DELETE HISTORY ITEM ---
+      if (pathname.startsWith('/api/user/history/') && method === 'DELETE') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+        const animeId = pathname.replace('/api/user/history/', '');
+        await db.prepare('DELETE FROM watch_history WHERE user_id = ? AND anime_id = ?').bind(user.id, animeId).run();
+        return jsonResponse({ success: true, message: 'History item removed' });
+      }
+
+      // --- USER: CLEAR ALL HISTORY ---
+      if (pathname === '/api/user/history' && method === 'DELETE') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+        await db.prepare('DELETE FROM watch_history WHERE user_id = ?').bind(user.id).run();
+        return jsonResponse({ success: true, message: 'All history cleared' });
+      }
+
+      // --- USER: DELETE WATCHLIST ITEM ---
+      if (pathname.startsWith('/api/user/watchlist/') && method === 'DELETE') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+        const animeId = pathname.replace('/api/user/watchlist/', '');
+        await db.prepare('DELETE FROM watchlist WHERE user_id = ? AND anime_id = ?').bind(user.id, animeId).run();
+        return jsonResponse({ success: true, message: 'Watchlist item removed' });
+      }
+
+      // --- USER: SETTINGS ---
+      if (pathname === '/api/user/settings' && method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+        const settings = await db.prepare('SELECT * FROM user_settings WHERE user_id = ?').bind(user.id).first() || {
+          preferred_audio: 'sub', auto_next: 1, auto_skip_intro: 1, auto_play: 1, preferred_quality: 'auto'
+        };
+        return jsonResponse({ success: true, data: settings });
+      }
+
+      if (pathname === '/api/user/settings' && (method === 'POST' || method === 'PUT')) {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+        const body = await request.json();
+        const now = Date.now();
+        await db.prepare(`
+          INSERT INTO user_settings (user_id, preferred_audio, auto_next, auto_skip_intro, auto_play, preferred_quality, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_id) DO UPDATE SET
+            preferred_audio = excluded.preferred_audio,
+            auto_next = excluded.auto_next,
+            auto_skip_intro = excluded.auto_skip_intro,
+            auto_play = excluded.auto_play,
+            preferred_quality = excluded.preferred_quality,
+            updated_at = excluded.updated_at
+        `).bind(
+          user.id,
+          body.preferred_audio || 'sub',
+          body.auto_next ? 1 : 0,
+          body.auto_skip_intro ? 1 : 0,
+          body.auto_play ? 1 : 0,
+          body.preferred_quality || 'auto',
+          now
+        ).run();
+        return jsonResponse({ success: true, message: 'Settings saved' });
       }
 
       // --- METADATA: TRENDING ---

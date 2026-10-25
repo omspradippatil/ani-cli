@@ -127,6 +127,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const browseResultsContainer = document.getElementById('browse-results-container');
   const browseActiveTags = document.getElementById('browse-active-tags');
 
+  // Mobile UI & Navigation Elements
+  const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+  const mobileWatchlistBadge = document.getElementById('mobile-watchlist-badge');
+  const btnMobileSearchToggle = document.getElementById('btn-mobile-search-toggle');
+  const mobileSearchModal = document.getElementById('mobile-search-modal');
+  const mobileSearchCloseBtn = document.getElementById('mobile-search-close-btn');
+  const mobileSearchInput = document.getElementById('mobile-search-input');
+  const mobileSearchClearBtn = document.getElementById('mobile-search-clear-btn');
+  const mobileSearchResults = document.getElementById('mobile-search-results');
+  const mobileQuickTags = document.querySelectorAll('.mobile-search-tag');
+
+  // Mobile Browse Filter Drawer Elements
+  const btnMobileFilterOpen = document.getElementById('btn-mobile-filter-open');
+  const btnMobileFilterClose = document.getElementById('btn-mobile-filter-close');
+  const btnMobileFilterApply = document.getElementById('btn-mobile-filter-apply');
+  const browseFilterSidebar = document.getElementById('browse-filter-sidebar');
+  const browseFilterDrawerBackdrop = document.getElementById('browse-filter-drawer-backdrop');
+  const mobileBrowseSortSelect = document.getElementById('mobile-browse-sort-select');
+  const mobileFilterCountBadge = document.getElementById('mobile-filter-count-badge');
+
   // Cinema Watch Room Elements
   const crumbAnimeGenre = document.getElementById('crumb-anime-genre');
   const crumbAnimeTitle = document.getElementById('crumb-anime-title');
@@ -350,6 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
       accountHandle.textContent = `@${user.username.toLowerCase().replace(/\s+/g, '_')}`;
       accountTierBadge.innerHTML = `<span class="material-symbols-outlined text-[14px]">verified</span> Community Otaku`;
       accountEmail.textContent = user.email || `${user.username.toLowerCase()}@omcli.io`;
+      const accountTokenId = document.getElementById('account-token-id');
+      if (accountTokenId) accountTokenId.textContent = `#USER-${user.id || 'SYNC'}`;
       accInputUsername.value = user.username;
       accInputEmail.value = user.email || '';
     } else {
@@ -529,6 +551,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    mobileNavBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = btn.dataset.nav;
+        navigateTo(target);
+      });
+    });
+
     // Initial Route
     handleRoute();
   }
@@ -547,12 +577,26 @@ document.addEventListener('DOMContentLoaded', () => {
       state.player.stop();
     }
 
+    // Auto-close any mobile overlays on route navigation
+    if (mobileSearchModal) {
+      mobileSearchModal.classList.add('hidden');
+      mobileSearchModal.classList.remove('flex');
+    }
+    if (browseFilterSidebar) {
+      browseFilterSidebar.classList.add('hidden');
+      browseFilterSidebar.classList.remove('flex');
+    }
+    if (browseFilterDrawerBackdrop) {
+      browseFilterDrawerBackdrop.classList.add('hidden');
+    }
+    document.body.classList.remove('overflow-hidden');
+
     // Hide all views
     Object.values(views).forEach(v => {
       if (v) v.classList.add('hidden');
     });
 
-    // Update active nav tabs
+    // Update active desktop nav tabs
     navTabs.forEach(tab => {
       const isTarget = tab.dataset.nav === path || 
         (path.startsWith('account') && tab.dataset.nav === 'account') ||
@@ -562,6 +606,23 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.className = 'nav-tab px-3.5 py-2 rounded-lg text-sm font-semibold text-white bg-surface-container-high transition-all';
       } else {
         tab.className = 'nav-tab px-3.5 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-surface-container transition-all';
+      }
+    });
+
+    // Update active mobile bottom nav buttons
+    mobileNavBtns.forEach(btn => {
+      const isTarget = btn.dataset.nav === path || 
+        (path.startsWith('account') && btn.dataset.nav === 'account') ||
+        (path === 'watchlist' && btn.dataset.nav === 'watchlist');
+      
+      if (isTarget) {
+        btn.classList.add('active');
+        btn.classList.remove('text-gray-400');
+        btn.classList.add('text-primary');
+      } else {
+        btn.classList.remove('active');
+        btn.classList.remove('text-primary');
+        btn.classList.add('text-gray-400');
       }
     });
 
@@ -583,15 +644,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const animeId = params.get('anime') || params.get('id');
       const epNum = parseInt(params.get('ep')) || 1;
       const mode = params.get('mode') || state.currentMode || 'sub';
+      const startTime = parseFloat(params.get('t')) || 0;
       if (animeId) {
         if (state.currentAnime && String(state.currentAnime.id) === String(animeId)) {
           // Anime already loaded in current watch room, simply switch episode
           if (state.currentEpisodeIndex !== epNum - 1 || state.currentMode !== mode) {
             state.currentMode = mode;
-            window.playEpisodeAtIndex(epNum - 1);
+            window.playEpisodeAtIndex(epNum - 1, startTime);
           }
         } else {
-          loadWatchRoom(animeId, epNum, mode);
+          loadWatchRoom(animeId, epNum, mode, startTime);
         }
       } else {
         navigateTo('home');
@@ -911,10 +973,10 @@ document.addEventListener('DOMContentLoaded', () => {
     continueGrid.innerHTML = items.slice(0, 6).map(item => {
       const progressPercent = item.duration_seconds > 0 
         ? Math.min(100, Math.round((item.progress_seconds / item.duration_seconds) * 100))
-        : 50;
+        : 0;
 
       return `
-        <div class="relative group bg-surface-container-low border border-white/[0.08] hover:border-primary/50 rounded-2xl overflow-hidden shadow-lg transition-all cursor-pointer flex flex-col" onclick="window.location.hash='watch?anime=${item.anime_id}&ep=${item.episode_num}'">
+        <div class="relative group bg-surface-container-low border border-white/[0.08] hover:border-primary/50 rounded-2xl overflow-hidden shadow-lg transition-all cursor-pointer flex flex-col" onclick="window.location.hash='watch?anime=${item.anime_id}&ep=${item.episode_num}&t=${item.progress_seconds || 0}'">
           <div class="relative aspect-video w-full bg-surface-container-high overflow-hidden">
             <img src="${item.poster || 'https://via.placeholder.com/300x170'}" alt="${item.anime_title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             <div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
@@ -977,8 +1039,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <div class="absolute top-2 right-2">
-              <button class="w-7 h-7 rounded-full bg-black/60 backdrop-blur-md text-gray-300 hover:text-primary flex items-center justify-center transition-colors shadow-md" title="Add to Watchlist" onclick="event.stopPropagation(); window.toggleWatchlistAnimeById('${item.id}', '${escapeQuotes(title)}', '${poster}')">
-                <span class="material-symbols-outlined text-[16px]">bookmark_add</span>
+              <button class="w-8 h-8 rounded-full bg-black/70 backdrop-blur-md text-gray-300 hover:text-primary active:scale-90 flex items-center justify-center transition-all shadow-md cursor-pointer" title="Add to Watchlist" onclick="event.stopPropagation(); window.toggleWatchlistAnimeById('${item.id}', '${escapeQuotes(title)}', '${poster}')">
+                <span class="material-symbols-outlined text-[17px]">bookmark_add</span>
               </button>
             </div>
 
@@ -1127,6 +1189,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gather checked genres
     const selectedGenres = Array.from(filterGenresMatrix.querySelectorAll('.genre-matrix-chk:checked')).map(c => c.value);
 
+    // Update active filter counter badges
+    let activeFilterCount = selectedGenres.length;
+    if (state.browseFilters.format && state.browseFilters.format !== 'all') activeFilterCount++;
+    if (state.browseFilters.status && state.browseFilters.status !== 'all') activeFilterCount++;
+    if (mobileFilterCountBadge) mobileFilterCountBadge.textContent = activeFilterCount;
+    if (browseResetFilters) browseResetFilters.textContent = `Reset (${activeFilterCount})`;
+    if (mobileBrowseSortSelect) mobileBrowseSortSelect.value = state.browseFilters.sort;
+
     const queryParams = new URLSearchParams();
     if (state.browseFilters.search) queryParams.set('search', state.browseFilters.search);
     if (state.browseFilters.sort) queryParams.set('sort', state.browseFilters.sort);
@@ -1171,10 +1241,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (viewMode === 'grid') {
-      browseResultsContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4';
+      browseResultsContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4';
       renderAnimeCards(browseResultsContainer, list);
     } else if (viewMode === 'detailed') {
-      browseResultsContainer.className = 'flex flex-col gap-4';
+      browseResultsContainer.className = 'flex flex-col gap-3 sm:gap-4';
       browseResultsContainer.innerHTML = list.map(item => {
         const title = item.title?.english || item.title?.romaji || 'Anime';
         const poster = item.coverImage?.extraLarge || item.coverImage?.large || '';
@@ -1182,30 +1252,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanDesc = (item.description || 'No synopsis provided.').replace(/<[^>]*>/g, '');
 
         return `
-          <div class="p-4 rounded-2xl bg-surface-container-low border border-white/[0.08] hover:border-primary/50 shadow-xl transition-all flex flex-col md:flex-row gap-5 group cursor-pointer" onclick="window.location.hash='watch?anime=${item.id}&ep=1'">
-            <img src="${poster}" alt="${title}" class="w-32 h-44 object-cover rounded-xl border border-white/[0.08] flex-shrink-0 group-hover:scale-102 transition-transform">
-            <div class="flex flex-col justify-between flex-1 gap-2">
+          <div class="p-3.5 sm:p-4 rounded-2xl bg-surface-container-low border border-white/[0.08] hover:border-primary/50 shadow-xl transition-all flex flex-row items-start gap-3 sm:gap-5 group cursor-pointer" onclick="window.location.hash='watch?anime=${item.id}&ep=1'">
+            <img src="${poster}" alt="${title}" class="w-20 sm:w-28 md:w-32 h-28 sm:h-40 md:h-44 object-cover rounded-xl border border-white/[0.08] flex-shrink-0 group-hover:scale-102 transition-transform">
+            <div class="flex flex-col justify-between flex-1 gap-2 min-w-0">
               <div class="flex flex-col gap-1">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <h3 class="text-base md:text-lg font-bold text-white group-hover:text-primary transition-colors">${title}</h3>
-                  <span class="font-mono text-xs font-bold text-primary flex items-center gap-1">★ ${score}</span>
+                <div class="flex items-center justify-between flex-wrap gap-1 sm:gap-2">
+                  <h3 class="text-sm sm:text-base md:text-lg font-bold text-white group-hover:text-primary transition-colors truncate">${title}</h3>
+                  <span class="font-mono text-xs font-bold text-primary flex items-center gap-1 flex-shrink-0">★ ${score}</span>
                 </div>
-                <div class="flex items-center gap-2 font-mono text-xs text-gray-400 flex-wrap">
-                  <span class="px-2 py-0.5 rounded bg-surface-container-high text-white text-[10px]">${item.format || 'TV'}</span>
+                <div class="flex items-center gap-1.5 sm:gap-2 font-mono text-[11px] sm:text-xs text-gray-400 flex-wrap">
+                  <span class="px-1.5 py-0.5 rounded bg-surface-container-high text-white text-[9px] sm:text-[10px]">${item.format || 'TV'}</span>
                   <span>${item.seasonYear || '2025'}</span>
                   <span>•</span>
-                  <span>${item.episodes ? `${item.episodes} Episodes` : 'Airing'}</span>
-                  <span>•</span>
-                  <span class="text-secondary">${(item.genres || []).slice(0, 3).join(', ')}</span>
+                  <span>${item.episodes ? `${item.episodes} Ep` : 'Airing'}</span>
+                  <span class="hidden sm:inline">•</span>
+                  <span class="hidden sm:inline text-secondary truncate max-w-xs">${(item.genres || []).slice(0, 3).join(', ')}</span>
                 </div>
-                <p class="text-xs text-gray-300 line-clamp-3 leading-relaxed mt-1">${cleanDesc}</p>
+                <p class="text-xs text-gray-300 line-clamp-2 sm:line-clamp-3 leading-relaxed mt-0.5">${cleanDesc}</p>
               </div>
 
-              <div class="flex items-center gap-3 pt-2">
-                <button class="px-4 py-2 rounded-xl bg-primary-container text-white text-xs font-bold uppercase tracking-wider shadow-md hover:brightness-110 transition-all flex items-center gap-1.5" onclick="event.stopPropagation(); window.location.hash='watch?anime=${item.id}&ep=1'">
-                  <span class="material-symbols-outlined text-[16px]">play_arrow</span>Play Episode 1
+              <div class="flex items-center gap-2 pt-1 flex-wrap">
+                <button class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-primary-container text-white text-xs font-bold uppercase tracking-wider shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer" onclick="event.stopPropagation(); window.location.hash='watch?anime=${item.id}&ep=1'">
+                  <span class="material-symbols-outlined text-[16px]">play_arrow</span>Play
                 </button>
-                <button class="px-3.5 py-2 rounded-xl bg-surface-container-high border border-white/[0.08] text-gray-300 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5" onclick="event.stopPropagation(); window.toggleWatchlistAnimeById('${item.id}', '${escapeQuotes(title)}', '${poster}')">
+                <button class="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-surface-container-high border border-white/[0.08] text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer" onclick="event.stopPropagation(); window.toggleWatchlistAnimeById('${item.id}', '${escapeQuotes(title)}', '${poster}')">
                   <span class="material-symbols-outlined text-[16px]">bookmark_add</span>Watchlist
                 </button>
               </div>
@@ -1221,16 +1291,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const score = item.averageScore ? (item.averageScore / 10).toFixed(1) : '8.5';
 
         return `
-          <div class="px-4 py-2.5 rounded-xl bg-surface-container-low border border-white/[0.06] hover:border-primary/50 flex items-center justify-between gap-4 transition-all cursor-pointer group" onclick="window.location.hash='watch?anime=${item.id}&ep=1'">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="font-mono text-xs text-gray-500 font-bold w-6 text-center">${idx + 1}</span>
-              <img src="${poster}" alt="${title}" class="w-9 h-12 object-cover rounded-md flex-shrink-0">
+          <div class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-surface-container-low border border-white/[0.06] hover:border-primary/50 flex items-center justify-between gap-3 sm:gap-4 transition-all cursor-pointer group" onclick="window.location.hash='watch?anime=${item.id}&ep=1'">
+            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <span class="font-mono text-xs text-gray-500 font-bold w-5 sm:w-6 text-center">${idx + 1}</span>
+              <img src="${poster}" alt="${title}" class="w-8 sm:w-9 h-11 sm:h-12 object-cover rounded-md flex-shrink-0">
               <div class="flex flex-col min-w-0">
                 <span class="text-xs font-bold text-white group-hover:text-primary transition-colors truncate">${title}</span>
                 <span class="text-[10px] font-mono text-gray-500">${item.format || 'TV'} • ${item.episodes ? `${item.episodes} EP` : 'Simulcast'}</span>
               </div>
             </div>
-            <div class="flex items-center gap-4 flex-shrink-0">
+            <div class="flex items-center gap-3 sm:gap-4 flex-shrink-0">
               <span class="font-mono text-xs font-bold text-primary">★ ${score}</span>
               <span class="material-symbols-outlined text-gray-400 group-hover:text-white text-[18px]">play_circle</span>
             </div>
@@ -1240,11 +1310,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Mobile Browse Filter Drawer Handlers
+  if (btnMobileFilterOpen) {
+    btnMobileFilterOpen.addEventListener('click', () => {
+      if (browseFilterSidebar) {
+        browseFilterSidebar.classList.remove('hidden');
+        browseFilterSidebar.classList.add('flex');
+      }
+      if (browseFilterDrawerBackdrop) {
+        browseFilterDrawerBackdrop.classList.remove('hidden');
+      }
+      document.body.classList.add('overflow-hidden');
+    });
+  }
+
+  function closeMobileFilterDrawer() {
+    if (browseFilterSidebar) {
+      browseFilterSidebar.classList.add('hidden');
+      browseFilterSidebar.classList.remove('flex');
+    }
+    if (browseFilterDrawerBackdrop) {
+      browseFilterDrawerBackdrop.classList.add('hidden');
+    }
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  if (btnMobileFilterClose) btnMobileFilterClose.addEventListener('click', closeMobileFilterDrawer);
+  if (browseFilterDrawerBackdrop) browseFilterDrawerBackdrop.addEventListener('click', closeMobileFilterDrawer);
+  if (btnMobileFilterApply) {
+    btnMobileFilterApply.addEventListener('click', () => {
+      closeMobileFilterDrawer();
+      executeBrowse();
+    });
+  }
+
+  if (mobileBrowseSortSelect) {
+    mobileBrowseSortSelect.addEventListener('change', () => {
+      state.browseFilters.sort = mobileBrowseSortSelect.value;
+      browseSortSelect.value = mobileBrowseSortSelect.value;
+      executeBrowse();
+    });
+  }
+  }
+
   // ============================================================================
   // CINEMA WATCH ROOM MODULE
   // ============================================================================
 
-  async function loadWatchRoom(animeId, episodeNum = 1, mode = 'sub') {
+  async function loadWatchRoom(animeId, episodeNum = 1, mode = 'sub', startTime = 0) {
     state.currentEpisodeIndex = Math.max(0, parseInt(episodeNum) - 1);
     state.currentMode = mode;
     updateAudioButtons(mode);
@@ -1331,9 +1444,17 @@ document.addEventListener('DOMContentLoaded', () => {
       currentEpTitle.textContent = `Episode ${currentEp.number || episodeNum}`;
       currentAnimeTitleSub.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
 
-      // Load stream into Artplayer
+      // Load stream into Artplayer with cross-device resume
+      let resumeTime = Number(startTime) || 0;
+      if (!resumeTime && state.userHistory && state.userHistory.length > 0) {
+        const histMatch = state.userHistory.find(h => String(h.anime_id) === String(animeId));
+        if (histMatch && Number(histMatch.episode_num) === Number(episodeNum) && Number(histMatch.progress_seconds) > 0) {
+          resumeTime = Number(histMatch.progress_seconds);
+        }
+      }
+
       const posterUrl = anime.bannerImage || anime.coverImage?.extraLarge || '';
-      state.player.loadStream(currentEp.id, mode, posterUrl).then(() => {
+      state.player.loadStream(currentEp.id, mode, posterUrl, resumeTime).then(() => {
         if (state.player && state.player.art) {
           state.player.art.on('fullscreen', (isFull) => {
             if (btnFullscreenDown) {
@@ -1447,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return item && item.episode_num >= epNum;
   }
 
-  window.playEpisodeAtIndex = function(index) {
+  window.playEpisodeAtIndex = function(index, resumeTime = 0) {
     if (!state.currentAnime || !state.currentAnime.episodes) return;
     const episodes = state.currentAnime.episodes;
     if (index < 0 || index >= episodes.length) return;
@@ -1467,7 +1588,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {}
 
     const posterUrl = state.currentAnime.bannerImage || state.currentAnime.coverImage?.extraLarge || '';
-    state.player.loadStream(ep.id, state.currentMode, posterUrl);
+    state.player.loadStream(ep.id, state.currentMode, posterUrl, resumeTime);
   };
 
   function playNextEpisode() {
@@ -1520,6 +1641,18 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleWatchlistAnime(state.currentAnime);
   });
 
+  function updateWatchlistBadges(count) {
+    if (flyoutWatchlistCount) flyoutWatchlistCount.textContent = count;
+    if (mobileWatchlistBadge) {
+      if (count > 0) {
+        mobileWatchlistBadge.textContent = count > 99 ? '99+' : count;
+        mobileWatchlistBadge.classList.remove('hidden');
+      } else {
+        mobileWatchlistBadge.classList.add('hidden');
+      }
+    }
+  }
+
   async function updateWatchlistButtonState(animeId) {
     if (!state.auth.token) {
       textWatchlistStatus.textContent = 'Add to Watchlist';
@@ -1534,7 +1667,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         state.userWatchlist = json.data;
-        flyoutWatchlistCount.textContent = json.data.length;
+        updateWatchlistBadges(json.data.length);
 
         const isListed = json.data.some(w => String(w.anime_id) === String(animeId));
         if (isListed) {
@@ -1689,11 +1822,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const profJson = await profRes.json();
 
       if (profJson.success && profJson.data) {
-        const { stats } = profJson.data;
-        statTotalEpisodes.innerHTML = `${stats.totalEpisodesWatched || 0} <span class="text-primary text-sm font-normal">Eps</span>`;
-        statTotalDays.textContent = `${stats.totalDaysWatched || '0.0'} Days`;
-        statCompletedShows.innerHTML = `${stats.completedSeriesCount || 0} <span class="text-secondary text-sm font-normal">Shows</span>`;
-        statWatchlistCount.innerHTML = `${stats.watchlistCount || 0} <span class="text-tertiary text-sm font-normal">Titles</span>`;
+        const { stats, user } = profJson.data;
+        if (user) updateAuthUI(user);
+        if (stats) {
+          statTotalEpisodes.innerHTML = `${stats.totalEpisodesWatched || 0} <span class="text-primary text-sm font-normal">Eps</span>`;
+          statTotalDays.textContent = `${stats.totalDaysWatched || '0.0'} Days`;
+          statCompletedShows.innerHTML = `${stats.completedSeriesCount || 0} <span class="text-secondary text-sm font-normal">Shows</span>`;
+          statWatchlistCount.innerHTML = `${stats.watchlistCount || 0} <span class="text-tertiary text-sm font-normal">Titles</span>`;
+          const statMeanScore = document.getElementById('stat-mean-score');
+          if (statMeanScore) {
+            statMeanScore.innerHTML = `${stats.meanScore || '--'} <span class="text-yellow-400 text-sm font-normal">★</span>`;
+          }
+          updateWatchlistBadges(stats.watchlistCount || 0);
+          if (flyoutHistoryCount) flyoutHistoryCount.textContent = stats.totalEpisodesWatched || 0;
+        }
       }
 
       // 2. Load Watchlist Tab

@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/website/api/index.js"
+      "destination": "https://om-cli-anime.omspradippatil.workers.dev/api/$1"
     },
     {
       "source": "/download/tv-apk",
-      "destination": "/website/public/download/ani-cli-production-signed.apk"
+      "destination": "/website/ani-cli-production-signed.apk"
     },
     {
       "source": "/((?!api/).*)",

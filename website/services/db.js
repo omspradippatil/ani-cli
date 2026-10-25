@@ -722,52 +722,67 @@ async function updateUserSettings(userId, data) {
  */
 async function getUserStats(userId) {
   if (isCloudflareD1Api) {
-    const epRes = await queryCloudflareD1('SELECT COUNT(*) as total_entries, SUM(episode_num) as sum_episodes, SUM(progress_seconds) as total_seconds FROM watch_history WHERE user_id = ?', [Number(userId)]);
-    const compRes = await queryCloudflareD1("SELECT COUNT(*) as count FROM watchlist WHERE user_id = ? AND status = 'Completed'", [Number(userId)]);
-    const watchRes = await queryCloudflareD1('SELECT COUNT(*) as count FROM watchlist WHERE user_id = ?', [Number(userId)]);
+    const epRes = await queryCloudflareD1('SELECT COUNT(*) as total_entries, SUM(progress_seconds) as total_seconds FROM watch_history WHERE user_id = ?', [Number(userId)]);
+    const compRes = await queryCloudflareD1("SELECT COUNT(*) as count FROM watchlist WHERE user_id = ? AND LOWER(status) = 'completed'", [Number(userId)]);
+    const watchRes = await queryCloudflareD1('SELECT COUNT(*) as count, AVG(score) as avgScore FROM watchlist WHERE user_id = ?', [Number(userId)]);
 
     const totalSeconds = epRes.results?.[0]?.total_seconds || 0;
     const totalHours = Math.round(totalSeconds / 3600);
+    const avgScore = watchRes.results?.[0]?.avgScore ? Number(watchRes.results[0].avgScore).toFixed(1) : '--';
 
     return {
-      episodesWatched: epRes.results?.[0]?.sum_episodes || epRes.results?.[0]?.total_entries || 0,
-      watchTimeHours: totalHours > 0 ? totalHours : Math.round((epRes.results?.[0]?.total_entries || 0) * 0.4),
-      completedCount: compRes.results?.[0]?.count || 0,
-      watchlistCount: watchRes.results?.[0]?.count || 0
+      totalEpisodesWatched: epRes.results?.[0]?.total_entries || 0,
+      totalDaysWatched: (totalSeconds / 86400).toFixed(1),
+      completedSeriesCount: compRes.results?.[0]?.count || 0,
+      watchlistCount: watchRes.results?.[0]?.count || 0,
+      meanScore: avgScore,
+      episodesWatched: epRes.results?.[0]?.total_entries || 0,
+      watchTimeHours: totalHours,
+      completedCount: compRes.results?.[0]?.count || 0
     };
   }
 
   if (!useMemoryFallback && localSqliteDb) {
     const totalEpisodesRow = localSqliteDb.prepare(`
-      SELECT COUNT(*) as total_entries, SUM(episode_num) as sum_episodes, SUM(progress_seconds) as total_seconds
+      SELECT COUNT(*) as total_entries, COALESCE(SUM(progress_seconds), 0) as total_seconds
       FROM watch_history WHERE user_id = ?
     `).get(Number(userId));
 
     const completedCountRow = localSqliteDb.prepare(`
-      SELECT COUNT(*) as count FROM watchlist WHERE user_id = ? AND status = 'Completed'
+      SELECT COUNT(*) as count FROM watchlist WHERE user_id = ? AND LOWER(status) = 'completed'
     `).get(Number(userId));
 
     const watchlistCountRow = localSqliteDb.prepare(`
-      SELECT COUNT(*) as count FROM watchlist WHERE user_id = ?
+      SELECT COUNT(*) as count, AVG(score) as avgScore FROM watchlist WHERE user_id = ?
     `).get(Number(userId));
 
-    const totalHours = Math.round((totalEpisodesRow.total_seconds || 0) / 3600);
+    const totalSeconds = totalEpisodesRow?.total_seconds || 0;
+    const totalHours = Math.round(totalSeconds / 3600);
+    const avgScore = watchlistCountRow?.avgScore ? Number(watchlistCountRow.avgScore).toFixed(1) : '--';
 
     return {
-      episodesWatched: totalEpisodesRow.sum_episodes || totalEpisodesRow.total_entries || 0,
-      watchTimeHours: totalHours > 0 ? totalHours : Math.round((totalEpisodesRow.total_entries || 0) * 0.4),
-      completedCount: completedCountRow.count || 0,
-      watchlistCount: watchlistCountRow.count || 0
+      totalEpisodesWatched: totalEpisodesRow?.total_entries || 0,
+      totalDaysWatched: (totalSeconds / 86400).toFixed(1),
+      completedSeriesCount: completedCountRow?.count || 0,
+      watchlistCount: watchlistCountRow?.count || 0,
+      meanScore: avgScore,
+      episodesWatched: totalEpisodesRow?.total_entries || 0,
+      watchTimeHours: totalHours,
+      completedCount: completedCountRow?.count || 0
     };
   }
 
   const history = await getWatchHistory(userId);
   const watchlist = await getWatchlist(userId);
   return {
+    totalEpisodesWatched: history.length,
+    totalDaysWatched: ((history.length * 24 * 60) / 86400).toFixed(1),
+    completedSeriesCount: watchlist.filter(w => (w.status || '').toLowerCase() === 'completed').length,
+    watchlistCount: watchlist.length,
+    meanScore: '--',
     episodesWatched: history.length,
     watchTimeHours: Math.round(history.length * 0.4),
-    completedCount: watchlist.filter(w => w.status === 'Completed').length,
-    watchlistCount: watchlist.length
+    completedCount: watchlist.filter(w => (w.status || '').toLowerCase() === 'completed').length
   };
 }
 
