@@ -1351,7 +1351,6 @@ document.addEventListener('DOMContentLoaded', () => {
       executeBrowse();
     });
   }
-  }
 
   // ============================================================================
   // CINEMA WATCH ROOM MODULE
@@ -2121,6 +2120,132 @@ document.addEventListener('DOMContentLoaded', () => {
         searchDropdown.classList.remove('hidden');
       }
     } catch {}
+  }
+
+  // ============================================================================
+  // MOBILE SEARCH MODAL & INSTANT RESULTS
+  // ============================================================================
+
+  if (btnMobileSearchToggle) {
+    btnMobileSearchToggle.addEventListener('click', () => {
+      if (mobileSearchModal) {
+        mobileSearchModal.classList.remove('hidden');
+        mobileSearchModal.classList.add('flex');
+        if (mobileSearchInput) {
+          mobileSearchInput.value = '';
+          setTimeout(() => mobileSearchInput.focus(), 80);
+        }
+        if (mobileSearchResults) mobileSearchResults.innerHTML = '';
+      }
+    });
+  }
+
+  if (mobileSearchCloseBtn) {
+    mobileSearchCloseBtn.addEventListener('click', () => {
+      if (mobileSearchModal) {
+        mobileSearchModal.classList.add('hidden');
+        mobileSearchModal.classList.remove('flex');
+      }
+    });
+  }
+
+  let mobileLiveSearchDebounce = null;
+  if (mobileSearchInput) {
+    mobileSearchInput.addEventListener('input', (e) => {
+      clearTimeout(mobileLiveSearchDebounce);
+      const query = e.target.value.trim();
+      if (mobileSearchClearBtn) {
+        if (query) mobileSearchClearBtn.classList.remove('hidden');
+        else mobileSearchClearBtn.classList.add('hidden');
+      }
+      if (!query) {
+        if (mobileSearchResults) mobileSearchResults.innerHTML = '';
+        return;
+      }
+      mobileLiveSearchDebounce = setTimeout(() => handleMobileLiveSearch(query), 300);
+    });
+
+    mobileSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const q = mobileSearchInput.value.trim();
+        if (q) {
+          if (mobileSearchModal) {
+            mobileSearchModal.classList.add('hidden');
+            mobileSearchModal.classList.remove('flex');
+          }
+          navigateTo(`browse?search=${encodeURIComponent(q)}`);
+        }
+      }
+    });
+  }
+
+  if (mobileSearchClearBtn) {
+    mobileSearchClearBtn.addEventListener('click', () => {
+      if (mobileSearchInput) {
+        mobileSearchInput.value = '';
+        mobileSearchInput.focus();
+      }
+      mobileSearchClearBtn.classList.add('hidden');
+      if (mobileSearchResults) mobileSearchResults.innerHTML = '';
+    });
+  }
+
+  mobileQuickTags.forEach(tag => {
+    tag.addEventListener('click', () => {
+      const q = tag.dataset.query;
+      if (mobileSearchInput) {
+        mobileSearchInput.value = q;
+        if (mobileSearchClearBtn) mobileSearchClearBtn.classList.remove('hidden');
+        handleMobileLiveSearch(q);
+      }
+    });
+  });
+
+  async function handleMobileLiveSearch(query) {
+    if (!mobileSearchResults) return;
+    try {
+      mobileSearchResults.innerHTML = '<div class="py-8 flex justify-center"><div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div></div>';
+      let results = [];
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
+      if (res && res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          results = json.data;
+        }
+      }
+      if (!results.length && window.AniListClient) {
+        results = await window.AniListClient.searchAnime(query, 1, 10).catch(() => []);
+      }
+
+      if (results.length > 0) {
+        mobileSearchResults.innerHTML = results.slice(0, 8).map(item => {
+          const title = item.title?.english || item.title?.romaji || 'Anime';
+          const poster = item.coverImage?.medium || item.coverImage?.large || '';
+          const score = item.averageScore ? (item.averageScore / 10).toFixed(1) : '8.5';
+
+          return `
+            <div class="p-2.5 rounded-xl bg-surface-container border border-white/[0.06] hover:bg-surface-container-high flex items-center gap-3 transition-colors cursor-pointer active:scale-98" onclick="window.location.hash='watch?anime=${item.id}&ep=1'; const m = document.getElementById('mobile-search-modal'); if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }">
+              <img src="${poster}" alt="${title}" class="w-10 h-14 object-cover rounded-lg flex-shrink-0">
+              <div class="flex flex-col min-w-0 flex-1">
+                <span class="text-xs font-bold text-white truncate">${title}</span>
+                <span class="text-[10px] font-mono text-gray-400 mt-0.5">${item.format || 'TV'} • ★ ${score}</span>
+              </div>
+              <span class="material-symbols-outlined text-primary text-[20px] flex-shrink-0">play_circle</span>
+            </div>
+          `;
+        }).join('') + `
+          <div class="pt-2 text-center">
+            <button class="w-full py-2.5 rounded-xl bg-surface-container-high text-xs font-mono font-bold text-secondary hover:text-white transition-colors cursor-pointer" onclick="window.location.hash='browse?search=${encodeURIComponent(query)}'; const m = document.getElementById('mobile-search-modal'); if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }">
+              Explore All Results for "${escapeQuotes(query)}" &rarr;
+            </button>
+          </div>
+        `;
+      } else {
+        mobileSearchResults.innerHTML = '<div class="py-8 text-center text-xs font-mono text-gray-500">No matching anime titles found.</div>';
+      }
+    } catch {
+      mobileSearchResults.innerHTML = '<div class="py-8 text-center text-xs font-mono text-gray-500">Error loading search results.</div>';
+    }
   }
 
   // ============================================================================
