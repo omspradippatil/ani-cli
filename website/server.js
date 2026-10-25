@@ -38,7 +38,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Download route shortcut for TV APK
 app.get('/download/tv-apk', (req, res) => {
-  const apkPath = path.join(__dirname, 'public/download/ani-cli-production-signed.apk');
+  const apkPath = path.join(__dirname, 'ani-cli-production-signed.apk');
   res.download(apkPath, 'ani-cli-tv.apk');
 });
 

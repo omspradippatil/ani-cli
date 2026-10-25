@@ -127,7 +127,13 @@ router.get('/anime/:id', async (req, res) => {
       details.title.userPreferred
     ].filter(Boolean);
 
-    const candidateTitles = new Set();
+    const titleParam = req.query.title;
+    if (titleParam) {
+      candidateTitles.add(titleParam);
+      candidateTitles.add(titleParam.replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim());
+      const prefix = titleParam.split(/[:\-]/)[0].trim();
+      if (prefix.length >= 3) candidateTitles.add(prefix);
+    }
     for (const t of baseTitles) {
       candidateTitles.add(t);
       candidateTitles.add(t.replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim());
@@ -161,6 +167,27 @@ router.get('/anime/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('API /anime/:id error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/episodes
+ * Search & get episode list by anime title query
+ */
+router.get('/episodes', async (req, res) => {
+  const query = req.query.query || req.query.q;
+  if (!query) return res.status(400).json({ success: false, error: 'Query parameter required' });
+  try {
+    const searchRes = await hianime.search(query);
+    let episodes = [];
+    let hiAnimeMatch = null;
+    if (searchRes.length > 0) {
+      hiAnimeMatch = searchRes[0];
+      episodes = await hianime.getEpisodes(hiAnimeMatch.id);
+    }
+    res.json({ success: true, data: episodes, hiAnimeMatch });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });

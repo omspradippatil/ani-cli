@@ -89,24 +89,8 @@ class WebApiMediaProvider @Inject constructor(
     override suspend fun search(query: String): Result<List<MediaItem>> = withContext(Dispatchers.IO) {
         try {
             val response = webAnimeService.search(query)
-            val searchData = response.data
-
-            val anilistResults = searchData?.anilist ?: emptyList()
-            if (anilistResults.isNotEmpty()) {
-                return@withContext Result.success(anilistResults.map { it.toMediaItem() })
-            }
-
-            // Fallback to HiAnime matches if AniList didn't match
-            val hiAnimeResults = searchData?.hianime ?: emptyList()
-            val fallbackItems = hiAnimeResults.map {
-                MediaItem(
-                    id = it.id ?: it.slug ?: "",
-                    title = it.title ?: "Unknown",
-                    posterUrl = ""
-                )
-            }
-
-            Result.success(fallbackItems)
+            val results = response.data ?: emptyList()
+            Result.success(results.map { it.toMediaItem() })
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -122,8 +106,10 @@ class WebApiMediaProvider @Inject constructor(
             val backdropUrl = detailData.bannerImage?.takeIf { it.isNotBlank() } ?: posterUrl
             val cleanDesc = cleanHtmlText(detailData.description)
 
-            // Resolve episodes
-            var rawEpisodes = detailData.streamEpisodes ?: emptyList()
+            // Resolve episodes from streamEpisodes, episodes, or fallback endpoint
+            var rawEpisodes = detailData.streamEpisodes?.takeIf { it.isNotEmpty() }
+                ?: detailData.episodes?.takeIf { it.isNotEmpty() }
+                ?: emptyList()
             if (rawEpisodes.isEmpty()) {
                 try {
                     val epResponse = webAnimeService.getEpisodes(mediaId)
@@ -191,9 +177,19 @@ class WebApiMediaProvider @Inject constructor(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
             )
 
+            val backendUrl = sharedPreferences.getString(PREF_BACKEND_URL, DEFAULT_BACKEND_URL)
+                ?.trim()?.trimEnd('/') ?: DEFAULT_BACKEND_URL
+
             val parsedSubtitles = (streamData.subtitles ?: emptyList()).map { sub ->
+                val finalSubUrl = when {
+                    !sub.proxySrc.isNullOrBlank() -> {
+                        if (sub.proxySrc.startsWith("http")) sub.proxySrc else "$backendUrl${sub.proxySrc}"
+                    }
+                    !sub.src.isNullOrBlank() -> sub.src
+                    else -> ""
+                }
                 Subtitle(
-                    url = sub.src ?: "",
+                    url = finalSubUrl,
                     language = sub.label ?: sub.lang ?: "English"
                 )
             }
@@ -213,8 +209,6 @@ class WebApiMediaProvider @Inject constructor(
 
             // 2. Web Backend Proxy Stream (Fallback if direct CDN blocks client ISP)
             if (!streamData.proxyM3u8.isNullOrBlank()) {
-                val backendUrl = sharedPreferences.getString(PREF_BACKEND_URL, DEFAULT_BACKEND_URL)
-                    ?.trim()?.trimEnd('/') ?: DEFAULT_BACKEND_URL
                 val proxyUrl = if (streamData.proxyM3u8.startsWith("http")) {
                     streamData.proxyM3u8
                 } else {

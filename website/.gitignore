@@ -1,2 +1,7 @@
 node_modules/
 .DS_Store
+.env
+.wrangler/
+data/*.db
+data/*.db-shm
+data/*.db-wal

@@ -1,0 +1,19 @@
+name = "om-cli-anime"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare D1 SQLite Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "omcli-db"
+database_id = "36bcb257-74db-4432-97f6-99c368558df3"
+migrations_dir = "migrations"
+
+# Cloudflare Edge Static Assets
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[vars]
+ENVIRONMENT = "production"

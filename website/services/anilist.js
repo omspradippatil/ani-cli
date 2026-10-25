@@ -10,7 +10,9 @@ async function fetchAniList(query, variables = {}) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'ani-cli-web/1.0'
+        'Referer': 'https://anilist.co',
+        'Origin': 'https://anilist.co',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
       },
       body: JSON.stringify({ query, variables })
     });

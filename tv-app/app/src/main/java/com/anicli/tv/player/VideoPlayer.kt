@@ -5,6 +5,7 @@ import android.media.AudioManager
 import android.net.Uri
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -38,6 +39,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -80,15 +82,23 @@ fun VideoPlayer(
     var showController by remember { mutableStateOf(true) }
     val rootFocusRequester = remember { FocusRequester() }
 
-    // Ensure device audio stream is unmuted and audible on startup
+    // State for user-selectable video quality and captions
+    var selectedQuality by remember { mutableStateOf("Auto") }
+    var showQualityDialog by remember { mutableStateOf(false) }
+    var captionsEnabled by remember { mutableStateOf(true) }
+    var isMuted by remember { mutableStateOf(false) }
+    var clearVoiceEnabled by remember { mutableStateOf(true) }
+
+    // Ensure device audio stream is unmuted and at full volume on startup
     LaunchedEffect(Unit) {
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             audioManager?.let { am ->
+                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
                 val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                 val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-                if (curVol < maxVol * 0.75) {
-                    am.setStreamVolume(AudioManager.STREAM_MUSIC, (maxVol * 0.85).toInt().coerceAtLeast(1), 0)
+                if (curVol < maxVol) {
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, maxVol, 0)
                 }
             }
         } catch (_: Exception) {}
@@ -112,6 +122,17 @@ fun VideoPlayer(
         }
     }
 
+    val trackSelector = remember {
+        DefaultTrackSelector(context).apply {
+            setParameters(
+                buildUponParameters()
+                    .setForceLowestBitrate(false)
+                    .setAllowMultipleAdaptiveSelections(true)
+                    .setMaxAudioChannelCount(2) // Stereo downmixing: mixes center-channel dialogue directly into left/right speakers so voices are 100% audible
+            )
+        }
+    }
+
     val exoPlayer = remember {
         val renderersFactory = DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
@@ -122,14 +143,6 @@ fun VideoPlayer(
             .setBufferDurationsMs(40000, 100000, 2500, 5000)
             .build()
 
-        val trackSelector = DefaultTrackSelector(context).apply {
-            setParameters(
-                buildUponParameters()
-                    .setForceLowestBitrate(false)
-                    .setAllowMultipleAdaptiveSelections(true)
-            )
-        }
-
         val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -139,11 +152,78 @@ fun VideoPlayer(
             .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .build().apply {
-                // handleAudioFocus=false avoids silent muting if emulator doesn't grant focus
-                setAudioAttributes(audioAttributes, false)
+                // handleAudioFocus=true ensures Android TV OS routes audio cleanly to speakers
+                setAudioAttributes(audioAttributes, true)
                 volume = 1.0f
                 playWhenReady = true
             }
+    }
+
+    val availableQualities = remember { listOf("Auto", "1080p", "720p", "480p", "360p") }
+
+    fun applyQuality(quality: String) {
+        selectedQuality = quality
+        val paramsBuilder = trackSelector.buildUponParameters()
+        if (quality == "Auto") {
+            paramsBuilder.clearVideoSizeConstraints()
+            paramsBuilder.clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+        } else {
+            val targetHeight = when (quality) {
+                "1080p" -> 1080
+                "720p" -> 720
+                "480p" -> 480
+                "360p" -> 360
+                else -> 1080
+            }
+            var appliedOverride = false
+            for (group in exoPlayer.currentTracks.groups) {
+                if (group.type == C.TRACK_TYPE_VIDEO) {
+                    val mediaTrackGroup = group.mediaTrackGroup
+                    for (i in 0 until mediaTrackGroup.length) {
+                        val format = mediaTrackGroup.getFormat(i)
+                        if (kotlin.math.abs(format.height - targetHeight) <= 30) {
+                            paramsBuilder.setOverrideForType(
+                                TrackSelectionOverride(mediaTrackGroup, listOf(i))
+                            )
+                            appliedOverride = true
+                            break
+                        }
+                    }
+                }
+                if (appliedOverride) break
+            }
+            if (!appliedOverride) {
+                paramsBuilder.setMaxVideoSize(Int.MAX_VALUE, targetHeight)
+            }
+        }
+        trackSelector.setParameters(paramsBuilder)
+    }
+
+    fun toggleCaptions() {
+        val newState = !captionsEnabled
+        captionsEnabled = newState
+        trackSelector.setParameters(
+            trackSelector.buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !newState)
+        )
+    }
+
+    fun toggleMute() {
+        val newMuted = !isMuted
+        isMuted = newMuted
+        exoPlayer.volume = if (newMuted) 0f else 1.0f
+    }
+
+    fun toggleClearVoice() {
+        val newEnabled = !clearVoiceEnabled
+        clearVoiceEnabled = newEnabled
+        val paramsBuilder = trackSelector.buildUponParameters()
+        if (newEnabled) {
+            paramsBuilder.setMaxAudioChannelCount(2)
+        } else {
+            paramsBuilder.setMaxAudioChannelCount(Int.MAX_VALUE)
+        }
+        trackSelector.setParameters(paramsBuilder)
     }
 
     // Update progress ticker
@@ -260,7 +340,11 @@ fun VideoPlayer(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
+                    subtitleView?.visibility = if (captionsEnabled) android.view.View.VISIBLE else android.view.View.GONE
                 }
+            },
+            update = { playerView ->
+                playerView.subtitleView?.visibility = if (captionsEnabled) android.view.View.VISIBLE else android.view.View.GONE
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -403,18 +487,55 @@ fun VideoPlayer(
                             )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .background(KuroNamiColors.SurfaceHigh, RoundedCornerShape(8.dp))
-                                .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        // Captions Quick Toggle Button
+                        Button(
+                            onClick = { toggleCaptions() },
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (captionsEnabled) KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
+                                focusedContainerColor = KuroNamiColors.Crimson
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
                         ) {
-                            Text(
-                                text = "1080p HD",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = KuroNamiColors.CyanSoft,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    if (captionsEnabled) Icons.Filled.ClosedCaption else Icons.Filled.ClosedCaptionDisabled,
+                                    contentDescription = "Toggle Captions",
+                                    tint = if (captionsEnabled) KuroNamiColors.Cyan else Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (captionsEnabled) "CC: ON" else "CC: OFF",
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (captionsEnabled) KuroNamiColors.Cyan else Color.White
+                                )
+                            }
+                        }
+
+                        // Video Quality Button
+                        Button(
+                            onClick = { showQualityDialog = true },
+                            colors = ButtonDefaults.colors(
+                                containerColor = KuroNamiColors.SurfaceHigh,
+                                focusedContainerColor = KuroNamiColors.Crimson
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.HighQuality,
+                                    contentDescription = "Video Quality",
+                                    tint = KuroNamiColors.CyanSoft,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (selectedQuality == "Auto") "Auto HD" else selectedQuality,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = KuroNamiColors.CyanSoft,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
 
                         Button(
@@ -543,21 +664,21 @@ fun VideoPlayer(
                             // Buffered bar
                             Box(
                                 modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(bufferRatio.coerceIn(0f, 1f))
-                                    .background(KuroNamiColors.Outline.copy(alpha = 0.5f))
+                                .fillMaxHeight()
+                                .fillMaxWidth(bufferRatio.coerceIn(0f, 1f))
+                                .background(KuroNamiColors.Outline.copy(alpha = 0.5f))
                             )
 
                             // Played bar
                             Box(
                                 modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(progressRatio.coerceIn(0.001f, 1f))
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            colors = listOf(KuroNamiColors.Crimson, KuroNamiColors.CrimsonContainer)
-                                        )
+                                .fillMaxHeight()
+                                .fillMaxWidth(progressRatio.coerceIn(0.001f, 1f))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(KuroNamiColors.Crimson, KuroNamiColors.CrimsonContainer)
                                     )
+                                )
                             )
                         }
 
@@ -576,7 +697,7 @@ fun VideoPlayer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             // Skip Intro
                             Button(
                                 onClick = {
@@ -642,30 +763,204 @@ fun VideoPlayer(
                                     Text("Episodes", fontWeight = FontWeight.Bold)
                                 }
                             }
+
+                            // Quality Button
+                            Button(
+                                onClick = { showQualityDialog = true },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.Crimson
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.HighQuality,
+                                        contentDescription = null,
+                                        tint = KuroNamiColors.CyanSoft,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Quality (${if (selectedQuality == "Auto") "Auto" else selectedQuality})", fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            // Captions Toggle
+                            Button(
+                                onClick = { toggleCaptions() },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = if (captionsEnabled) KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.Crimson
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        if (captionsEnabled) Icons.Filled.ClosedCaption else Icons.Filled.ClosedCaptionDisabled,
+                                        contentDescription = null,
+                                        tint = if (captionsEnabled) KuroNamiColors.Cyan else Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(if (captionsEnabled) "Captions: ON" else "Captions: OFF", fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
 
-                        // Volume / Unmute Quick Toggle
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Clear Voice Dialogue Enhancer
+                            Button(
+                                onClick = { toggleClearVoice() },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = if (clearVoiceEnabled) KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.Crimson
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        if (clearVoiceEnabled) "Voice: CLEAR" else "Voice: RAW",
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (clearVoiceEnabled) KuroNamiColors.Cyan else Color.White
+                                    )
+                                }
+                            }
+
+                            // Volume / Unmute Quick Toggle
+                            Button(
+                                onClick = { toggleMute() },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.Crimson
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        if (!isMuted) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                                        contentDescription = "Audio Volume",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(if (!isMuted) "Audio: 100%" else "MUTED", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Dedicated Glassmorphic Quality Selector Dialog
+        if (showQualityDialog) {
+            BackHandler { showQualityDialog = false }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(440.dp)
+                        .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
+                        .border(1.5.dp, KuroNamiColors.CyanSoft.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                        .padding(28.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Stream Quality",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .background(KuroNamiColors.CyanContainer, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "HLS CDN",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = KuroNamiColors.Cyan,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Select video resolution for current playback stream",
+                            color = KuroNamiColors.OnSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp, bottom = 18.dp)
+                        )
+
+                        availableQualities.forEach { q ->
+                            val isCurrent = selectedQuality == q
+                            Button(
+                                onClick = {
+                                    applyQuality(q)
+                                    showQualityDialog = false
+                                },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = if (isCurrent) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = when (q) {
+                                            "Auto" -> "Auto (Adaptive Bandwidth)"
+                                            "1080p" -> "1080p (Full HD - Highest)"
+                                            "720p" -> "720p (High Definition)"
+                                            "480p" -> "480p (Standard Definition)"
+                                            "360p" -> "360p (Data Saver)"
+                                            else -> q
+                                        },
+                                        color = Color.White,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    if (isCurrent) {
+                                        Text(
+                                            text = "ACTIVE",
+                                            color = KuroNamiColors.CyanSoft,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         Button(
-                            onClick = {
-                                val newVol = if (exoPlayer.volume > 0f) 0f else 1.0f
-                                exoPlayer.volume = newVol
-                            },
+                            onClick = { showQualityDialog = false },
                             colors = ButtonDefaults.colors(
                                 containerColor = KuroNamiColors.SurfaceHigh,
-                                focusedContainerColor = KuroNamiColors.Crimson
+                                focusedContainerColor = KuroNamiColors.SurfaceHighest
                             ),
                             shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    if (exoPlayer.volume > 0f) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                                    contentDescription = "Audio Volume",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (exoPlayer.volume > 0f) "Audio: ON (100%)" else "Audio: MUTED", fontWeight = FontWeight.Bold)
-                            }
+                            Text("Close", color = Color.White)
                         }
                     }
                 }

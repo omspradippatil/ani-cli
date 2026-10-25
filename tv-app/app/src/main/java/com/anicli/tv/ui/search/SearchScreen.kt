@@ -26,6 +26,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.grid.TvGridCells
 import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
 import androidx.tv.foundation.lazy.grid.items
+import androidx.tv.foundation.lazy.list.TvLazyRow
+import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.*
 import com.anicli.tv.core.presentation.MediaCard
 import com.anicli.tv.core.theme.KuroNamiColors
@@ -42,11 +44,22 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     var query by remember { mutableStateOf("") }
 
+    val quickPicks = listOf(
+        "Solo Leveling",
+        "Chainsaw Man",
+        "One Piece",
+        "Bleach",
+        "Demon Slayer",
+        "Black Clover",
+        "Jujutsu Kaisen",
+        "Attack on Titan"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(KuroNamiColors.Obsidian)
-            .padding(48.dp)
+            .padding(horizontal = 48.dp, vertical = 32.dp)
     ) {
         // Search Input Box
         Box(
@@ -102,7 +115,39 @@ fun SearchScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Quick Picks Row for 1-Click TV Remote Navigation
+        TvLazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(quickPicks) { pick ->
+                Surface(
+                    onClick = {
+                        query = pick
+                        viewModel.search(pick)
+                    },
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = KuroNamiColors.SurfaceLow,
+                        focusedContainerColor = KuroNamiColors.Crimson,
+                        contentColor = KuroNamiColors.OnSurfaceVariant,
+                        focusedContentColor = Color.White
+                    ),
+                    modifier = Modifier.border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                ) {
+                    Text(
+                        text = pick,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -127,7 +172,7 @@ fun SearchScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = KuroNamiColors.OnSurface,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
 

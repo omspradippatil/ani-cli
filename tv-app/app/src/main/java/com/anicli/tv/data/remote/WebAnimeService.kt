@@ -28,7 +28,7 @@ interface WebAnimeService {
     @GET("api/search")
     suspend fun search(
         @Query("q") query: String
-    ): WebApiResponse<WebSearchData>
+    ): WebApiResponse<List<WebAnimeItem>>
 
     @GET("api/anime/{id}")
     suspend fun getAnimeDetails(

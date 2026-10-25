@@ -142,6 +142,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnStreamSubDown = document.getElementById('btn-stream-sub-down');
   const btnStreamDubDown = document.getElementById('btn-stream-dub-down');
   const btnFullscreenDown = document.getElementById('btn-fullscreen-down');
+  const btnToggleCaptionsDown = document.getElementById('btn-toggle-captions-down');
+  const textCaptionsStatus = document.getElementById('text-captions-status');
+  const btnQualityDown = document.getElementById('btn-quality-down');
+  const textCurrentQuality = document.getElementById('text-current-quality');
+  const qualitySelectorWrap = document.getElementById('quality-selector-wrap');
+  const qualityDropdownMenu = document.getElementById('quality-dropdown-menu');
   const currentEpTitle = document.getElementById('current-ep-title');
   const currentAnimeTitleSub = document.getElementById('current-anime-title-sub');
   const btnSkipIntro = document.getElementById('btn-skip-intro');
@@ -197,6 +203,55 @@ document.addEventListener('DOMContentLoaded', () => {
   state.player.onNextEpisode = () => playNextEpisode();
   state.player.onPrevEpisode = () => playPrevEpisode();
   state.player.onToggleMode = () => switchGlobalAudio(state.currentMode === 'sub' ? 'dub' : 'sub');
+
+  // Captions Toggle Sync
+  state.player.onCaptionsToggle = (isEnabled) => {
+    if (textCaptionsStatus) {
+      textCaptionsStatus.textContent = isEnabled ? 'CC ON' : 'CC OFF';
+    }
+    if (btnToggleCaptionsDown) {
+      btnToggleCaptionsDown.classList.toggle('text-secondary', isEnabled);
+      btnToggleCaptionsDown.classList.toggle('text-gray-400', !isEnabled);
+      btnToggleCaptionsDown.classList.toggle('line-through', !isEnabled);
+      btnToggleCaptionsDown.classList.toggle('opacity-60', !isEnabled);
+    }
+    showToast(isEnabled ? 'Captions Enabled' : 'Captions Disabled', 'info');
+  };
+
+  // Quality List & Change Sync
+  state.player.onQualityList = (levels, currentLevel) => {
+    if (!qualityDropdownMenu) return;
+    qualityDropdownMenu.innerHTML = levels.map(lvl => {
+      const isSelected = lvl.level === currentLevel;
+      return `
+        <button class="quality-opt-btn px-2.5 py-1.5 text-left rounded-lg text-xs font-mono font-bold transition-all ${isSelected ? 'bg-primary-container text-white' : 'text-gray-300 hover:bg-surface-container-high hover:text-white'}" data-level="${lvl.level}">
+          ${lvl.html}
+        </button>
+      `;
+    }).join('');
+
+    qualityDropdownMenu.querySelectorAll('.quality-opt-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lvl = parseInt(btn.dataset.level);
+        state.player.setQuality(lvl);
+        qualityDropdownMenu.classList.add('hidden');
+      });
+    });
+  };
+
+  state.player.onQualityChange = (levelIndex, label) => {
+    if (textCurrentQuality) {
+      textCurrentQuality.textContent = `Quality: ${label}`;
+    }
+    if (qualityDropdownMenu) {
+      qualityDropdownMenu.querySelectorAll('.quality-opt-btn').forEach(btn => {
+        const isMatch = parseInt(btn.dataset.level) === levelIndex;
+        btn.className = `quality-opt-btn px-2.5 py-1.5 text-left rounded-lg text-xs font-mono font-bold transition-all ${isMatch ? 'bg-primary-container text-white' : 'text-gray-300 hover:bg-surface-container-high hover:text-white'}`;
+      });
+    }
+    showToast(`Streaming Quality: ${label}`, 'info');
+  };
 
   // Stop video & audio when user unloads or leaves tab
   window.addEventListener('beforeunload', () => { if (state.player) state.player.stop(); });
@@ -568,6 +623,29 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnStreamSubDown) btnStreamSubDown.addEventListener('click', () => switchGlobalAudio('sub'));
   if (btnStreamDubDown) btnStreamDubDown.addEventListener('click', () => switchGlobalAudio('dub'));
 
+  // Down Captions Disable/Enable Button
+  if (btnToggleCaptionsDown) {
+    btnToggleCaptionsDown.addEventListener('click', () => {
+      if (state.player) {
+        state.player.toggleCaptions();
+      }
+    });
+  }
+
+  // Down Streaming Quality Selector Menu
+  if (btnQualityDown && qualityDropdownMenu) {
+    btnQualityDown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      qualityDropdownMenu.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (qualitySelectorWrap && !qualitySelectorWrap.contains(e.target)) {
+        qualityDropdownMenu.classList.add('hidden');
+      }
+    });
+  }
+
   // Down Fullscreen ("Make Again Full Big") Button
   if (btnFullscreenDown) {
     btnFullscreenDown.addEventListener('click', () => {
@@ -630,31 +708,65 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
 
   async function loadHomeFeed() {
+    // 1. Trending Feed & Spotlight
     try {
-      const res = await fetch('/api/trending');
-      const json = await res.json();
+      let trendingItems = [];
+      const res = await fetch('/api/trending').catch(() => null);
+      if (res && res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          trendingItems = json.data;
+        }
+      }
+      if (!trendingItems.length && window.AniListClient) {
+        trendingItems = await window.AniListClient.getTrending(1, 20).catch(() => []);
+      }
 
-      if (json.success && Array.isArray(json.data)) {
-        state.rawTrendingList = json.data;
-        state.spotlightList = json.data.slice(0, 5);
-
+      if (trendingItems.length > 0) {
+        state.rawTrendingList = trendingItems;
+        state.spotlightList = trendingItems.slice(0, 5);
         initHeroSpotlight();
-        renderAnimeCards(trendingGrid, json.data);
+        renderAnimeCards(trendingGrid, trendingItems);
       }
     } catch (err) {
       console.error('[Feed] Trending error:', err);
     }
 
-    // Popular & Top Rated
-    fetch('/api/popular')
-      .then(r => r.json())
-      .then(j => j.success && renderAnimeCards(popularGrid, j.data))
-      .catch(() => {});
+    // 2. Popular Feed
+    (async () => {
+      try {
+        let popItems = [];
+        const res = await fetch('/api/popular').catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) popItems = json.data;
+        }
+        if (!popItems.length && window.AniListClient) {
+          popItems = await window.AniListClient.getPopular(1, 20).catch(() => []);
+        }
+        if (popItems.length > 0) renderAnimeCards(popularGrid, popItems);
+      } catch (e) {
+        console.error('[Feed] Popular error:', e);
+      }
+    })();
 
-    fetch('/api/top-rated')
-      .then(r => r.json())
-      .then(j => j.success && renderAnimeCards(topRatedGrid, j.data))
-      .catch(() => {});
+    // 3. Top Rated Feed
+    (async () => {
+      try {
+        let topItems = [];
+        const res = await fetch('/api/top-rated').catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) topItems = json.data;
+        }
+        if (!topItems.length && window.AniListClient) {
+          topItems = await window.AniListClient.getTopRated(1, 20).catch(() => []);
+        }
+        if (topItems.length > 0) renderAnimeCards(topRatedGrid, topItems);
+      } catch (e) {
+        console.error('[Feed] Top rated error:', e);
+      }
+    })();
   }
 
   function initHeroSpotlight() {
@@ -1023,12 +1135,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectedGenres.length > 0) queryParams.set('genre', selectedGenres[0]);
 
     try {
-      const res = await fetch(`/api/browse?${queryParams.toString()}`);
-      const json = await res.json();
+      let browseItems = null;
+      const res = await fetch(`/api/browse?${queryParams.toString()}`).catch(() => null);
+      if (res && res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (json.success && Array.isArray(json.data)) browseItems = json.data;
+      }
+      if (!browseItems && window.AniListClient) {
+        const fallback = await window.AniListClient.browseAnime({
+          search: state.browseFilters.search,
+          sort: state.browseFilters.sort,
+          format: state.browseFilters.format,
+          status: state.browseFilters.status,
+          genre: selectedGenres[0] || 'All'
+        }).catch(() => null);
+        if (fallback && Array.isArray(fallback.items)) browseItems = fallback.items;
+      }
 
-      if (json.success && Array.isArray(json.data)) {
-        browseResultsCount.textContent = `SHOWING ${json.data.length} ENTRIES`;
-        renderBrowseResults(json.data, state.browseFilters.viewMode);
+      if (browseItems && browseItems.length > 0) {
+        browseResultsCount.textContent = `SHOWING ${browseItems.length} ENTRIES`;
+        renderBrowseResults(browseItems, state.browseFilters.viewMode);
       } else {
         browseResultsContainer.innerHTML = '<div class="col-span-full py-8 text-center text-gray-500 font-mono text-xs">No matching titles found.</div>';
       }
@@ -1124,17 +1250,56 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAudioButtons(mode);
 
     try {
-      // Fetch anime metadata
-      const res = await fetch(`/api/anime/${animeId}`);
-      const json = await res.json();
+      let anime = null;
+      let episodes = [];
 
-      if (!json.success || !json.data) {
-        throw new Error(json.error || 'Failed to fetch anime metadata');
+      // Check if we already have this anime cached in client memory
+      const cached = (state.rawTrendingList || []).find(a => String(a.id) === String(animeId)) ||
+                     (state.spotlightList || []).find(a => String(a.id) === String(animeId)) ||
+                     (state.userWatchlist || []).find(a => String(a.anime_id) === String(animeId)) ||
+                     (state.userHistory || []).find(a => String(a.anime_id) === String(animeId));
+      const titleHint = cached?.title?.english || cached?.title?.romaji || cached?.title?.userPreferred || cached?.anime_title || '';
+
+      const res = await fetch(`/api/anime/${animeId}${titleHint ? `?title=${encodeURIComponent(titleHint)}` : ''}`).catch(() => null);
+      if (res && res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (json.success && json.data) {
+          anime = json.data;
+          episodes = Array.isArray(anime.episodes) ? anime.episodes : (anime.streamEpisodes || []);
+        }
       }
 
-      state.currentAnime = json.data;
-      const anime = json.data;
-      const episodes = Array.isArray(anime.episodes) ? anime.episodes : (anime.streamEpisodes || []);
+      // Fallback: direct browser AniList query + backend HiAnime episode extraction
+      if ((!anime || !episodes.length) && window.AniListClient) {
+        const directDetails = await window.AniListClient.getAnimeDetails(animeId).catch(() => null);
+        if (directDetails) {
+          const directTitle = directDetails.title?.english || directDetails.title?.romaji || directDetails.title?.userPreferred || '';
+          const epRes = await fetch(`/api/episodes?query=${encodeURIComponent(directTitle)}`).catch(() => null);
+          let extractedEps = [];
+          let match = null;
+          if (epRes && epRes.ok) {
+            const epJson = await epRes.json().catch(() => ({}));
+            if (epJson.success && Array.isArray(epJson.data)) {
+              extractedEps = epJson.data;
+              match = epJson.hiAnimeMatch;
+            }
+          }
+          anime = {
+            ...directDetails,
+            totalEpisodes: directDetails.episodes || extractedEps.length,
+            episodes: extractedEps,
+            streamEpisodes: extractedEps,
+            hiAnimeMatch: match
+          };
+          episodes = extractedEps;
+        }
+      }
+
+      if (!anime) {
+        throw new Error('Failed to fetch anime metadata');
+      }
+
+      state.currentAnime = anime;
       state.currentAnime.episodes = episodes;
 
       // Update Breadcrumbs & Info
@@ -1774,11 +1939,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleLiveSearch(query) {
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      const json = await res.json();
+      let results = [];
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
+      if (res && res.ok) {
+        const json = await res.json().catch(() => ({}));
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          results = json.data;
+        }
+      }
+      if (!results.length && window.AniListClient) {
+        results = await window.AniListClient.searchAnime(query, 1, 10).catch(() => []);
+      }
 
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        searchDropdown.innerHTML = json.data.slice(0, 5).map(item => {
+      if (results.length > 0) {
+        searchDropdown.innerHTML = results.slice(0, 5).map(item => {
           const title = item.title?.english || item.title?.romaji || 'Anime';
           const poster = item.coverImage?.medium || item.coverImage?.large || '';
           const score = item.averageScore ? (item.averageScore / 10).toFixed(1) : '8.5';

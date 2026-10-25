@@ -75,7 +75,8 @@ data class WebAnimeDetail(
     @SerializedName("description") val description: String? = null,
     @SerializedName("format") val format: String? = null,
     @SerializedName("status") val status: String? = null,
-    @SerializedName("episodes") val episodes: Int? = null,
+    @SerializedName("episodes") val episodes: List<WebEpisode>? = null,
+    @SerializedName("totalEpisodes") val totalEpisodes: Int? = null,
     @SerializedName("averageScore") val averageScore: Int? = null,
     @SerializedName("streamEpisodes") val streamEpisodes: List<WebEpisode>? = null
 )

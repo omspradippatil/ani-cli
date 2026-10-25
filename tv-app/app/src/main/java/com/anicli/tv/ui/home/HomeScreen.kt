@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -31,6 +33,7 @@ import com.anicli.tv.core.presentation.MediaCard
 import com.anicli.tv.core.theme.KuroNamiColors
 import com.anicli.tv.domain.model.MediaItem
 import com.anicli.tv.domain.model.MediaRow
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -43,6 +46,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     var selectedDrawerItem by remember { mutableStateOf("Home") }
     var focusedItem by remember { mutableStateOf<MediaItem?>(null) }
+    val initialFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         viewModel.loadFeed()
@@ -54,6 +58,15 @@ fun HomeScreen(
             val firstAvailable = trendingRow?.items?.firstOrNull() 
                 ?: state.rows.firstOrNull { it.items.isNotEmpty() }?.items?.firstOrNull()
             focusedItem = firstAvailable
+        }
+    }
+
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading) {
+            delay(400)
+            try {
+                initialFocusRequester.requestFocus()
+            } catch (_: Exception) {}
         }
     }
 
@@ -94,6 +107,7 @@ fun HomeScreen(
                         HeroBanner(
                             item = focusedItem,
                             isWatchlisted = state.favoriteMediaIds.contains(focusedItem?.id ?: ""),
+                            primaryFocusRequester = initialFocusRequester,
                             onClick = { focusedItem?.let { onMediaClick(it.id) } },
                             onToggleWatchlist = { focusedItem?.let { viewModel.toggleWatchlist(it) } }
                         )
@@ -212,20 +226,20 @@ fun Sidebar(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // Navigation Items
-        DrawerItem(
-            icon = Icons.Filled.Search,
-            text = "Search",
-            isSelected = selectedItem == "Search",
-            isExpanded = isExpanded,
-            onClick = { onItemSelected("Search"); onSearchClick() }
-        )
+        // Navigation Items: Home FIRST so default focus is Home!
         DrawerItem(
             icon = Icons.Filled.Home,
             text = "Home",
             isSelected = selectedItem == "Home",
             isExpanded = isExpanded,
             onClick = { onItemSelected("Home") }
+        )
+        DrawerItem(
+            icon = Icons.Filled.Search,
+            text = "Search",
+            isSelected = selectedItem == "Search",
+            isExpanded = isExpanded,
+            onClick = { onItemSelected("Search"); onSearchClick() }
         )
         DrawerItem(
             icon = Icons.Filled.Bookmark,
@@ -355,233 +369,250 @@ fun GenreChipsBar(
 fun HeroBanner(
     item: MediaItem?,
     isWatchlisted: Boolean = false,
+    primaryFocusRequester: FocusRequester = remember { FocusRequester() },
     onClick: (String) -> Unit,
     onToggleWatchlist: () -> Unit = {}
 ) {
     if (item == null) return
-    var isFocused by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(340.dp)
             .padding(horizontal = 48.dp, vertical = 12.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(KuroNamiColors.SurfaceLow)
+            .border(
+                width = 1.dp,
+                color = KuroNamiColors.Outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(16.dp)
+            )
     ) {
-        Card(
-            onClick = { onClick(item.id) },
-            colors = CardDefaults.colors(
-                containerColor = KuroNamiColors.SurfaceLow,
-                focusedContainerColor = KuroNamiColors.SurfaceHigh
-            ),
-            shape = CardDefaults.shape(RoundedCornerShape(16.dp)),
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(item.backdropUrl?.takeIf { it.isNotBlank() } ?: item.posterUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Vignette Gradients
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .onFocusChanged { isFocused = it.isFocused }
-                .border(
-                    width = if (isFocused) 2.5.dp else 1.dp,
-                    color = if (isFocused) KuroNamiColors.Crimson else KuroNamiColors.Outline.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(16.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            KuroNamiColors.Obsidian.copy(alpha = 0.95f),
+                            KuroNamiColors.Obsidian.copy(alpha = 0.85f),
+                            KuroNamiColors.Obsidian.copy(alpha = 0.4f),
+                            Color.Transparent
+                        )
+                    )
                 )
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            KuroNamiColors.Obsidian.copy(alpha = 0.9f)
+                        )
+                    )
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(32.dp)
+                .fillMaxWidth(0.70f)
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(item.backdropUrl?.takeIf { it.isNotBlank() } ?: item.posterUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                // High-End Multi-Stop Vignette Gradient
+            // Badges Row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 4.dp)
+            ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    KuroNamiColors.Obsidian.copy(alpha = 0.95f),
-                                    KuroNamiColors.Obsidian.copy(alpha = 0.85f),
-                                    KuroNamiColors.Obsidian.copy(alpha = 0.4f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    KuroNamiColors.Obsidian.copy(alpha = 0.9f)
-                                )
-                            )
-                        )
-                )
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(32.dp)
-                        .fillMaxWidth(0.68f)
+                        .background(KuroNamiColors.CrimsonContainer, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
-                    // Web-Matched Badges Row (#1 Spotlight, 4K HDR, Simulcast Exclusive, Dual Audio)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .background(KuroNamiColors.CrimsonContainer, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "#1 SPOTLIGHT",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .background(KuroNamiColors.SurfaceHighest.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
-                                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "4K HDR",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .background(KuroNamiColors.CyanContainer, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "SIMULCAST",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = KuroNamiColors.Cyan,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .background(KuroNamiColors.SurfaceHighest.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
-                                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "DUAL AUDIO",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = KuroNamiColors.CyanSoft,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        if (!item.rating.isNullOrBlank()) {
-                            Text(
-                                text = "★ ${item.rating}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = KuroNamiColors.Gold,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
                     Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.displaySmall,
+                        text = "#1 SPOTLIGHT",
+                        style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        fontWeight = FontWeight.ExtraBold
                     )
+                }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-
+                Box(
+                    modifier = Modifier
+                        .background(KuroNamiColors.SurfaceHighest.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
                     Text(
-                        text = item.description ?: "Stream anime in ultra-crisp HD with synced dual-audio playback on Om CLI.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = KuroNamiColors.OnSurfaceVariant,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
+                        text = "4K HDR",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
+                }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                Box(
+                    modifier = Modifier
+                        .background(KuroNamiColors.CyanContainer, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "SIMULCAST",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KuroNamiColors.Cyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                    // Action pill buttons
+                Box(
+                    modifier = Modifier
+                        .background(KuroNamiColors.SurfaceHighest.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "DUAL AUDIO",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KuroNamiColors.CyanSoft,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (!item.rating.isNullOrBlank()) {
+                    Text(
+                        text = "★ ${item.rating}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = KuroNamiColors.Gold,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.displaySmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = item.description ?: "Stream anime in ultra-crisp HD with synced dual-audio playback on Om CLI.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = KuroNamiColors.OnSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Action Buttons with standard focusable buttons
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { onClick(item.id) },
+                    colors = ButtonDefaults.colors(
+                        containerColor = KuroNamiColors.Crimson,
+                        focusedContainerColor = KuroNamiColors.CrimsonContainer
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.focusRequester(primaryFocusRequester)
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isFocused) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHighest,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Watch Episode 1",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        Icon(
+                            Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Watch Episode 1",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
-                        Surface(
-                            onClick = onToggleWatchlist,
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                            colors = ClickableSurfaceDefaults.colors(
-                                containerColor = KuroNamiColors.SurfaceLow,
-                                contentColor = Color.White,
-                                focusedContainerColor = KuroNamiColors.SurfaceHighest,
-                                focusedContentColor = Color.White
-                            ),
-                            modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Icon(
-                                    if (isWatchlisted) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                    contentDescription = null,
-                                    tint = if (isWatchlisted) KuroNamiColors.Crimson else Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (isWatchlisted) "In Watchlist" else "Add to Watchlist",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
+                Button(
+                    onClick = onToggleWatchlist,
+                    colors = ButtonDefaults.colors(
+                        containerColor = KuroNamiColors.SurfaceHigh,
+                        focusedContainerColor = KuroNamiColors.SurfaceHighest
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            if (isWatchlisted) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                            contentDescription = null,
+                            tint = if (isWatchlisted) KuroNamiColors.Crimson else Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isWatchlisted) "In Watchlist" else "Add to Watchlist",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = { onClick(item.id) },
+                    colors = ButtonDefaults.colors(
+                        containerColor = KuroNamiColors.SurfaceLow,
+                        focusedContainerColor = KuroNamiColors.SurfaceHigh
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = KuroNamiColors.OnSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Details",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }

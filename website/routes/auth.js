@@ -1,5 +1,5 @@
 // website/routes/auth.js
-// Authentication routes for registration, login, session validation
+// Authentication routes for registration, login, session validation (SQLite & Cloudflare D1 compatible)
 
 const express = require('express');
 const router = express.Router();
@@ -19,7 +19,7 @@ function extractToken(req) {
 /**
  * POST /api/auth/register
  */
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
 
   if (!username || !password) {
@@ -35,10 +35,10 @@ router.post('/register', (req, res) => {
   }
 
   try {
-    const user = db.registerUser(username.trim(), email ? email.trim() : null, password);
-    const token = db.createSession(user.id);
-    const stats = db.getUserStats(user.id);
-    const settings = db.getUserSettings(user.id);
+    const user = await db.registerUser(username.trim(), email ? email.trim() : null, password);
+    const token = await db.createSession(user.id);
+    const stats = await db.getUserStats(user.id);
+    const settings = await db.getUserSettings(user.id);
 
     res.json({
       success: true,
@@ -59,7 +59,7 @@ router.post('/register', (req, res) => {
 /**
  * POST /api/auth/login
  */
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const loginIdentity = req.body.username || req.body.login;
   const password = req.body.password;
 
@@ -67,90 +67,102 @@ router.post('/login', (req, res) => {
     return res.status(400).json({ success: false, error: 'Username/email and password are required' });
   }
 
-  const user = db.verifyUser(loginIdentity.trim(), password);
-  if (!user) {
-    return res.status(401).json({ success: false, error: 'Invalid username/email or password' });
-  }
-
-  const token = db.createSession(user.id);
-  const stats = db.getUserStats(user.id);
-  const settings = db.getUserSettings(user.id);
-
-  res.json({
-    success: true,
-    token,
-    user,
-    data: {
-      user,
-      token,
-      stats,
-      settings
+  try {
+    const user = await db.verifyUser(loginIdentity.trim(), password);
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid username/email or password' });
     }
-  });
+
+    const token = await db.createSession(user.id);
+    const stats = await db.getUserStats(user.id);
+    const settings = await db.getUserSettings(user.id);
+
+    res.json({
+      success: true,
+      token,
+      user,
+      data: {
+        user,
+        token,
+        stats,
+        settings
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**
  * POST /api/auth/demo
  * Instant 1-click Demo Login for Alex Mercer
  */
-router.post('/demo', (req, res) => {
-  const user = db.verifyUser('Alex Mercer', 'demo123');
-  if (!user) {
-    return res.status(500).json({ success: false, error: 'Demo user not seeded' });
-  }
-
-  const token = db.createSession(user.id);
-  const stats = db.getUserStats(user.id);
-  const settings = db.getUserSettings(user.id);
-
-  res.json({
-    success: true,
-    token,
-    user,
-    data: {
-      user,
-      token,
-      stats,
-      settings
+router.post('/demo', async (req, res) => {
+  try {
+    const user = await db.verifyUser('Alex Mercer', 'demo123');
+    if (!user) {
+      return res.status(500).json({ success: false, error: 'Demo user not seeded' });
     }
-  });
+
+    const token = await db.createSession(user.id);
+    const stats = await db.getUserStats(user.id);
+    const settings = await db.getUserSettings(user.id);
+
+    res.json({
+      success: true,
+      token,
+      user,
+      data: {
+        user,
+        token,
+        stats,
+        settings
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**
  * GET /api/auth/me
  */
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   const token = extractToken(req);
   if (!token) {
     return res.status(401).json({ success: false, error: 'No authorization token provided' });
   }
 
-  const user = db.getUserByToken(token);
-  if (!user) {
-    return res.status(401).json({ success: false, error: 'Session expired or invalid' });
-  }
-
-  const stats = db.getUserStats(user.id);
-  const settings = db.getUserSettings(user.id);
-
-  res.json({
-    success: true,
-    user,
-    data: {
-      user,
-      stats,
-      settings
+  try {
+    const user = await db.getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Session expired or invalid' });
     }
-  });
+
+    const stats = await db.getUserStats(user.id);
+    const settings = await db.getUserSettings(user.id);
+
+    res.json({
+      success: true,
+      user,
+      data: {
+        user,
+        stats,
+        settings
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**
  * POST /api/auth/logout
  */
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   const token = extractToken(req);
   if (token) {
-    db.removeSession(token);
+    await db.removeSession(token);
   }
   res.json({ success: true, message: 'Logged out successfully' });
 });

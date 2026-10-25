@@ -11,7 +11,13 @@ class AnimePlayer {
     this.onPrevEpisode = null;
     this.onToggleMode = null;
     this.onTimeUpdate = null;
+    this.onQualityList = null;
+    this.onQualityChange = null;
+    this.onCaptionsToggle = null;
     this.autoNext = true;
+    this.captionsEnabled = true;
+    this.levels = [];
+    this.currentQualityLabel = 'Auto';
   }
 
   /**
@@ -52,7 +58,7 @@ class AnimePlayer {
         if (posterUrl) this.art.poster = posterUrl;
         if (subUrl && this.art.subtitle) {
           this.art.subtitle.switch(subUrl);
-          this.art.subtitle.show = true;
+          this.art.subtitle.show = this.captionsEnabled;
         } else if (this.art.subtitle) {
           this.art.subtitle.show = false;
         }
@@ -147,30 +153,47 @@ class AnimePlayer {
 
               art.on('destroy', () => {
                 if (hls) {
-                  try { hls.destroy(); } catch (e) {}
+                  try { hls.destroy(); } catch(e) {}
                 }
               });
 
               hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-                // Populate dynamic quality selector in Artplayer
-                if (hls.levels && hls.levels.length > 1) {
+                if (hls.levels && hls.levels.length > 0) {
                   const levels = hls.levels.map((lvl, idx) => ({
                     html: `${lvl.height}p`,
                     level: idx,
+                    height: lvl.height,
                     default: idx === hls.currentLevel
                   }));
-                  levels.unshift({ html: 'Auto', level: -1, default: true });
+                  levels.unshift({ html: 'Auto', level: -1, height: 0, default: hls.currentLevel === -1 });
+                  self.levels = levels;
 
+                  // Update dynamic quality selector in Artplayer
                   art.setting.update({
                     name: 'quality',
                     html: 'Quality',
-                    tooltip: 'Auto',
+                    tooltip: self.currentQualityLabel,
                     selector: levels,
                     onSelect: function (item) {
-                      hls.currentLevel = item.level;
-                      return item.html;
+                      return self.setQuality(item.level);
                     }
                   });
+
+                  // Update in-player Quality control dropdown
+                  if (art.controls && art.controls['quality-btn']) {
+                    art.controls.update({
+                      name: 'quality-btn',
+                      selector: levels,
+                      onSelect: function (item) {
+                        return self.setQuality(item.level);
+                      }
+                    });
+                  }
+
+                  // Notify external listener (e.g. bottom toolbar dropdown)
+                  if (typeof self.onQualityList === 'function') {
+                    self.onQualityList(levels, hls.currentLevel);
+                  }
                 }
               });
 
@@ -187,7 +210,7 @@ class AnimePlayer {
                       break;
                     default:
                       console.error('[Player] Fatal unrecoverable error:', data);
-                      try { hls.destroy(); } catch (e) {}
+                      try { hls.destroy(); } catch(e) {}
                       break;
                   }
                 }
@@ -205,7 +228,7 @@ class AnimePlayer {
         pip: false,
         autoSize: false,
         autoMini: false,
-        screenshot: false, // Streamlined to prevent controls bar overflow
+        screenshot: false,
         setting: true,
         loop: false,
         flip: false,
@@ -274,7 +297,7 @@ class AnimePlayer {
               }
             },
           },
-          // Audio Mode SUB / DUB toggle button (Right controls, accessible in fullscreen)
+          // Audio Mode SUB / DUB toggle button (Right controls)
           {
             name: 'audio-mode-btn',
             position: 'right',
@@ -285,6 +308,27 @@ class AnimePlayer {
                 self.onToggleMode();
               }
             },
+          },
+          // Captions Disable/Enable CC Button (Right controls)
+          {
+            name: 'cc-btn',
+            position: 'right',
+            index: 11,
+            html: `<button class="art-btn-cc ${this.captionsEnabled ? '' : 'disabled'}" title="Toggle Captions (CC)">CC</button>`,
+            click: function () {
+              self.toggleCaptions();
+            },
+          },
+          // Streaming Quality Button with popup selector (Right controls)
+          {
+            name: 'quality-btn',
+            position: 'right',
+            index: 12,
+            html: `<button class="art-btn-quality" title="Change Streaming Quality">${this.currentQualityLabel}</button>`,
+            selector: [{ html: 'Auto', level: -1, default: true }],
+            onSelect: function (item) {
+              return self.setQuality(item.level);
+            },
           }
         ]
       });
@@ -293,6 +337,10 @@ class AnimePlayer {
       this.art.on('ready', () => {
         if (savedTime > 0) {
           this.art.currentTime = savedTime;
+        }
+        // Sync initial captions state
+        if (this.art.subtitle) {
+          this.art.subtitle.show = this.captionsEnabled;
         }
       });
 
@@ -336,12 +384,64 @@ class AnimePlayer {
   }
 
   /**
+   * Toggles captions (subtitles) on or off
+   */
+  toggleCaptions() {
+    this.captionsEnabled = !this.captionsEnabled;
+    if (this.art && this.art.subtitle) {
+      this.art.subtitle.show = this.captionsEnabled;
+    }
+    if (this.art && this.art.notice) {
+      this.art.notice.show = this.captionsEnabled ? 'Captions: Enabled' : 'Captions: Disabled';
+    }
+
+    // Update in-player CC button appearance
+    const ccBtn = this.art?.template?.$controls?.querySelector('.art-btn-cc');
+    if (ccBtn) {
+      ccBtn.classList.toggle('disabled', !this.captionsEnabled);
+    }
+
+    if (typeof this.onCaptionsToggle === 'function') {
+      this.onCaptionsToggle(this.captionsEnabled);
+    }
+
+    return this.captionsEnabled;
+  }
+
+  /**
+   * Sets streaming quality level (-1 for Auto, or level index)
+   */
+  setQuality(levelIndex) {
+    levelIndex = parseInt(levelIndex);
+    if (this.art && this.art.hls) {
+      this.art.hls.currentLevel = levelIndex;
+      const match = this.levels.find(l => l.level === levelIndex);
+      const label = match ? match.html : (levelIndex === -1 ? 'Auto' : `${this.art.hls.levels[levelIndex]?.height || ''}p`);
+      this.currentQualityLabel = label;
+
+      if (this.art.notice) {
+        this.art.notice.show = `Quality: ${label}`;
+      }
+
+      // Update in-player quality button label
+      const qBtn = this.art.template?.$controls?.querySelector('.art-btn-quality');
+      if (qBtn) qBtn.textContent = label;
+
+      if (typeof this.onQualityChange === 'function') {
+        this.onQualityChange(levelIndex, label);
+      }
+      return label;
+    }
+    return null;
+  }
+
+  /**
    * Completely stops, pauses, and tears down video/audio to guarantee no background sound
    */
   stop() {
     if (this.art) {
       try {
-        if (this.art.hls) {
+        if (this.art.hls && typeof this.art.hls.destroy === 'function') {
           this.art.hls.destroy();
           this.art.hls = null;
         }

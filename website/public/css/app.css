@@ -281,6 +281,58 @@ body {
   color: #001f24 !important;
 }
 
+.art-video-player .art-btn-cc {
+  background: rgba(0, 227, 253, 0.15) !important;
+  color: #00e3fd !important;
+  border: 1px solid rgba(0, 227, 253, 0.4) !important;
+  border-radius: 6px !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  padding: 3px 7px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.art-video-player .art-btn-cc:hover {
+  background: #00e3fd !important;
+  color: #001f24 !important;
+}
+
+.art-video-player .art-btn-cc.disabled {
+  opacity: 0.4 !important;
+  color: #888888 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  text-decoration: line-through !important;
+}
+
+.art-video-player .art-btn-quality {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.art-video-player .art-btn-quality:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: #00e3fd !important;
+  color: #00e3fd !important;
+}
+
+.quality-opt-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #00e3fd;
+}
+
 /* Fullscreen / Full Big Button Styling */
 .art-video-player .art-control-fullscreen,
 .art-video-player .art-control-fullscreenWeb {
