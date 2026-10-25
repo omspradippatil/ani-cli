@@ -7,6 +7,8 @@ const path = require('path');
 
 const apiRoutes = require('./routes/api');
 const proxyRoutes = require('./routes/proxy');
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/user');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,7 +27,9 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Mount API & Streaming Proxy routes
+// Mount Authentication, User & Streaming Proxy routes
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api', apiRoutes);
 app.use('/api/proxy', proxyRoutes);
 
@@ -47,7 +51,7 @@ app.use((req, res) => {
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`===============================================`);
-    console.log(`🚀 ani-cli Anime Streaming Server is live!`);
+    console.log(`🚀 Om CLI Anime Streaming Server is live!`);
     console.log(`📡 Local:   http://localhost:${PORT}`);
     console.log(`🌍 Network: http://0.0.0.0:${PORT}`);
     console.log(`📺 TV APK:  http://localhost:${PORT}/download/tv-apk`);

@@ -1,14 +1,25 @@
 package com.anicli.tv.ui.search
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -17,62 +28,114 @@ import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
 import androidx.tv.foundation.lazy.grid.items
 import androidx.tv.material3.*
 import com.anicli.tv.core.presentation.MediaCard
+import com.anicli.tv.core.theme.KuroNamiColors
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onMediaClick: (String) -> Unit,
+    onBack: () -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
+    BackHandler { onBack() }
     val state by viewModel.state.collectAsState()
+    val focusManager = LocalFocusManager.current
     var query by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(KuroNamiColors.Obsidian)
             .padding(48.dp)
     ) {
-        BasicTextField(
-            value = query,
-            onValueChange = { 
-                query = it
-                viewModel.search(it)
-            },
-            textStyle = TextStyle(
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = MaterialTheme.typography.displaySmall.fontSize
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+        // Search Input Box
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp),
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = "Search for anime, movies, series...",
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                            style = MaterialTheme.typography.displaySmall
-                        )
+                .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(12.dp))
+                .border(1.5.dp, KuroNamiColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 20.dp, vertical = 14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = KuroNamiColors.Crimson,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = {
+                        query = it
+                        viewModel.search(it)
+                    },
+                    textStyle = TextStyle(
+                        color = Color.White,
+                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    cursorBrush = SolidColor(KuroNamiColors.Crimson),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        focusManager.moveFocus(FocusDirection.Down)
+                    }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onKeyEvent { keyEvent ->
+                            if (keyEvent.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                                focusManager.moveFocus(FocusDirection.Down)
+                                true
+                            } else false
+                        },
+                    decorationBox = { innerTextField ->
+                        if (query.isEmpty()) {
+                            Text(
+                                text = "Search anime, movies, series...",
+                                color = KuroNamiColors.OnSurfaceVariant,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
-                }
+                )
             }
-        )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         if (state.isLoading) {
-            Text("Searching...", modifier = Modifier.padding(top = 32.dp))
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Searching across anime catalog...",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = KuroNamiColors.Cyan
+                )
+            }
         } else if (state.results.isEmpty() && query.isNotEmpty()) {
-            Text("No results found for '$query'")
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "No anime found for \"$query\"",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = KuroNamiColors.OnSurfaceVariant
+                )
+            }
         } else {
+            if (state.results.isNotEmpty()) {
+                Text(
+                    text = "Search Results (${state.results.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = KuroNamiColors.OnSurface,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             TvLazyVerticalGrid(
                 columns = TvGridCells.Fixed(5),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
                 items(state.results) { item ->
                     MediaCard(

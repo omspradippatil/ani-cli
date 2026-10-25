@@ -1,16 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="ani-cli Stream - Ultra-fast, ad-free anime streaming with high-res art, instant HLS playback, and dual-audio sub/dub.">
-  <meta name="theme-color" content="#06070a">
-  <title>ani-cli Stream | Watch Anime Online in HD</title>
+  <meta name="description" content="Om CLI — Precision Anime Streaming with obsidian dark aesthetics, instant dual-audio HLS playback, and synchronized watch history.">
+  <meta name="theme-color" content="#0c0e14">
+  <title>Om CLI — Precision Anime Streaming</title>
 
-  <!-- Google Fonts: Inter & Space Grotesk -->
+  <!-- Google Fonts: Plus Jakarta Sans & Space Grotesk -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN & Om CLI Configuration -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#111319",
+            "surface-dim": "#111319",
+            "surface-bright": "#373940",
+            "surface-container-lowest": "#0c0e14",
+            "surface-container-low": "#191b22",
+            "surface-container": "#1d1f26",
+            "surface-container-high": "#282a30",
+            "surface-container-highest": "#33353b",
+            "on-surface": "#e2e2ea",
+            "on-surface-variant": "#e5bdc0",
+            "primary": "#ffb2ba",
+            "primary-container": "#ff4f73",
+            "on-primary": "#670020",
+            "on-primary-container": "#5a001b",
+            "secondary": "#bdf4ff",
+            "secondary-container": "#00e3fd",
+            "on-secondary": "#00363d",
+            "on-secondary-container": "#00616d",
+            "tertiary": "#dbb8ff",
+            "tertiary-container": "#b36fff",
+            "outline": "#ac888b",
+            "outline-variant": "#5c3f42",
+            "error": "#ffb4ab",
+            "error-container": "#93000a"
+          },
+          fontFamily: {
+            "sans": ["Plus Jakarta Sans", "sans-serif"],
+            "mono": ["Space Grotesk", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
 
   <!-- Artplayer & Hls.js Styles & Engines -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.css">
@@ -19,149 +62,257 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
 </head>
-<body>
+<body class="bg-surface text-on-surface font-sans antialiased selection:bg-primary selection:text-on-primary min-h-screen flex flex-col">
 
   <!-- ==========================================================================
-       Header Navigation
+       GLOBAL NAVBAR (Om CLI Precision Header)
        ========================================================================== -->
-  <header class="navbar">
-    <div class="nav-container">
-      <a href="/" class="logo-group" id="nav-logo-btn">
-        <div class="logo-icon-wrap">
-          <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        </div>
-        <span class="logo-title">ani-cli <span class="logo-badge">STREAM</span></span>
-      </a>
+  <header class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest/85 backdrop-blur-2xl border-b border-white/[0.08] shadow-[0_4px_30px_rgba(0,0,0,0.7)]">
+    <div class="h-20 w-full max-w-[1840px] mx-auto px-4 md:px-8 flex items-center justify-between gap-4">
+      
+      <!-- Logo & Navigation Tabs -->
+      <div class="flex items-center gap-6 lg:gap-8 flex-shrink-0">
+        <a href="#home" class="flex items-center gap-2.5 group cursor-pointer" id="nav-logo-btn">
+          <div class="relative flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container border border-primary/30 group-hover:border-primary transition-all">
+            <span class="w-3.5 h-3.5 rounded-sm bg-gradient-to-br from-primary-container to-primary shadow-[0_0_12px_#ff4f73]"></span>
+          </div>
+          <div class="flex flex-col">
+            <span class="font-bold text-lg tracking-wider text-white group-hover:text-primary transition-colors uppercase">
+              Om <span class="text-primary-container">CLI</span>
+            </span>
+            <span class="font-mono text-[9px] text-secondary tracking-[0.2em] uppercase -mt-1 font-semibold">Precision Stream</span>
+          </div>
+        </a>
 
-      <!-- Search Wrapper with Live Floating Dropdown -->
-      <div class="search-wrapper">
-        <div class="search-input-box">
-          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="global-search-input" class="search-input" placeholder="Search anime, movies, series..." autocomplete="off">
-        </div>
-        <div class="search-dropdown" id="search-dropdown"></div>
+        <!-- Desktop Navigation Items -->
+        <nav class="hidden lg:flex items-center gap-1">
+          <a href="#home" class="nav-tab px-3.5 py-2 rounded-lg text-sm font-semibold text-white bg-surface-container-high transition-all" data-nav="home">Home</a>
+          <a href="#browse" class="nav-tab px-3.5 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-surface-container transition-all" data-nav="browse">Browse &amp; Genres</a>
+          <a href="#watchlist" class="nav-tab px-3.5 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-surface-container transition-all" data-nav="watchlist">My Watchlist</a>
+          <a href="#account" class="nav-tab px-3.5 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-surface-container transition-all" data-nav="account">Account</a>
+        </nav>
       </div>
 
-      <!-- Navigation Links -->
-      <nav>
-        <ul class="nav-links">
-          <li><a href="/" class="nav-link active" id="nav-home-btn">Home</a></li>
-          <li><a href="#trending-section" class="nav-link" id="nav-trending-btn">Trending</a></li>
-          <li><a href="#popular-section" class="nav-link" id="nav-popular-btn">Popular</a></li>
-          <li><a href="#top-rated-section" class="nav-link" id="nav-top-btn">Top Airing</a></li>
-        </ul>
-      </nav>
+      <!-- Live Command Search Bar -->
+      <div class="relative flex-1 max-w-lg hidden sm:block">
+        <div class="relative w-full flex items-center bg-surface-container-low border border-white/[0.08] rounded-xl px-3.5 py-2 shadow-inner focus-within:border-secondary focus-within:bg-surface-container transition-all">
+          <span class="material-symbols-outlined text-gray-400 text-[19px] mr-2.5">search</span>
+          <input type="text" id="global-search-input" class="w-full bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none" placeholder="Search anime, studios, genres..." autocomplete="off">
+          <div class="flex items-center gap-1.5 ml-2">
+            <kbd class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-mono text-[10px] tracking-wider font-bold shadow-sm">⌘K</kbd>
+          </div>
+        </div>
+        <!-- Live Floating Results Dropdown -->
+        <div class="search-dropdown absolute left-0 right-0 top-full mt-2 bg-surface-container-low border border-white/[0.1] rounded-xl shadow-2xl p-2 hidden z-50 max-h-96 overflow-y-auto" id="search-dropdown"></div>
+      </div>
 
-      <!-- TV APK Download Button -->
-      <a href="/download/tv-apk" class="btn-apk-header" title="Download Android TV App">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
-          <polyline points="17 2 12 7 7 2"></polyline>
-        </svg>
-        <span>TV App APK</span>
-      </a>
+      <!-- Right Controls: Audio Preference & Auth State -->
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <!-- Quick Audio Switch (SUB / DUB) -->
+        <div class="hidden md:flex items-center bg-surface-container-low p-1 rounded-lg border border-white/[0.06]">
+          <button id="quick-sub-btn" class="px-2.5 py-1 rounded text-xs font-mono font-bold transition-all bg-secondary-container text-on-secondary-container shadow-sm">SUB</button>
+          <button id="quick-dub-btn" class="px-2.5 py-1 rounded text-xs font-mono font-bold transition-all text-gray-400 hover:text-white">DUB</button>
+        </div>
+
+        <!-- 100% FREE Badge (Replaced VIP Tier) -->
+        <span class="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-bold uppercase tracking-wider">
+          <span class="material-symbols-outlined text-[14px]">lock_open</span> 100% FREE
+        </span>
+
+        <!-- GUEST STATE: Sign In Button (Replaces Download TV Version) -->
+        <div id="nav-guest-block">
+          <button id="btn-sign-in-nav" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-primary-container to-[#ff1a53] text-white text-xs font-bold uppercase tracking-wider shadow-[0_0_18px_rgba(255,79,115,0.35)] hover:brightness-110 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-[16px]">account_circle</span>
+            Sign In
+          </button>
+        </div>
+
+        <!-- LOGGED IN USER PROFILE DROPDOWN -->
+        <div id="nav-user-block" class="relative group hidden">
+          <button class="flex items-center gap-2.5 p-1 rounded-xl bg-surface-container-low border border-white/[0.08] hover:border-primary/50 transition-all cursor-pointer">
+            <div class="relative w-8 h-8 rounded-lg overflow-hidden border border-primary/40 bg-surface-container-high">
+              <img id="nav-avatar-img" src="" alt="Avatar" class="w-full h-full object-cover">
+              <span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-secondary shadow-[0_0_6px_#00daf3]"></span>
+            </div>
+            <div class="hidden sm:flex flex-col text-left pr-1.5">
+              <span id="nav-user-name" class="text-xs font-bold text-white leading-tight">Alex Mercer</span>
+              <span id="nav-user-tier" class="text-[10px] font-mono text-emerald-400 font-semibold">LVL 42 OTAKU</span>
+            </div>
+            <span class="material-symbols-outlined text-[16px] text-gray-400 group-hover:text-white transition-colors">expand_more</span>
+          </button>
+
+          <!-- Dropdown Flyout -->
+          <div class="absolute right-0 top-full mt-2 w-64 bg-surface-container-low border border-white/[0.1] rounded-xl p-2 shadow-2xl invisible opacity-0 translate-y-2 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 z-50">
+            <div class="px-3 py-2.5 mb-1.5 bg-surface-container-lowest rounded-lg border border-white/[0.05]">
+              <div class="flex items-center justify-between">
+                <span id="flyout-user-name" class="text-xs font-bold text-white">Alex Mercer</span>
+                <span id="flyout-user-badge" class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[9px] font-bold">100% FREE</span>
+              </div>
+              <span id="flyout-user-email" class="text-[11px] font-mono text-gray-400">alex@omcli.io</span>
+            </div>
+            <div class="py-1 flex flex-col gap-0.5">
+              <a href="#watchlist" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-surface-container hover:text-white transition-all">
+                <span class="flex items-center gap-2.5">
+                  <span class="material-symbols-outlined text-[16px] text-secondary">bookmark</span>My Watchlist
+                </span>
+                <span id="flyout-watchlist-count" class="font-mono text-xs font-bold text-secondary">0</span>
+              </a>
+              <a href="#account-history" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-surface-container hover:text-white transition-all">
+                <span class="flex items-center gap-2.5">
+                  <span class="material-symbols-outlined text-[16px] text-primary">play_circle</span>Watch History
+                </span>
+                <span id="flyout-history-count" class="font-mono text-xs font-bold text-primary">0</span>
+              </a>
+              <a href="#account-settings" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-surface-container hover:text-white transition-all">
+                <span class="material-symbols-outlined text-[16px] text-gray-400">tune</span>Playback Preferences
+              </a>
+              <a href="#account" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-surface-container hover:text-white transition-all">
+                <span class="material-symbols-outlined text-[16px] text-gray-400">manage_accounts</span>Account Profile
+              </a>
+            </div>
+            <div class="pt-1.5 mt-1.5 border-t border-white/[0.08]">
+              <button id="btn-logout" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all text-left">
+                <span class="material-symbols-outlined text-[16px]">logout</span>Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </header>
 
   <!-- ==========================================================================
-       VIEW 1: Browse / Home Page
+       VIEW 1: HOME DISCOVERY VIEW
        ========================================================================== -->
-  <div id="home-view">
-    <!-- Hero Spotlight Carousel -->
-    <section class="hero-spotlight" id="hero-spotlight">
-      <div class="hero-backdrop" id="hero-backdrop"></div>
-      <div class="hero-gradient-overlay"></div>
+  <div id="home-view" class="w-full flex-1 pt-20">
+    <!-- Hero Spotlight Section -->
+    <section class="relative w-full min-h-[680px] lg:min-h-[780px] overflow-hidden bg-surface-container-lowest -mt-20 pt-20 flex items-center">
+      <!-- Ambient Backdrop Image -->
+      <div id="hero-backdrop" class="absolute inset-0 bg-cover bg-center transition-all duration-700 scale-105" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDMTWQ0wwQuABhjs_o9Y3AalHAZE_NPqMR5KFhu664c6tGFhpUCpcRBPmBLwrTT__vT6AMDPmMrRoV4xfGKQNcqz8MKxN8NIPq7prq1q8Pdv3jRiJqgONJxs2IeG-Y8laqw3wCVFlr2Fjah3nmAhInBJ08NXFpFJ58vDhMqIq2YRdC4GuwgLrcFEeZUt72D3-rCPMez6Kvi23Mfe0mZZA5fPmgZT8Rc2dRWgzOXLS3s');"></div>
       
-      <div class="hero-content">
-        <div class="hero-badges-row">
-          <span class="hero-rank-pill" id="hero-rank">🔥 #1 Spotlight</span>
-          <span class="hero-rating-pill" id="hero-score">★ 8.8</span>
-          <span class="hero-meta-pill" id="hero-episodes">24 Episodes</span>
-          <span class="hero-meta-pill">Ultra HD</span>
-        </div>
-        <h1 class="hero-title" id="hero-title">Loading Featured Anime...</h1>
-        <p class="hero-desc" id="hero-desc">Stream top anime series seamlessly with high-definition multi-source audio and subtitles.</p>
-        
-        <div class="hero-cta-group">
-          <button class="btn-hero-play" id="hero-play-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            Watch Episode 1
-          </button>
-          <button class="btn-hero-info" id="hero-info-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-            View Details
-          </button>
-        </div>
+      <!-- Deep Obsidian Scrim Gradients -->
+      <div class="absolute inset-0 bg-gradient-to-r from-surface-container-lowest via-surface-container-lowest/80 to-transparent"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-surface-container-lowest/40"></div>
+      
+      <!-- Japanese Watermark Kanji -->
+      <div id="hero-watermark" class="absolute right-12 top-28 select-none pointer-events-none opacity-10 text-white font-bold text-[140px] leading-none [writing-mode:vertical-rl] tracking-tighter hidden xl:block">
+        チェンソーマン
       </div>
 
-      <!-- Carousel Dots -->
-      <div class="hero-indicators" id="hero-indicators"></div>
+      <!-- Hero Main Content -->
+      <div class="relative z-10 w-full max-w-[1840px] mx-auto px-4 md:px-8 py-12 flex flex-col justify-between h-full">
+        <div class="max-w-2xl flex flex-col gap-4">
+          <!-- Badges Row -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="hero-rank" class="inline-flex items-center gap-1 px-3 py-1 rounded bg-primary-container text-on-primary-container font-mono text-[11px] font-bold uppercase shadow-sm">
+              <span class="material-symbols-outlined text-[13px]">local_fire_department</span>
+              #1 Spotlight
+            </span>
+            <span class="px-2.5 py-1 rounded bg-surface-container-high/90 text-white font-mono text-[11px] font-bold border border-white/[0.08]">
+              4K HDR
+            </span>
+            <span class="px-2.5 py-1 rounded bg-secondary-container text-on-secondary-container font-mono text-[11px] font-bold">
+              Simulcast Exclusive
+            </span>
+            <span class="px-2.5 py-1 rounded bg-surface-container-high/90 text-secondary font-mono text-[11px] font-bold border border-white/[0.08]">
+              Dual Audio [Sub &amp; Dub]
+            </span>
+          </div>
+
+          <!-- Title & Subtitle -->
+          <div class="flex flex-col gap-1">
+            <span id="hero-studio-meta" class="font-mono text-xs uppercase text-secondary tracking-[0.25em] font-semibold">MAPPA Studio • Featured Arc</span>
+            <h1 id="hero-title" class="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-none drop-shadow-xl uppercase">
+              Chainsaw Man
+            </h1>
+          </div>
+
+          <!-- Metadata Metrics Row -->
+          <div class="flex items-center gap-3 text-gray-300 font-mono text-xs flex-wrap font-semibold">
+            <span id="hero-score" class="flex items-center gap-1 text-primary">
+              <span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+              9.28 RATING
+            </span>
+            <span>•</span>
+            <span id="hero-year">2025</span>
+            <span>•</span>
+            <span id="hero-format" class="px-1.5 py-0.5 rounded bg-surface-container-high text-white text-[10px]">TV SERIES</span>
+            <span>•</span>
+            <span id="hero-episodes">24 Episodes</span>
+            <span>•</span>
+            <div id="hero-genres" class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded bg-surface-container text-white text-xs">Action</span>
+            </div>
+          </div>
+
+          <!-- Synopsis -->
+          <p id="hero-desc" class="text-sm md:text-base text-gray-300 line-clamp-3 max-w-xl leading-relaxed">
+            Denji finds himself unexpectedly enchanted by Reze, a mysterious girl working at a quiet rainy-day coffee shop. Yet peace is fleeting in Tokyo’s devil-hunting underworld as deadly explosive secrets ignite a nationwide clash.
+          </p>
+
+          <!-- Call to Action Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-3">
+            <button id="hero-play-btn" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-primary-container to-[#ff1a53] text-white font-bold text-sm shadow-[0_0_24px_rgba(255,79,115,0.4)] hover:scale-105 active:scale-95 transition-all">
+              <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+              Watch Episode 1
+            </button>
+            <button id="hero-watchlist-btn" class="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl bg-surface-container-high border border-white/[0.08] text-white font-semibold text-sm hover:bg-surface-bright transition-all">
+              <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
+              Add to My List
+            </button>
+            <button id="hero-info-btn" class="inline-flex items-center gap-2 px-4 py-3.5 rounded-xl bg-surface-container-low/80 border border-white/[0.08] text-gray-400 hover:text-white transition-all text-sm backdrop-blur-md">
+              <span class="material-symbols-outlined text-[18px]">info</span>
+              Details
+            </button>
+          </div>
+        </div>
+
+        <!-- Carousel Indicators -->
+        <div class="mt-8 pt-4 flex items-center justify-between border-t border-white/[0.06]">
+          <span class="font-mono text-xs uppercase tracking-wider text-gray-500 font-bold">Featured Spotlight Collection</span>
+          <div class="flex items-center gap-2" id="hero-indicators"></div>
+        </div>
+      </div>
     </section>
 
-    <!-- Main Content Rows -->
-    <main class="main-wrapper">
-      <!-- Genre Quick-Filter Bar -->
-      <div class="genre-bar" id="genre-bar">
-        <button class="genre-chip active" data-genre="All">All Genres</button>
-        <button class="genre-chip" data-genre="Action">Action</button>
-        <button class="genre-chip" data-genre="Adventure">Adventure</button>
-        <button class="genre-chip" data-genre="Shounen">Shounen</button>
-        <button class="genre-chip" data-genre="Fantasy">Fantasy</button>
-        <button class="genre-chip" data-genre="Sci-Fi">Sci-Fi</button>
-        <button class="genre-chip" data-genre="Comedy">Comedy</button>
-        <button class="genre-chip" data-genre="Supernatural">Supernatural</button>
-        <button class="genre-chip" data-genre="Romance">Romance</button>
-        <button class="genre-chip" data-genre="Drama">Drama</button>
+    <!-- Main Feed Section -->
+    <main class="w-full max-w-[1840px] mx-auto px-4 md:px-8 py-10 flex flex-col gap-10">
+      
+      <!-- Quick Category Presets Bar -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none" id="genre-bar">
+        <button class="genre-chip active px-4 py-1.5 rounded-full bg-primary-container text-white font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap shadow-sm" data-genre="All">All Genres</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Action">Action</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Fantasy">Dark Fantasy</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Shounen">Shounen</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Sci-Fi">Cyberpunk / Sci-Fi</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Supernatural">Supernatural</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Drama">Drama</button>
+        <button class="genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap" data-genre="Comedy">Comedy</button>
       </div>
 
-      <!-- Continue Watching Section (Dynamic) -->
-      <section id="continue-watching-section" style="display: none;">
-        <div class="section-head">
-          <h2 class="section-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            Continue Watching
-          </h2>
+      <!-- CONTINUE WATCHING RAIL (Synchronized with SQLite Backend) -->
+      <section id="continue-watching-section" class="flex flex-col gap-4 hidden">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[22px]">play_circle</span>
+            <h2 class="text-xl font-bold tracking-tight text-white uppercase">Continue Watching</h2>
+          </div>
+          <a href="#account-history" class="text-xs font-mono text-secondary hover:underline font-bold">VIEW HISTORY &rarr;</a>
         </div>
-        <div class="anime-grid" id="continue-grid"></div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" id="continue-grid"></div>
       </section>
 
-      <!-- Trending Section -->
-      <section id="trending-section">
-        <div class="section-head">
-          <h2 class="section-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-            Trending Now
-          </h2>
+      <!-- TRENDING NOW SECTION -->
+      <section id="trending-section" class="flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[22px]">trending_up</span>
+            <h2 class="text-xl font-bold tracking-tight text-white uppercase">Trending Now</h2>
+          </div>
+          <span class="font-mono text-xs text-gray-500 font-bold uppercase">Updated Hourly</span>
         </div>
-        <div class="anime-grid" id="trending-grid">
-          <!-- Skeletons while loading -->
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-        </div>
-      </section>
-
-      <!-- Popular Section -->
-      <section id="popular-section">
-        <div class="section-head">
-          <h2 class="section-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            Popular This Season
-          </h2>
-        </div>
-        <div class="anime-grid" id="popular-grid">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" id="trending-grid">
           <div class="skeleton-card"></div>
           <div class="skeleton-card"></div>
           <div class="skeleton-card"></div>
@@ -171,15 +322,16 @@
         </div>
       </section>
 
-      <!-- Top Rated Section -->
-      <section id="top-rated-section">
-        <div class="section-head">
-          <h2 class="section-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-            All-Time Highest Rated
-          </h2>
+      <!-- POPULAR THIS SEASON SECTION -->
+      <section id="popular-section" class="flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary text-[22px]">star</span>
+            <h2 class="text-xl font-bold tracking-tight text-white uppercase">Popular This Season</h2>
+          </div>
+          <a href="#browse" class="text-xs font-mono text-gray-400 hover:text-white font-bold">EXPLORE MORE &rarr;</a>
         </div>
-        <div class="anime-grid" id="top-rated-grid">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" id="popular-grid">
           <div class="skeleton-card"></div>
           <div class="skeleton-card"></div>
           <div class="skeleton-card"></div>
@@ -188,117 +340,665 @@
           <div class="skeleton-card"></div>
         </div>
       </section>
+
+      <!-- ALL-TIME HIGHEST RATED SECTION -->
+      <section id="top-rated-section" class="flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-tertiary text-[22px]">workspace_premium</span>
+            <h2 class="text-xl font-bold tracking-tight text-white uppercase">All-Time Highest Rated</h2>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" id="top-rated-grid">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </section>
+
     </main>
   </div>
 
   <!-- ==========================================================================
-       VIEW 2: Cinema Watch Page View
+       VIEW 2: ADVANCED ANIME SEARCH & BROWSE VIEW
        ========================================================================== -->
-  <div id="watch-view" class="watch-page" style="display: none;">
-    <!-- Breadcrumbs -->
-    <div class="watch-breadcrumbs">
-      <a id="btn-back-home">&larr; Back to Browse</a>
-      <span>/</span>
-      <span id="crumb-anime-title">Anime</span>
-      <span>/</span>
-      <span class="current" id="crumb-episode-num">Episode 1</span>
-    </div>
-
-    <!-- Cinema 2-Column Grid -->
-    <div class="cinema-layout">
-      <!-- Left Column: Video Player & Controls & Details -->
-      <div class="cinema-main">
-        <div class="player-stage">
-          <div class="player-ambient-glow" id="player-ambient-glow"></div>
-          <div id="artplayer-mount"></div>
-        </div>
-
-        <!-- Toolbar Under Player -->
-        <div class="player-toolbar">
-          <div class="toolbar-episode-info">
-            <h2 id="current-ep-title">Episode 1</h2>
-            <p id="current-anime-title-sub">Series Title</p>
+  <div id="browse-view" class="w-full flex-1 pt-20 hidden">
+    <!-- Sticky Command Search & Sorters Header -->
+    <section class="w-full bg-surface-container-lowest/90 border-b border-white/[0.08] sticky top-20 z-40 backdrop-blur-xl">
+      <div class="max-w-[1840px] mx-auto px-4 md:px-8 py-4 flex flex-col gap-4">
+        
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <!-- Command Input -->
+          <div class="relative flex-1 group">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-secondary">
+              <span class="material-symbols-outlined text-[20px]">manage_search</span>
+            </div>
+            <input type="text" id="browse-search-input" class="w-full pl-11 pr-28 py-2.5 rounded-xl bg-surface-container-low border border-white/[0.08] text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-secondary transition-all shadow-inner" placeholder="Search titles, aliases, creators, character names, or studios...">
+            <div class="absolute inset-y-0 right-2 flex items-center gap-2">
+              <button id="browse-clear-btn" class="p-1 rounded text-gray-500 hover:text-white transition-colors" title="Clear">
+                <span class="material-symbols-outlined text-[16px]">close</span>
+              </button>
+              <kbd class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-mono text-[10px] tracking-wider uppercase font-bold">⌘ + ENTER</kbd>
+            </div>
           </div>
 
-          <div class="toolbar-controls">
-            <!-- Audio Mode Switcher (SUB / DUB) -->
-            <div class="audio-switcher-group">
-              <button class="audio-btn active" id="btn-audio-sub">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>
-                SUB
-              </button>
-              <button class="audio-btn" id="btn-audio-dub">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                DUB
-              </button>
+          <!-- Controls: Sort & View Modes -->
+          <div class="flex items-center justify-between lg:justify-end gap-3 flex-shrink-0">
+            <!-- Sort dropdown -->
+            <div class="flex items-center bg-surface-container-low border border-white/[0.08] rounded-xl px-2.5 py-1">
+              <span class="font-mono text-[10px] uppercase text-gray-400 font-bold mr-1">SORT:</span>
+              <select id="browse-sort-select" class="bg-transparent text-white text-xs font-semibold py-1.5 focus:outline-none cursor-pointer">
+                <option value="score" class="bg-surface-container text-white">Top Score (AniList)</option>
+                <option value="popularity" class="bg-surface-container text-white">Most Popular</option>
+                <option value="updated" class="bg-surface-container text-white">Recently Updated</option>
+                <option value="release" class="bg-surface-container text-white">Release Year</option>
+                <option value="episodes" class="bg-surface-container text-white">Episode Count</option>
+              </select>
             </div>
 
-            <!-- Previous / Next Episode -->
-            <button class="nav-ep-btn" id="btn-prev-ep">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
-              Prev
-            </button>
-            <button class="nav-ep-btn" id="btn-next-ep">
-              Next
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-            </button>
+            <!-- View Mode Switcher -->
+            <div class="flex items-center bg-surface-container-low border border-white/[0.08] p-1 rounded-xl">
+              <button id="view-mode-grid" class="p-1.5 rounded-lg bg-surface-container-high text-secondary shadow-sm transition-all" title="Modular Grid View">
+                <span class="material-symbols-outlined text-[18px]">grid_view</span>
+              </button>
+              <button id="view-mode-detailed" class="p-1.5 rounded-lg text-gray-400 hover:text-white transition-all" title="Detailed Meta List View">
+                <span class="material-symbols-outlined text-[18px]">view_agenda</span>
+              </button>
+              <button id="view-mode-compact" class="p-1.5 rounded-lg text-gray-400 hover:text-white transition-all" title="Compact Catalog Feed">
+                <span class="material-symbols-outlined text-[18px]">density_medium</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Anime Details Card -->
-        <div class="anime-detail-card">
-          <img src="" alt="Poster" class="detail-poster" id="detail-poster-img">
-          <div class="detail-info">
-            <h1 class="detail-title" id="detail-anime-title">Anime Title</h1>
-            <div class="detail-native-title" id="detail-anime-native">Native Title</div>
-            <div class="detail-tags-row" id="detail-tags-container"></div>
-            <p class="detail-synopsis" id="detail-synopsis-text">Anime plot synopsis...</p>
-          </div>
+        <!-- Quick Filter Presets Strip -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none" id="browse-quick-chips">
+          <span class="font-mono text-[10px] uppercase tracking-wider text-gray-500 whitespace-nowrap flex items-center gap-1 font-bold">
+            <span class="material-symbols-outlined text-[13px] text-primary">bolt</span> PRESETS:
+          </span>
+          <button class="browse-chip active px-3 py-1 rounded-full bg-primary-container text-white font-mono text-[11px] font-bold whitespace-nowrap" data-preset="trending">Trending Now</button>
+          <button class="browse-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-[11px] font-bold whitespace-nowrap" data-preset="top_rated">Highest Rated (8.5+)</button>
+          <button class="browse-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-[11px] font-bold whitespace-nowrap" data-preset="dub">English Dubbed</button>
+          <button class="browse-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-[11px] font-bold whitespace-nowrap" data-preset="sub">Subbed Masters</button>
+          <button class="browse-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-[11px] font-bold whitespace-nowrap" data-preset="movies">Anime Movies</button>
+          <button class="browse-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-[11px] font-bold whitespace-nowrap" data-preset="completed">Completed Classics</button>
         </div>
+
       </div>
+    </section>
 
-      <!-- Right Column: Episode Selector & Recommendations -->
-      <aside class="cinema-sidebar">
-        <!-- Episode Navigator Panel -->
-        <div class="episodes-panel">
-          <div class="episodes-panel-head">
-            <div class="episodes-panel-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-              Episodes
+    <!-- Two-Column Master Workspace -->
+    <div class="max-w-[1840px] w-full mx-auto px-4 md:px-8 py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- LEFT COLUMN: Advanced Filter Matrix (Sticky & Micro-Engineered) -->
+        <aside class="lg:col-span-3 xl:col-span-3 lg:sticky lg:top-48 bg-surface-container-lowest/80 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 flex flex-col gap-6 shadow-2xl">
+          <div class="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-secondary text-[20px]">filter_alt</span>
+              <h2 class="font-bold text-sm text-white uppercase tracking-wider">Telemetry Filters</h2>
             </div>
-            <span style="font-size: 0.8rem; color: var(--text-muted);" id="episodes-total-count">0 EP</span>
+            <button id="browse-reset-filters" class="font-mono text-[10px] uppercase text-gray-400 hover:text-primary transition-colors font-bold">
+              Reset (0)
+            </button>
           </div>
 
-          <input type="text" id="episode-search-filter" class="episodes-filter-input" placeholder="Filter ep number...">
-
-          <!-- Range Pagination Tabs (e.g. 1-50, 51-100) -->
-          <div class="range-tabs-row" id="range-tabs-container"></div>
-
-          <!-- Episode Tiles Grid -->
-          <div class="episodes-scroll-list" id="episodes-scroll-list"></div>
-        </div>
-
-        <!-- Recommendations Panel -->
-        <div class="recs-panel">
-          <div class="episodes-panel-title" style="margin-bottom: 1rem;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
-            You Might Also Like
+          <!-- Format Filter -->
+          <div class="flex flex-col gap-2">
+            <span class="font-mono text-xs uppercase tracking-wider text-gray-400 font-bold">Format</span>
+            <div class="grid grid-cols-3 gap-1.5" id="filter-format-group">
+              <button class="filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold" data-format="all">All</button>
+              <button class="filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold" data-format="TV">TV Series</button>
+              <button class="filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold" data-format="MOVIE">Movie</button>
+            </div>
           </div>
-          <div id="recs-list-container"></div>
+
+          <!-- Status Filter -->
+          <div class="flex flex-col gap-2">
+            <span class="font-mono text-xs uppercase tracking-wider text-gray-400 font-bold">Release Status</span>
+            <div class="grid grid-cols-3 gap-1.5" id="filter-status-group">
+              <button class="filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold" data-status="all">All</button>
+              <button class="filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold" data-status="RELEASING">Airing</button>
+              <button class="filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold" data-status="FINISHED">Finished</button>
+            </div>
+          </div>
+
+          <!-- Genre Multi-Select Checkboxes -->
+          <div class="flex flex-col gap-2">
+            <span class="font-mono text-xs uppercase tracking-wider text-gray-400 font-bold">Genres</span>
+            <div class="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1" id="filter-genres-matrix">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </aside>
+
+        <!-- RIGHT COLUMN: Results Workspace -->
+        <div class="lg:col-span-9 xl:col-span-9 flex flex-col gap-6">
+          <div class="flex items-center justify-between">
+            <span id="browse-results-count" class="font-mono text-xs font-bold text-gray-400 uppercase">SHOWING 0 ENTRIES</span>
+            <div id="browse-active-tags" class="flex items-center gap-1.5 flex-wrap"></div>
+          </div>
+
+          <!-- Dynamic Output Grid / List / Feed -->
+          <div id="browse-results-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+            <!-- Populated via JavaScript -->
+          </div>
         </div>
-      </aside>
+
+      </div>
     </div>
   </div>
 
   <!-- ==========================================================================
-       VIEW 3: Search Results Page View
+       VIEW 3: CINEMA WATCH ROOM VIEW
        ========================================================================== -->
-  <div id="search-view" class="main-wrapper" style="display: none; margin-top: 74px;">
-    <div class="section-head">
-      <h2 class="section-title" id="search-results-heading">Search Results</h2>
+  <div id="watch-view" class="w-full flex-1 pt-20 hidden">
+    <!-- Ambient Glow Aura -->
+    <div class="relative w-full overflow-hidden pointer-events-none">
+      <div id="player-glow-1" class="absolute -top-40 left-1/4 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-primary-container/15 blur-[140px]"></div>
+      <div id="player-glow-2" class="absolute -top-40 right-1/4 h-[450px] w-[700px] rounded-full bg-secondary-container/10 blur-[130px]"></div>
     </div>
-    <div class="anime-grid" id="search-grid"></div>
+
+    <div class="w-full max-w-[1840px] mx-auto px-4 md:px-8 pt-4 pb-16 flex flex-col gap-6 relative z-10">
+      
+      <!-- Breadcrumbs & Utility Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-4 py-2 px-1">
+        <nav class="flex items-center gap-2 flex-wrap font-mono text-xs uppercase tracking-wider text-gray-400 font-bold">
+          <a href="#home" class="hover:text-primary transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px]">home</span>Home
+          </a>
+          <span class="text-gray-600 font-normal">/</span>
+          <a href="#browse" id="crumb-anime-genre" class="hover:text-white transition-colors">Anime</a>
+          <span class="text-gray-600 font-normal">/</span>
+          <span id="crumb-anime-title" class="text-white">Series Title</span>
+          <span class="text-gray-600 font-normal">/</span>
+          <span id="crumb-episode-num" class="text-secondary font-bold">Episode 1</span>
+        </nav>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btn-share-room" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.08] hover:bg-surface-container text-gray-300 hover:text-white text-xs font-semibold transition-all">
+            <span class="material-symbols-outlined text-[15px]">share</span>Share
+          </button>
+          <button id="btn-toggle-watchlist" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.08] text-gray-300 hover:text-primary text-xs font-semibold transition-all">
+            <span class="material-symbols-outlined text-[15px]" id="icon-watchlist-status">bookmark_add</span>
+            <span id="text-watchlist-status">Add to Watchlist</span>
+          </button>
+          <button id="btn-theater-mode" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-white/[0.08] hover:bg-surface-bright text-secondary text-xs font-semibold transition-all">
+            <span class="material-symbols-outlined text-[15px]">width_wide</span>Theater Mode
+          </button>
+        </div>
+      </div>
+
+      <!-- Cinema 2-Column Grid Stage -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start" id="player-grid-layout">
+        
+        <!-- LEFT COLUMN: Video Player, Telemetry HUD, Anime Details (8 Cols) -->
+        <div class="xl:col-span-8 flex flex-col gap-4">
+          
+          <!-- Stream Audio Switch & Edge Server Selector -->
+          <div class="flex flex-wrap items-center justify-between gap-3 p-2 bg-surface-container-lowest border border-white/[0.08] rounded-xl shadow-md">
+            <!-- Audio SUB / DUB Toggle -->
+            <div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg border border-white/[0.06]">
+              <button id="btn-stream-sub" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-on-secondary font-mono text-xs font-bold shadow-sm transition-all">
+                <span class="material-symbols-outlined text-[14px]">closed_caption</span>
+                <span>SUB (JA / EN)</span>
+              </button>
+              <button id="btn-stream-dub" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-gray-400 hover:text-white font-mono text-xs font-bold transition-all">
+                <span class="material-symbols-outlined text-[14px]">record_voice_over</span>
+                <span>DUB (EN)</span>
+              </button>
+            </div>
+
+            <!-- Edge Server Clusters -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-mono text-[10px] text-gray-500 uppercase font-bold hidden sm:inline">Server Node:</span>
+              <button class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary-container text-white font-mono text-[11px] font-bold shadow-sm">
+                <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                <span>TOKYO EDGE (4K ULTRA)</span>
+              </button>
+              <button class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container-low hover:bg-surface-container border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold transition-all">
+                <span>OM-CLOUD (1080P)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Video Stage Frame -->
+          <div class="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/[0.1] shadow-2xl">
+            <div id="artplayer-mount" class="w-full h-full"></div>
+          </div>
+
+          <!-- Action Bar Below Player -->
+          <div class="flex flex-wrap items-center justify-between gap-4 p-3 bg-surface-container-low border border-white/[0.08] rounded-xl" id="player-toolbar">
+            <div class="flex flex-col">
+              <h2 id="current-ep-title" class="text-base font-bold text-white">Episode 1</h2>
+              <span id="current-anime-title-sub" class="text-xs text-gray-400 font-medium">Anime Series Title</span>
+            </div>
+
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <!-- Down Audio SUB / DUB Switcher -->
+              <div class="flex items-center bg-surface-container-high p-1 rounded-lg border border-white/[0.06]">
+                <button id="btn-stream-sub-down" class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary text-on-secondary font-mono text-xs font-bold shadow-sm transition-all">
+                  <span class="material-symbols-outlined text-[13px]">closed_caption</span>
+                  <span>SUB</span>
+                </button>
+                <button id="btn-stream-dub-down" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-gray-400 hover:text-white font-mono text-xs font-bold transition-all">
+                  <span class="material-symbols-outlined text-[13px]">record_voice_over</span>
+                  <span>DUB</span>
+                </button>
+              </div>
+
+              <!-- Skip Intro Button -->
+              <button id="btn-skip-intro" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-xs font-mono font-bold text-secondary border border-white/[0.08] transition-all">
+                <span class="material-symbols-outlined text-[14px]">fast_forward</span>+85s Intro
+              </button>
+              <!-- Prev / Next Episode Buttons -->
+              <button id="btn-prev-ep" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-xs font-semibold text-white border border-white/[0.08] transition-all">
+                <span class="material-symbols-outlined text-[14px]">skip_previous</span>Prev
+              </button>
+              <button id="btn-next-ep" class="flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-primary-container text-white text-xs font-bold shadow-[0_0_12px_rgba(255,79,115,0.3)] transition-all">
+                Next<span class="material-symbols-outlined text-[14px]">skip_next</span>
+              </button>
+
+              <!-- Fullscreen Button Down Below Player ("Make Again Full Big") -->
+              <button id="btn-fullscreen-down" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-xs font-semibold text-secondary border border-secondary/30 transition-all cursor-pointer" title="Make Full Big (Fullscreen)">
+                <span class="material-symbols-outlined text-[16px]">fullscreen</span>
+                <span>Fullscreen</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Anime Details Accordion Card -->
+          <div class="p-5 bg-surface-container-lowest border border-white/[0.08] rounded-2xl flex flex-col md:flex-row gap-5 shadow-xl">
+            <img id="detail-poster-img" src="" alt="Poster" class="w-28 md:w-36 h-40 md:h-52 object-cover rounded-xl border border-white/[0.08] shadow-md flex-shrink-0">
+            <div class="flex flex-col gap-2 flex-1">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <h1 id="detail-anime-title" class="text-xl md:text-2xl font-extrabold text-white">Anime Title</h1>
+                <span id="detail-anime-score" class="font-mono text-xs font-bold text-primary flex items-center gap-1">★ 9.0</span>
+              </div>
+              <div id="detail-anime-native" class="font-mono text-xs text-gray-500">Native Japanese Title</div>
+              <div id="detail-tags-container" class="flex items-center gap-1.5 flex-wrap my-1"></div>
+              <p id="detail-synopsis-text" class="text-xs md:text-sm text-gray-300 leading-relaxed line-clamp-4">
+                Synopsis loading...
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Dynamic Episode Queue & Recommendations (4 Cols) -->
+        <aside class="xl:col-span-4 flex flex-col gap-6">
+          
+          <!-- Episode Queue Panel -->
+          <div class="bg-surface-container-lowest border border-white/[0.08] rounded-2xl p-4 flex flex-col gap-3 shadow-2xl">
+            <div class="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary text-[18px]">list_alt</span>
+                <span class="text-sm font-bold text-white uppercase tracking-wider">Episode Queue</span>
+              </div>
+              <span id="episodes-total-count" class="font-mono text-xs text-gray-400 font-bold">0 EP</span>
+            </div>
+
+            <!-- Search Episode Filter -->
+            <div class="relative">
+              <input type="text" id="episode-search-filter" class="w-full bg-surface-container-low border border-white/[0.06] rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-secondary" placeholder="Filter episode number...">
+            </div>
+
+            <!-- Range Pagination Tabs (e.g. 1-50, 51-100) -->
+            <div id="range-tabs-container" class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"></div>
+
+            <!-- Episode Tiles List with Wave Equalizer for Active -->
+            <div id="episodes-scroll-list" class="flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-1"></div>
+          </div>
+
+          <!-- Recommendations Panel -->
+          <div class="bg-surface-container-lowest border border-white/[0.08] rounded-2xl p-4 flex flex-col gap-3 shadow-xl">
+            <div class="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
+              <span class="material-symbols-outlined text-primary text-[18px]">recommend</span>
+              <span class="text-sm font-bold text-white uppercase tracking-wider">You Might Also Like</span>
+            </div>
+            <div id="recs-list-container" class="flex flex-col gap-2"></div>
+          </div>
+
+        </aside>
+
+      </div>
+    </div>
   </div>
+
+  <!-- ==========================================================================
+       VIEW 4: USER ACCOUNT, WATCHLIST & SETTINGS VIEW
+       ========================================================================== -->
+  <div id="account-view" class="w-full flex-1 pt-20 hidden">
+    <!-- Account Header Banner -->
+    <div class="relative w-full max-w-[1840px] mx-auto px-4 md:px-8 pt-6 pb-8">
+      
+      <!-- Graphic Cover Background with layered scrim -->
+      <div class="relative w-full h-56 md:h-72 rounded-2xl overflow-hidden shadow-2xl border border-white/[0.08]">
+        <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDHq8SRPTHWmOmo0_P3zvdJuVgABIldtC2pIzunOct33pJwnqRhm7CmueIPRBkGxiGB6knr9PchaDIt9emBL_NlZl4_CGLZ-zLODboi7rMcKfJVsM1JnlIpTqO3qBeAb0FU7sGolSy9QYLiOq5Kb2zjNMF_O36-e-ABvDzpDoALGgGaL4WaswB8Mkoz2Cr1o9EzjwXxtfjtdhL7Vgy7p7G10VvrH3A0xCpLoflqvAx3');"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/70 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-surface-container-lowest via-surface-container-lowest/50 to-transparent"></div>
+        
+        <!-- Top Overlay Telemetry Chips -->
+        <div class="absolute top-4 right-4 flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface-container-lowest/80 backdrop-blur-md text-secondary font-mono text-[11px] font-bold shadow-md border border-white/[0.08]">
+            <span class="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_#00daf3]"></span>
+            SERVER ID: TYO-NODE-09
+          </span>
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary-container/20 backdrop-blur-md text-primary font-mono text-[11px] font-bold shadow-md border border-primary/30">
+            <span class="material-symbols-outlined text-[13px]">bolt</span>
+            10-BIT HEVC HDR READY
+          </span>
+        </div>
+      </div>
+
+      <!-- User Profile Identity Block (Overlapping Cover) -->
+      <div class="relative px-2 sm:px-6 -mt-16 md:-mt-20 flex flex-col xl:flex-row xl:items-end justify-between gap-6 z-10">
+        <div class="flex flex-col sm:flex-row items-start sm:items-end gap-5">
+          <!-- Avatar Frame -->
+          <div class="relative group">
+            <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-surface-container-high shadow-2xl p-1 bg-gradient-to-b from-primary/40 via-surface-container-high to-surface-container-lowest border border-white/[0.1]">
+              <img id="account-avatar-img" alt="Avatar" class="w-full h-full object-cover rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTN9AsbPHoQqZimkdf5SKxBvZavvxOhDlT8E9vCHRzGbpe1hvxThzKYFlNmpGAueS_ucTqnCwn48iM-L9lqJQFrldtyx9Xp6-ZCo3-27ltcXs134z1k-7sAYvECqoB3KAEdg54dq4IeYszVKZ2P-tUZLVcDT7_3WqhYcw-qmMiNH1qu3LL-qQ12-c0cyUrSwMX7Zl5uNLBTk7kzuIME_SzDxIEadw5iosTQIcUEh-p">
+            </div>
+            <span id="account-level-badge" class="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-md bg-primary-container text-white font-mono text-[10px] font-bold shadow-lg uppercase tracking-wider flex items-center gap-1">
+              <span class="material-symbols-outlined text-[12px]">military_tech</span>
+              LVL 42
+            </span>
+          </div>
+
+          <!-- Name & Details -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center gap-3 flex-wrap">
+              <h1 id="account-user-name" class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Alex Mercer</h1>
+              <span id="account-handle" class="font-mono text-xs font-bold text-gray-400 px-2.5 py-1 rounded-lg bg-surface-container-high border border-white/[0.06]">@om_alex</span>
+              <span id="account-tier-badge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[11px] font-bold uppercase tracking-wider shadow-lg">
+                <span class="material-symbols-outlined text-[14px]">verified</span>
+                Community Otaku
+              </span>
+            </div>
+            <p class="text-xs text-gray-400 flex items-center gap-2 flex-wrap">
+              <span class="text-emerald-400 font-semibold">Om CLI Member • 100% Free</span>
+              <span class="w-1 h-1 rounded-full bg-gray-600"></span>
+              <span id="account-email">alex@omcli.io</span>
+              <span class="w-1 h-1 rounded-full bg-gray-600"></span>
+              <span class="text-secondary font-mono font-bold">TOKEN #9442-AM</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="btn-account-logout" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container-low border border-white/[0.08] hover:bg-red-500/10 text-red-400 text-xs font-semibold transition-all">
+            <span class="material-symbols-outlined text-[16px]">logout</span>Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Bento Ribbon -->
+      <div class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-4 rounded-2xl bg-surface-container-low border border-white/[0.08] shadow-lg flex items-center justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="font-mono text-[10px] uppercase text-gray-400 font-bold tracking-wider">Watched Playtime</span>
+            <span class="text-xl md:text-2xl font-extrabold text-white" id="stat-total-episodes">1,420 <span class="text-primary text-sm font-normal">Eps</span></span>
+            <span class="font-mono text-[11px] font-bold text-secondary" id="stat-total-days">38.5 Days</span>
+          </div>
+          <div class="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined text-[24px]">timer</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-container-low border border-white/[0.08] shadow-lg flex items-center justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="font-mono text-[10px] uppercase text-gray-400 font-bold tracking-wider">Series Completed</span>
+            <span class="text-xl md:text-2xl font-extrabold text-white" id="stat-completed-shows">84 <span class="text-secondary text-sm font-normal">Shows</span></span>
+            <span class="font-mono text-[11px] font-bold text-gray-400">Top 4% Global Otaku</span>
+          </div>
+          <div class="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary">
+            <span class="material-symbols-outlined text-[24px]">task_alt</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-container-low border border-white/[0.08] shadow-lg flex items-center justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="font-mono text-[10px] uppercase text-gray-400 font-bold tracking-wider">Plan to Watch</span>
+            <span class="text-xl md:text-2xl font-extrabold text-white" id="stat-watchlist-count">28 <span class="text-tertiary text-sm font-normal">Titles</span></span>
+            <span class="font-mono text-[11px] font-bold text-tertiary">Active Library</span>
+          </div>
+          <div class="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center text-tertiary">
+            <span class="material-symbols-outlined text-[24px]">bookmark</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-container-low border border-white/[0.08] shadow-lg flex items-center justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="font-mono text-[10px] uppercase text-gray-400 font-bold tracking-wider">Mean Otaku Score</span>
+            <span class="text-xl md:text-2xl font-extrabold text-white">8.92 <span class="text-yellow-400 text-sm font-normal">★</span></span>
+            <span class="font-mono text-[11px] font-bold text-gray-400">Curator Caliber</span>
+          </div>
+          <div class="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center text-yellow-400">
+            <span class="material-symbols-outlined text-[24px]">grade</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Navigation Sub-Tabs -->
+      <div class="mt-8 border-b border-white/[0.08] flex items-center gap-2 overflow-x-auto scrollbar-none" id="account-sub-tabs">
+        <button class="account-tab active px-4 py-2.5 font-semibold text-xs text-white border-b-2 border-primary transition-all flex items-center gap-2" data-tab="watchlist">
+          <span class="material-symbols-outlined text-[16px]">bookmark</span>Watchlist &amp; Library
+        </button>
+        <button class="account-tab px-4 py-2.5 font-semibold text-xs text-gray-400 hover:text-white border-b-2 border-transparent transition-all flex items-center gap-2" data-tab="history">
+          <span class="material-symbols-outlined text-[16px]">history</span>Watch History Timeline
+        </button>
+        <button class="account-tab px-4 py-2.5 font-semibold text-xs text-gray-400 hover:text-white border-b-2 border-transparent transition-all flex items-center gap-2" data-tab="preferences">
+          <span class="material-symbols-outlined text-[16px]">tune</span>Playback Preferences
+        </button>
+        <button class="account-tab px-4 py-2.5 font-semibold text-xs text-gray-400 hover:text-white border-b-2 border-transparent transition-all flex items-center gap-2" data-tab="settings">
+          <span class="material-symbols-outlined text-[16px]">shield</span>Account &amp; Security
+        </button>
+      </div>
+
+      <!-- TAB 1: WATCHLIST & LIBRARY -->
+      <div id="tab-content-watchlist" class="account-tab-panel mt-6 flex flex-col gap-5">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-1.5" id="watchlist-status-chips">
+            <button class="wl-chip active px-3 py-1 rounded-full bg-primary-container text-white font-mono text-xs font-bold" data-status="All">All</button>
+            <button class="wl-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-xs font-bold" data-status="Watching">Watching</button>
+            <button class="wl-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-xs font-bold" data-status="Plan to Watch">Plan to Watch</button>
+            <button class="wl-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-xs font-bold" data-status="Completed">Completed</button>
+          </div>
+          <span id="watchlist-count-badge" class="font-mono text-xs text-gray-400 font-bold uppercase">0 TITLES</span>
+        </div>
+
+        <div id="account-watchlist-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- TAB 2: WATCH HISTORY TIMELINE -->
+      <div id="tab-content-history" class="account-tab-panel mt-6 flex flex-col gap-4 hidden">
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-xs text-gray-400 font-bold uppercase">PERSISTENT WATCH PROGRESS</span>
+          <button id="btn-clear-all-history" class="text-xs font-mono text-red-400 hover:text-red-300 font-bold uppercase transition-colors">
+            Clear History
+          </button>
+        </div>
+
+        <div id="account-history-list" class="flex flex-col gap-3">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- TAB 3: PLAYBACK PREFERENCES -->
+      <div id="tab-content-preferences" class="account-tab-panel mt-6 max-w-2xl flex flex-col gap-6 hidden">
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-white/[0.08] flex flex-col gap-5 shadow-xl">
+          <h3 class="text-base font-bold text-white uppercase tracking-wider">Cinema Stream Engine Preferences</h3>
+
+          <!-- Preferred Audio Track -->
+          <div class="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+            <div>
+              <div class="text-sm font-semibold text-white">Default Audio Track</div>
+              <div class="text-xs text-gray-400">Choose preferred audio stream when opening episodes</div>
+            </div>
+            <select id="pref-audio" class="bg-surface-container-high border border-white/[0.1] text-white font-mono text-xs font-bold rounded-lg px-3 py-2 focus:outline-none">
+              <option value="sub">SUB (Original Japanese / Multi-sub)</option>
+              <option value="dub">DUB (English Dubbed)</option>
+            </select>
+          </div>
+
+          <!-- Default Video Quality -->
+          <div class="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+            <div>
+              <div class="text-sm font-semibold text-white">Initial Video Quality</div>
+              <div class="text-xs text-gray-400">Preferred resolution if bandwidth allows</div>
+            </div>
+            <select id="pref-quality" class="bg-surface-container-high border border-white/[0.1] text-white font-mono text-xs font-bold rounded-lg px-3 py-2 focus:outline-none">
+              <option value="auto">Auto (Adaptive Bitrate)</option>
+              <option value="1080p">1080p (Full HD)</option>
+              <option value="720p">720p (HD)</option>
+            </select>
+          </div>
+
+          <!-- Auto-Skip Intro (+85s) -->
+          <div class="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+            <div>
+              <div class="text-sm font-semibold text-white">Auto-Skip Opening Intros</div>
+              <div class="text-xs text-gray-400">Automatically advance past 85-second theme sequences</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="pref-skip-intro" class="sr-only peer" checked>
+              <div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+            </label>
+          </div>
+
+          <!-- Auto-Play Next Episode -->
+          <div class="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+            <div>
+              <div class="text-sm font-semibold text-white">Auto-Play Next Episode</div>
+              <div class="text-xs text-gray-400">Seamlessly start next chapter when episode concludes</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="pref-auto-next" class="sr-only peer" checked>
+              <div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+            </label>
+          </div>
+
+          <!-- Save Button -->
+          <button id="btn-save-preferences" class="w-full py-3 rounded-xl bg-gradient-to-r from-primary-container to-[#ff1a53] text-white font-bold text-xs uppercase tracking-wider shadow-lg hover:brightness-110 transition-all">
+            Save Playback Preferences
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 4: ACCOUNT SECURITY & INFO -->
+      <div id="tab-content-settings" class="account-tab-panel mt-6 max-w-2xl flex flex-col gap-6 hidden">
+        <div class="p-6 rounded-2xl bg-surface-container-low border border-white/[0.08] flex flex-col gap-4 shadow-xl">
+          <h3 class="text-base font-bold text-white uppercase tracking-wider">Account Credentials</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs text-gray-400 font-medium">Username</label>
+              <input type="text" id="acc-input-username" readonly class="w-full mt-1 px-3 py-2 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm">
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 font-medium">Email Address</label>
+              <input type="text" id="acc-input-email" readonly class="w-full mt-1 px-3 py-2 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm">
+            </div>
+          </div>
+          <div class="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+            <div>
+              <div class="text-xs font-semibold text-white">Membership Tier</div>
+              <div class="text-xs font-mono text-emerald-400 font-bold">Community Otaku (100% Free)</div>
+            </div>
+            <button id="btn-acc-logout-bottom" class="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:text-white hover:bg-red-500 text-xs font-semibold transition-all">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       AUTHENTICATION MODAL (Sign In / Register / 1-Click Demo)
+       ========================================================================== -->
+  <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl hidden">
+    <div class="relative w-full max-w-md bg-surface-container-low border border-white/[0.12] rounded-3xl p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.9)] flex flex-col gap-6">
+      
+      <!-- Close Button -->
+      <button id="auth-modal-close" class="absolute top-5 right-5 p-1 rounded-full text-gray-400 hover:text-white hover:bg-surface-container transition-all">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex flex-col items-center text-center gap-1">
+        <div class="w-10 h-10 rounded-xl bg-surface-container border border-primary/40 flex items-center justify-center mb-1">
+          <span class="w-4 h-4 rounded-sm bg-gradient-to-br from-primary-container to-primary shadow-[0_0_12px_#ff4f73]"></span>
+        </div>
+        <h2 class="text-2xl font-extrabold text-white tracking-tight uppercase">Om <span class="text-primary-container">CLI</span></h2>
+        <p class="text-xs text-gray-400">Precision Anime Streaming with Persistent Watch History</p>
+      </div>
+
+      <!-- 1-Click Demo Login Button -->
+      <button id="btn-auth-demo" class="w-full py-2.5 px-4 rounded-xl bg-surface-container border border-secondary/40 hover:border-secondary text-secondary font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-secondary-container/10 transition-all shadow-md">
+        <span class="material-symbols-outlined text-[16px]">bolt</span>
+        1-Click Demo Login (Alex Mercer - LVL 42)
+      </button>
+
+      <div class="flex items-center gap-2">
+        <div class="flex-1 h-[1px] bg-white/[0.08]"></div>
+        <span class="text-[10px] font-mono uppercase text-gray-500 font-bold">OR</span>
+        <div class="flex-1 h-[1px] bg-white/[0.08]"></div>
+      </div>
+
+      <!-- Auth Mode Switcher -->
+      <div class="flex bg-surface-container-lowest p-1 rounded-xl border border-white/[0.06]">
+        <button id="tab-auth-login" class="flex-1 py-2 rounded-lg font-mono text-xs font-bold text-white bg-surface-container-high shadow-sm transition-all">Sign In</button>
+        <button id="tab-auth-register" class="flex-1 py-2 rounded-lg font-mono text-xs font-bold text-gray-400 hover:text-white transition-all">Create Account</button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="form-auth-login" class="flex flex-col gap-3.5">
+        <div>
+          <label class="text-xs font-medium text-gray-300">Username or Email</label>
+          <input type="text" id="login-input-identity" required placeholder="alex@omcli.io or Alex Mercer" class="w-full mt-1 px-3.5 py-2.5 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-300">Password</label>
+          <input type="password" id="login-input-password" required placeholder="••••••••" class="w-full mt-1 px-3.5 py-2.5 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-all">
+        </div>
+        <button type="submit" class="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-primary-container to-[#ff1a53] text-white font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,79,115,0.4)] hover:brightness-110 active:scale-95 transition-all">
+          Sign In to Om CLI
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-auth-register" class="flex flex-col gap-3.5 hidden">
+        <div>
+          <label class="text-xs font-medium text-gray-300">Username</label>
+          <input type="text" id="reg-input-username" required placeholder="OtakuMaster" class="w-full mt-1 px-3.5 py-2.5 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-300">Email Address</label>
+          <input type="email" id="reg-input-email" required placeholder="master@anime.io" class="w-full mt-1 px-3.5 py-2.5 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-300">Password</label>
+          <input type="password" id="reg-input-password" required placeholder="At least 6 characters" class="w-full mt-1 px-3.5 py-2.5 rounded-xl bg-surface-container border border-white/[0.08] text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-all">
+        </div>
+        <button type="submit" class="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-primary-container to-[#ff1a53] text-white font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(255,79,115,0.4)] hover:brightness-110 active:scale-95 transition-all">
+          Create Free Otaku Account
+        </button>
+      </form>
+
+      <!-- Error / Notice Box -->
+      <div id="auth-alert-box" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hidden"></div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- Scripts -->
   <script src="/js/player.js"></script>

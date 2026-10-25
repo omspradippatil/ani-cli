@@ -51,8 +51,24 @@ class HomeViewModel @Inject constructor(
                 feedResult.onSuccess { baseRows ->
                     val finalRows = mutableListOf<MediaRow>()
                     
-                    if (progressList.isNotEmpty()) {
-                        val continueItems = progressList.map { 
+                    // Filter out corrupt legacy "Unknown Anime" placeholders
+                    val validProgress = progressList.filter { 
+                        it.mediaTitle != "Unknown Anime" && !it.posterUrl.contains("wp.youtube-anime.com") 
+                    }
+
+                    val corruptProgress = progressList.filter { 
+                        it.mediaTitle == "Unknown Anime" || it.posterUrl.contains("wp.youtube-anime.com") 
+                    }
+                    if (corruptProgress.isNotEmpty()) {
+                        viewModelScope.launch {
+                            for (corrupt in corruptProgress) {
+                                watchProgressDao.deleteProgress(corrupt.mediaId)
+                            }
+                        }
+                    }
+                    
+                    if (validProgress.isNotEmpty()) {
+                        val continueItems = validProgress.map { 
                             MediaItem(
                                 id = it.mediaId, 
                                 title = it.mediaTitle, 

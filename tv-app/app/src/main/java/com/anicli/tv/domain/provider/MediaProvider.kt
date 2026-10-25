@@ -13,4 +13,5 @@ interface MediaProvider {
     suspend fun search(query: String): Result<List<MediaItem>>
     suspend fun getDetails(mediaId: String): Result<MediaDetail>
     suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>>
+    suspend fun getStreamSources(episodeId: String, mode: String): Result<List<StreamSource>> = getStreamSources(episodeId)
 }

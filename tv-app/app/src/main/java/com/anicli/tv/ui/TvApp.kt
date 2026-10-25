@@ -45,13 +45,16 @@ fun TvApp() {
                 )
             }
             composable("settings") {
-                SettingsScreen()
+                SettingsScreen(
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable("search") {
                 SearchScreen(
                     onMediaClick = { mediaId ->
                         navController.navigate("details/$mediaId")
-                    }
+                    },
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("details/{mediaId}") { backStackEntry ->
@@ -60,7 +63,8 @@ fun TvApp() {
                     mediaId = mediaId,
                     onPlayClick = { episodeId ->
                         navController.navigate("player/$episodeId")
-                    }
+                    },
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("player/{episodeId}") { backStackEntry ->
@@ -70,7 +74,8 @@ fun TvApp() {
                     onNextEpisode = { nextEpId ->
                         navController.popBackStack()
                         navController.navigate("player/$nextEpId")
-                    }
+                    },
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

@@ -1,5 +1,5 @@
 // website/public/js/player.js
-// Cinema-Grade Artplayer.js Video Player Engine with Hls.js & Subtitles
+// Cinema-Grade Artplayer.js Video Player Engine with Hls.js & Subtitles for Om CLI
 
 class AnimePlayer {
   constructor(mountSelector) {
@@ -8,6 +8,9 @@ class AnimePlayer {
     this.currentEpisodeId = null;
     this.currentMode = 'sub';
     this.onNextEpisode = null;
+    this.onPrevEpisode = null;
+    this.onToggleMode = null;
+    this.onTimeUpdate = null;
     this.autoNext = true;
   }
 
@@ -48,10 +51,7 @@ class AnimePlayer {
       }
 
       // Destroy previous player instance if exists
-      if (this.art) {
-        this.art.destroy(false);
-        this.art = null;
-      }
+      this.stop();
 
       const self = this;
 
@@ -133,12 +133,12 @@ class AnimePlayer {
         pip: true,
         autoSize: false,
         autoMini: false,
-        screenshot: true,
+        screenshot: false, // Streamlined to prevent controls bar overflow
         setting: true,
         loop: false,
-        flip: true,
+        flip: false,
         playbackRate: true,
-        aspectRatio: true,
+        aspectRatio: false,
         fullscreen: true,
         fullscreenWeb: true,
         subtitleOffset: true,
@@ -148,7 +148,7 @@ class AnimePlayer {
         playsInline: true,
         autoPlayback: true,
         airplay: true,
-        theme: '#ff2a5f',
+        theme: '#ff4f73',
         lang: 'en',
         moreVideoAttr: {
           crossOrigin: 'anonymous',
@@ -160,29 +160,57 @@ class AnimePlayer {
             color: '#ffffff',
             fontSize: '22px',
             textShadow: '0 0 5px #000, 0 0 8px #000',
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
             fontWeight: '600'
           },
           encoding: 'utf-8',
         },
         controls: [
+          // Previous Episode button (Left controls)
+          {
+            name: 'prev-ep-btn',
+            position: 'left',
+            index: 10,
+            html: '<button class="art-icon-btn" title="Previous Episode"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5"></line></svg></button>',
+            click: function () {
+              if (typeof self.onPrevEpisode === 'function') {
+                self.onPrevEpisode();
+              }
+            },
+          },
+          // Next Episode button (Left controls)
+          {
+            name: 'next-ep-btn',
+            position: 'left',
+            index: 11,
+            html: '<button class="art-icon-btn" title="Next Episode"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5"></line></svg></button>',
+            click: function () {
+              if (typeof self.onNextEpisode === 'function') {
+                self.onNextEpisode();
+              }
+            },
+          },
+          // Skip Intro (+85s) button (Left controls)
           {
             name: 'skip-intro-btn',
-            position: 'right',
-            html: '<button class="art-btn-skip">Skip Intro (+85s)</button>',
+            position: 'left',
+            index: 12,
+            html: '<button class="art-btn-skip" title="Skip Opening (+85s)">+85s</button>',
             click: function () {
               if (self.art) {
                 self.art.currentTime = Math.min(self.art.duration, self.art.currentTime + 85);
               }
             },
           },
+          // Audio Mode SUB / DUB toggle button (Right controls, accessible in fullscreen)
           {
-            name: 'next-ep-btn',
+            name: 'audio-mode-btn',
             position: 'right',
-            html: '<button class="art-btn-next" title="Next Episode"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg> Next</button>',
+            index: 10,
+            html: `<button class="art-btn-mode" title="Switch Audio Track (SUB / DUB)">${mode.toUpperCase()}</button>`,
             click: function () {
-              if (typeof self.onNextEpisode === 'function') {
-                self.onNextEpisode();
+              if (typeof self.onToggleMode === 'function') {
+                self.onToggleMode();
               }
             },
           }
@@ -205,6 +233,9 @@ class AnimePlayer {
               updatedAt: Date.now()
             }));
           } catch {}
+          if (typeof this.onTimeUpdate === 'function') {
+            this.onTimeUpdate(this.art.currentTime, this.art.duration);
+          }
         }
       });
 
@@ -223,11 +254,29 @@ class AnimePlayer {
     }
   }
 
+  /**
+   * Completely stops, pauses, and tears down video/audio to guarantee no background sound
+   */
   stop() {
     if (this.art) {
-      this.art.destroy(false);
+      try {
+        if (this.art.hls) {
+          this.art.hls.destroy();
+          this.art.hls = null;
+        }
+        if (this.art.video) {
+          this.art.video.pause();
+          this.art.video.removeAttribute('src');
+          this.art.video.load();
+        }
+        this.art.destroy(false);
+      } catch (err) {
+        console.warn('[Player] Error during stop:', err);
+      }
       this.art = null;
     }
+    const mount = document.querySelector(this.mountSelector);
+    if (mount) mount.innerHTML = '';
   }
 }
 

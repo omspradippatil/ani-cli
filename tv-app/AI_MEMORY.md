@@ -40,3 +40,37 @@
   - **SettingsScreen.kt** — new Provider toggle buttons (AllAnime / GoGoAnime) in the left Settings column. When GoGoAnime is selected, a "GoGoAnime Mirror Domain" text field appears, letting the user type any working mirror (e.g., `gogoanime3.co`) without a code update.
   - **SettingsViewModel.kt** — added `activeProvider` and `gogoDomain` StateFlows with save methods wired to SharedPreferences.
   - Episode ID format for GoGoAnime: `"{slug}|{episode_number}"` (e.g., `"one-piece-10040|1"`).
+
+
+- **Web Cloud Backend Provider (NEW & PRIMARY)**:
+  - Added `WebApiMediaProvider.kt` (`provider/` package) implementing `MediaProvider`.
+    - Directly queries the hosted high-speed Vercel/Node backend (`https://ani-cli-steel.vercel.app`).
+    - Eliminates fragile client-side scraping, Cloudflare bot-checks, and reverse-engineering of dynamic HMAC keys.
+    - `getHomeFeed()`: Concurrently requests `/api/trending`, `/api/popular`, and `/api/top-rated` for rich AniList metadata and Netflix-style hero banners.
+    - `search()`: Instant search via `/api/search?q={query}`.
+    - `getDetails()`: Fetches full anime metadata, episode lists, and cleaned descriptions via `/api/anime/{id}`.
+    - `getStreamSources()`: Resolves direct high-speed HLS CDN streams (`rawM3u8` with `Referer` headers) with automatic fallback to Web Proxy (`proxyM3u8`).
+    - Subtitle integration: Direct VTT subtitle tracks passed into ExoPlayer `SubtitleConfiguration`.
+  - Added `WebAnimeService.kt` and `WebDtos.kt` (`data/remote/` package) with Retrofit interface and GSON models.
+  - Added `provideWebAnimeService` in `DataModule.kt`.
+  - Updated `ProviderSelector.kt`: `PROVIDER_WEB_API = "web_api"` is now the primary default provider across the application.
+  - Updated `SettingsScreen.kt` & `SettingsViewModel.kt`: Added Web Cloud toggle and editable Backend URL text field.
+  - Added `BackHandler` on remote keyevent across Settings, Details, and Search screens for smooth TV navigation.
+  - Verified live on Android Emulator: APK successfully installed, launched, queried backend, loaded home catalog, and streamed episodes with hardware-accelerated HLS playback.
+  - **TV Player UI & Cinema Overhaul (2026-10-25)**:
+    - Replaced basic Android UI with Obsidian glassmorphic KuroNami cinema player (`VideoPlayer.kt`).
+    - Top bar: Precision Stream badge, Server name (e.g. ZokoAnime SUB), Anime Title, Episode Subtitle, 1080p HD tag, and "Audio / Source" stream switcher modal.
+    - Center controls: 80dp glowing Crimson Play/Pause button with CyanSoft ring, 10s Rewind, 10s Fast Forward.
+    - Bottom bar: Multi-track gradient scrubber (elapsed / buffer / total), "Skip Intro (+85s)" button, "Next Episode" button, and quick Audio Mute/Unmute toggle.
+  - **Thumbnail Loading Fix**:
+    - Replaced blocking 500ms `rateLimitInterceptor` on the main `OkHttpClient` which was causing Coil image requests to time out and cancel (`IOException: Canceled`).
+    - Configured `TvApplication.kt` with Coil `ImageLoaderFactory` injecting custom `OkHttpClient` with SSL trust-all and browser headers (`Mozilla/5.0...`).
+    - Implemented image fallback chains in `MediaCard` and `EpisodeCard` (`posterUrl.takeIf { it.isNotBlank() } ?: backdropUrl`).
+  - **Audio Volume & Decoding Fix**:
+    - Configured `AudioManager.STREAM_MUSIC` volume initialization on startup (boosting emulator default volume from 3 to 12/15).
+    - Enabled software decoder fallback in ExoPlayer (`setEnableDecoderFallback(true)` and `EXTENSION_RENDERER_MODE_PREFER`) for AAC/Opus audio tracks.
+    - Disabled blocking audio focus muting (`handleAudioFocus = false`) and added explicit `exoPlayer.volume = 1.0f`.
+  - **KuroNami Theme (`#0C0E14` Obsidian, `#FF2A5F` Crimson, `#00E3FD` Cyan)**:
+    - Updated `Theme.kt`, `HomeScreen.kt`, `SearchScreen.kt`, `DetailsScreen.kt`, and `SettingsScreen.kt` to match the web platform color scheme.
+    - Rebuilt `HeroBanner` with multi-stop vignette gradients and gold rating badges.
+    - Assembled production release APKs at `ani-cli-production-signed.apk` and `website/public/download/ani-cli-production-signed.apk`.

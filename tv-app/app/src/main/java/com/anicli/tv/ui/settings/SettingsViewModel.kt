@@ -46,6 +46,20 @@ class SettingsViewModel @Inject constructor(
         activeProvider.value = providerKey
     }
 
+    // ─── Web Backend URL ─────────────────────────────────────────────────────
+    val backendUrl = MutableStateFlow(
+        sharedPreferences.getString(
+            com.anicli.tv.provider.WebApiMediaProvider.PREF_BACKEND_URL,
+            com.anicli.tv.provider.WebApiMediaProvider.DEFAULT_BACKEND_URL
+        ) ?: com.anicli.tv.provider.WebApiMediaProvider.DEFAULT_BACKEND_URL
+    )
+
+    fun setBackendUrl(url: String) {
+        val cleaned = url.trim().trimEnd('/')
+        sharedPreferences.edit().putString(com.anicli.tv.provider.WebApiMediaProvider.PREF_BACKEND_URL, cleaned).apply()
+        backendUrl.value = cleaned
+    }
+
     // ─── GoGoAnime mirror domain ────────────────────────────────────────────
     val gogoDomain = MutableStateFlow(
         sharedPreferences.getString(GoGoAnimeProvider.PREF_DOMAIN, "gogoanime.by") ?: "gogoanime.by"

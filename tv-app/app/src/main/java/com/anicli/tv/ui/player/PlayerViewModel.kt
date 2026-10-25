@@ -2,6 +2,7 @@ package com.anicli.tv.ui.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anicli.tv.domain.model.MediaDetail
 import com.anicli.tv.domain.model.StreamSource
 import com.anicli.tv.domain.provider.ProviderSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,12 +27,37 @@ class PlayerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
-    fun loadStreamSources(episodeId: String) {
+    private val _audioMode = MutableStateFlow("sub")
+    val audioMode: StateFlow<String> = _audioMode.asStateFlow()
+
+    private var currentEpisodeId: String = ""
+
+    private var cachedMediaDetail: MediaDetail? = null
+    val cachedAnimeTitle: String get() = cachedMediaDetail?.title ?: ""
+    val cachedEpisodes: List<com.anicli.tv.domain.model.Episode> get() = cachedMediaDetail?.episodes ?: emptyList()
+
+    fun loadStreamSources(episodeId: String, mode: String = _audioMode.value) {
+        currentEpisodeId = episodeId
         viewModelScope.launch {
             _uiState.value = PlayerUiState.Loading
             try {
-                // Use the currently active provider for stream resolution
-                val result = providerSelector.getActiveProvider().getStreamSources(episodeId)
+                val parts = episodeId.split("|")
+                val mediaId = parts.getOrNull(0) ?: ""
+                val provider = providerSelector.getActiveProvider()
+
+                // Concurrently fetch real media details to save proper titles and posters
+                if (mediaId.isNotBlank() && cachedMediaDetail == null) {
+                    launch {
+                        try {
+                            provider.getDetails(mediaId).onSuccess { detail ->
+                                cachedMediaDetail = detail
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                // Use the currently active provider for stream resolution with mode (sub / dub)
+                val result = provider.getStreamSources(episodeId, mode)
                 result.onSuccess { sources ->
                     if (sources.isNotEmpty()) {
                         _uiState.value = PlayerUiState.Success(sources)
@@ -47,16 +73,37 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun toggleAudioMode() {
+        val newMode = if (_audioMode.value == "sub") "dub" else "sub"
+        _audioMode.value = newMode
+        if (currentEpisodeId.isNotBlank()) {
+            loadStreamSources(currentEpisodeId, newMode)
+        }
+    }
+
+    fun setAudioMode(mode: String) {
+        if (_audioMode.value == mode) return
+        _audioMode.value = mode
+        if (currentEpisodeId.isNotBlank()) {
+            loadStreamSources(currentEpisodeId, mode)
+        }
+    }
+
     fun saveProgress(mediaId: String, epNum: Int, currentPosition: Long, duration: Long) {
         if (duration <= 0L || currentPosition <= 0L) return
         viewModelScope.launch {
             try {
+                val title = cachedMediaDetail?.title?.takeIf { it.isNotBlank() } ?: "Anime Stream"
+                val poster = cachedMediaDetail?.posterUrl?.takeIf { it.isNotBlank() }
+                    ?: cachedMediaDetail?.backdropUrl?.takeIf { it.isNotBlank() }
+                    ?: ""
+
                 val entity = WatchProgressEntity(
                     mediaId = mediaId,
                     episodeId = "$mediaId|$epNum",
-                    mediaTitle = "Unknown Anime", // Placeholder
+                    mediaTitle = title,
                     episodeTitle = "Episode $epNum",
-                    posterUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/images/covers/${mediaId}.jpg",
+                    posterUrl = poster,
                     progressMs = currentPosition,
                     totalDurationMs = duration,
                     lastUpdated = System.currentTimeMillis()

@@ -68,6 +68,20 @@ router.get('/top-rated', async (req, res) => {
 });
 
 /**
+ * GET /api/browse
+ * Advanced filtering & sorting
+ */
+router.get('/browse', async (req, res) => {
+  try {
+    const { page, perPage, genre, sort, search, format, status } = req.query;
+    const result = await anilist.browseAnime({ page, perPage, genre, sort, search, format, status });
+    res.json({ success: true, data: result.items, pageInfo: result.pageInfo });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * GET /api/search?q=query
  */
 router.get('/search', async (req, res) => {
@@ -80,11 +94,15 @@ router.get('/search', async (req, res) => {
       hianime.search(query)
     ]);
 
+    const anilistData = aniListResults.status === 'fulfilled' ? aniListResults.value : [];
+    const hianimeData = hiAnimeResults.status === 'fulfilled' ? hiAnimeResults.value : [];
+
     res.json({
       success: true,
-      data: {
-        anilist: aniListResults.status === 'fulfilled' ? aniListResults.value : [],
-        hianime: hiAnimeResults.status === 'fulfilled' ? hiAnimeResults.value : []
+      data: anilistData,
+      raw: {
+        anilist: anilistData,
+        hianime: hianimeData
       }
     });
   } catch (err) {
@@ -125,8 +143,10 @@ router.get('/anime/:id', async (req, res) => {
       success: true,
       data: {
         ...details,
-        hiAnimeMatch,
-        streamEpisodes: episodes
+        totalEpisodes: details.episodes,
+        episodes: episodes,
+        streamEpisodes: episodes,
+        hiAnimeMatch
       }
     });
   } catch (err) {

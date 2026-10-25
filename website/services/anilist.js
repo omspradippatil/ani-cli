@@ -180,10 +180,75 @@ async function getAnimeDetails(id) {
   return data?.Media || null;
 }
 
+/**
+ * Advanced browse with filtering & sorting
+ */
+async function browseAnime({ page = 1, perPage = 24, genre, sort = 'POPULARITY_DESC', search, format, status }) {
+  const sortMap = {
+    'score': 'SCORE_DESC',
+    'popularity': 'POPULARITY_DESC',
+    'updated': 'UPDATED_AT_DESC',
+    'release': 'START_DATE_DESC',
+    'episodes': 'EPISODES_DESC',
+    'trending': 'TRENDING_DESC'
+  };
+  const resolvedSort = sortMap[sort] || sort || 'POPULARITY_DESC';
+
+  const variables = { page: Number(page) || 1, perPage: Number(perPage) || 24, sort: resolvedSort };
+  const filterArgs = ['$page: Int', '$perPage: Int', '$sort: [MediaSort]'];
+  const mediaArgs = ['type: ANIME', 'sort: $sort', 'isAdult: false'];
+
+  if (search && search.trim()) {
+    variables.search = search.trim();
+    filterArgs.push('$search: String');
+    mediaArgs.push('search: $search');
+  }
+
+  if (genre && genre !== 'All') {
+    variables.genre = genre;
+    filterArgs.push('$genre: String');
+    mediaArgs.push('genre: $genre');
+  }
+
+  if (format && format !== 'All') {
+    variables.format = format;
+    filterArgs.push('$format: MediaFormat');
+    mediaArgs.push('format: $format');
+  }
+
+  if (status && status !== 'All') {
+    variables.status = status;
+    filterArgs.push('$status: MediaStatus');
+    mediaArgs.push('status: $status');
+  }
+
+  const query = `
+    query (${filterArgs.join(', ')}) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo {
+          hasNextPage
+          currentPage
+          total
+        }
+        media(${mediaArgs.join(', ')}) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+
+  const data = await fetchAniList(query, variables);
+  return {
+    items: data?.Page?.media || [],
+    pageInfo: data?.Page?.pageInfo || { hasNextPage: false, currentPage: 1 }
+  };
+}
+
 module.exports = {
   getTrending,
   getPopular,
   getTopRated,
   searchAnime,
-  getAnimeDetails
+  getAnimeDetails,
+  browseAnime
 };

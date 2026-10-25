@@ -1,13 +1,26 @@
 package com.anicli.tv.ui.details
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
@@ -15,6 +28,8 @@ import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.anicli.tv.core.theme.KuroNamiColors
 import com.anicli.tv.domain.model.Episode
 import com.anicli.tv.domain.model.MediaDetail
 
@@ -23,77 +38,209 @@ import com.anicli.tv.domain.model.MediaDetail
 fun DetailsScreen(
     mediaId: String,
     onPlayClick: (String) -> Unit,
+    onBack: () -> Unit = {},
     viewModel: DetailsViewModel = hiltViewModel()
 ) {
+    BackHandler { onBack() }
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(mediaId) {
         viewModel.loadDetails(mediaId)
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KuroNamiColors.Obsidian)
+    ) {
         if (state.isLoading) {
-            Text(text = "Loading...", modifier = Modifier.align(Alignment.Center))
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Loading anime details...",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = KuroNamiColors.Cyan
+                )
+            }
         } else if (state.detail != null) {
             val detail = state.detail!!
-            
-            // Backdrop Image
+
+            // Cinematic Backdrop Image
             AsyncImage(
-                model = detail.backdropUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(detail.backdropUrl.takeIf { it.isNotBlank() } ?: detail.posterUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
-                modifier = Modifier.fillMaxWidth().height(500.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(520.dp),
                 contentScale = ContentScale.Crop
             )
-            
-            // Gradient Overlay
+
+            // Dynamic Gradients
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(500.dp)
+                    .height(520.dp)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
+                            colors = listOf(
+                                Color.Transparent,
+                                KuroNamiColors.Obsidian.copy(alpha = 0.5f),
+                                KuroNamiColors.Obsidian
+                            )
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                KuroNamiColors.Obsidian.copy(alpha = 0.95f),
+                                KuroNamiColors.Obsidian.copy(alpha = 0.8f),
+                                Color.Transparent
+                            )
                         )
                     )
             )
 
             TvLazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 250.dp, bottom = 32.dp)
+                contentPadding = PaddingValues(top = 180.dp, bottom = 48.dp)
             ) {
                 item {
-                    Column(modifier = Modifier.padding(horizontal = 48.dp)) {
-                        Text(text = detail.title, style = MaterialTheme.typography.displayLarge)
-                        
-                        Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 48.dp)
+                            .fillMaxWidth(0.68f)
+                    ) {
+                        // Title
+                        Text(
+                            text = detail.title,
+                            style = MaterialTheme.typography.displayMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Genre Tag Row
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             detail.genres.forEach { genre ->
-                                Text(text = genre, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+                                Box(
+                                    modifier = Modifier
+                                        .background(KuroNamiColors.SurfaceHigh, RoundedCornerShape(6.dp))
+                                        .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = genre,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = KuroNamiColors.CyanSoft,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Synopsis
                         Text(
                             text = detail.description,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 32.dp).fillMaxWidth(0.6f)
+                            color = KuroNamiColors.OnSurfaceVariant,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis
                         )
 
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Action Buttons
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Button(onClick = { onPlayClick(detail.episodes.firstOrNull()?.id ?: "") }) {
-                                Text("Play")
+                            val firstEp = detail.episodes.firstOrNull()
+                            Button(
+                                onClick = { onPlayClick(firstEp?.id ?: "") },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = KuroNamiColors.Crimson,
+                                    focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.PlayArrow,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (firstEp != null) "Play Episode 1" else "Play",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
                             }
-                            Button(onClick = { }) {
-                                Text("Favorite")
+
+                            Button(
+                                onClick = { viewModel.toggleFavorite(mediaId) },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.SurfaceHighest
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        if (state.isFavorite) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                        contentDescription = null,
+                                        tint = if (state.isFavorite) KuroNamiColors.Crimson else Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (state.isFavorite) "Watchlisted" else "Add to Watchlist",
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
                 item {
-                    Text(
-                        text = "Episodes",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(start = 48.dp, top = 48.dp, bottom = 16.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 48.dp, top = 40.dp, bottom = 12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .height(20.dp)
+                                .background(KuroNamiColors.Crimson, RoundedCornerShape(2.dp))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Episodes (${detail.episodes.size})",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 item {
@@ -102,48 +249,120 @@ fun DetailsScreen(
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
                         items(detail.episodes) { episode ->
-                            EpisodeCard(episode = episode, onClick = { onPlayClick(episode.id) })
+                            EpisodeCard(
+                                episode = episode,
+                                fallbackThumbnail = detail.backdropUrl.takeIf { it.isNotBlank() } ?: detail.posterUrl,
+                                onClick = { onPlayClick(episode.id) }
+                            )
                         }
                     }
                 }
             }
         } else if (state.error != null) {
-            Text(
-                text = "Error: ${state.error}",
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.Red
-            )
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Error: ${state.error}",
+                    color = KuroNamiColors.Crimson,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
     }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun EpisodeCard(episode: Episode, onClick: () -> Unit) {
+fun EpisodeCard(
+    episode: Episode,
+    fallbackThumbnail: String,
+    onClick: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
     Card(
         onClick = onClick,
+        colors = CardDefaults.colors(
+            containerColor = KuroNamiColors.SurfaceLow,
+            focusedContainerColor = KuroNamiColors.SurfaceHigh
+        ),
+        shape = CardDefaults.shape(RoundedCornerShape(12.dp)),
         modifier = Modifier
-            .width(200.dp)
-            .padding(8.dp)
-            .aspectRatio(16f / 9f)
+            .width(220.dp)
+            .padding(6.dp)
+            .aspectRatio(16f / 10f)
+            .onFocusChanged { isFocused = it.isFocused }
+            .border(
+                width = if (isFocused) 2.5.dp else 1.dp,
+                color = if (isFocused) KuroNamiColors.Crimson else KuroNamiColors.Outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
+            )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = episode.thumbnail ?: "https://picsum.photos/seed/${episode.id}/400/225",
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(episode.thumbnail?.takeIf { it.isNotBlank() } ?: fallbackThumbnail)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = episode.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+
+            // Multi-stop darkening gradient for high text readability
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.5f),
+                                Color.Black.copy(alpha = 0.92f)
+                            )
+                        )
+                    )
             )
-            Text(
-                text = "${episode.number}. ${episode.title}",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.align(Alignment.Center).padding(8.dp)
-            )
+
+            // Play indicator icon in center on focus
+            if (isFocused) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(KuroNamiColors.Crimson)
+                        .align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            // Episode Label Bottom
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp)
+            ) {
+                Text(
+                    text = "EPISODE ${episode.number}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = KuroNamiColors.Cyan,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = episode.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

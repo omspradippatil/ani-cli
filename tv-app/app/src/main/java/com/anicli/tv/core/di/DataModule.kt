@@ -71,24 +71,23 @@ object DataModule {
         val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
         
-        // Simple Rate Limiting Interceptor (Max 1 request per 500ms to avoid API bans)
-        val lastRequestTime = AtomicLong(0)
-        val rateLimitInterceptor = okhttp3.Interceptor { chain ->
-            synchronized(this) {
-                val now = System.currentTimeMillis()
-                val elapsed = now - lastRequestTime.get()
-                if (elapsed < 500) {
-                    Thread.sleep(500 - elapsed)
-                }
-                lastRequestTime.set(System.currentTimeMillis())
+        // Browser User-Agent and Referer interceptor for image CDNs and APIs
+        val defaultHeadersInterceptor = okhttp3.Interceptor { chain ->
+            val original = chain.request()
+            val builder = original.newBuilder()
+            if (original.header("User-Agent") == null) {
+                builder.header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
             }
-            chain.proceed(chain.request())
+            if (original.header("Referer") == null && original.url.host.contains("anilist.co")) {
+                builder.header("Referer", "https://anilist.co/")
+            }
+            chain.proceed(builder.build())
         }
 
         return OkHttpClient.Builder()
             .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
             .hostnameVerifier { _, _ -> true }
-            .addInterceptor(rateLimitInterceptor)
+            .addInterceptor(defaultHeadersInterceptor)
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -165,5 +164,24 @@ object DataModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(AnimeApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWebAnimeService(
+        okHttpClient: OkHttpClient,
+        sharedPreferences: SharedPreferences
+    ): com.anicli.tv.data.remote.WebAnimeService {
+        val defaultUrl = com.anicli.tv.provider.WebApiMediaProvider.DEFAULT_BACKEND_URL
+        val prefUrl = sharedPreferences.getString(com.anicli.tv.provider.WebApiMediaProvider.PREF_BACKEND_URL, defaultUrl)
+            ?.trim()?.takeIf { it.isNotBlank() } ?: defaultUrl
+        val baseUrl = if (prefUrl.endsWith("/")) prefUrl else "$prefUrl/"
+
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(com.anicli.tv.data.remote.WebAnimeService::class.java)
     }
 }

@@ -1,25 +1,24 @@
-
 package com.anicli.tv.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
@@ -27,7 +26,9 @@ import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.anicli.tv.core.presentation.MediaCard
+import com.anicli.tv.core.theme.KuroNamiColors
 import com.anicli.tv.domain.model.MediaItem
 import com.anicli.tv.domain.model.MediaRow
 
@@ -36,20 +37,23 @@ import com.anicli.tv.domain.model.MediaRow
 fun HomeScreen(
     onMediaClick: (String) -> Unit,
     onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit = {},
+    onSettingsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var focusedItem by remember { mutableStateOf<MediaItem?>(null) }
     var selectedDrawerItem by remember { mutableStateOf("Home") }
+    var focusedItem by remember { mutableStateOf<MediaItem?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadFeed()
     }
-    
+
     LaunchedEffect(state.rows) {
         if (focusedItem == null && state.rows.isNotEmpty()) {
-            focusedItem = state.rows.first().items.firstOrNull()
+            val trendingRow = state.rows.firstOrNull { it.title.contains("Trending", ignoreCase = true) }
+            val firstAvailable = trendingRow?.items?.firstOrNull() 
+                ?: state.rows.firstOrNull { it.items.isNotEmpty() }?.items?.firstOrNull()
+            focusedItem = firstAvailable
         }
     }
 
@@ -64,32 +68,41 @@ fun HomeScreen(
             )
         }
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            // Solid background optimized for TV performance
-            Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF141414),
-                            Color(0xFF000000)
-                        )
-                    )
-                )
-            )
-
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(KuroNamiColors.Obsidian)
+        ) {
             if (state.isLoading) {
-                Text(text = "Loading...", modifier = Modifier.align(Alignment.Center))
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Loading KuroNami Stream...",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = KuroNamiColors.Cyan
+                        )
+                    }
+                }
             } else {
                 TvLazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(start = 64.dp), // Padding for drawer
-                    contentPadding = PaddingValues(bottom = 32.dp, top = 24.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 72.dp),
+                    contentPadding = PaddingValues(bottom = 48.dp, top = 16.dp)
                 ) {
                     item {
-                        HeroBanner(item = focusedItem, onClick = { focusedItem?.let { onMediaClick(it.id) } })
+                        HeroBanner(
+                            item = focusedItem,
+                            onClick = { focusedItem?.let { onMediaClick(it.id) } }
+                        )
                     }
 
                     items(state.rows) { row ->
-                        HomeRow(row = row, onMediaClick = onMediaClick, onFocusItem = { focusedItem = it })
+                        HomeRow(
+                            row = row,
+                            onMediaClick = onMediaClick,
+                            onFocusItem = { focusedItem = it }
+                        )
                     }
                 }
             }
@@ -109,42 +122,58 @@ fun Sidebar(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(if (isExpanded) 250.dp else 80.dp)
-            .background(Color(0xFF141414).copy(alpha = 0.9f))
+            .width(if (isExpanded) 240.dp else 80.dp)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(KuroNamiColors.SurfaceLow, KuroNamiColors.Obsidian)
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = KuroNamiColors.Outline.copy(alpha = 0.2f)
+            )
             .padding(16.dp),
         horizontalAlignment = if (isExpanded) Alignment.Start else Alignment.CenterHorizontally
     ) {
-        // Profile Section
-        Surface(
-            onClick = { onItemSelected("Settings"); onSettingsClick() },
-            modifier = Modifier.padding(bottom = 32.dp, top = 16.dp).fillMaxWidth(),
-            colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                focusedContainerColor = Color.White.copy(alpha = 0.2f)
-            ),
-            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp))
+        // App Logo & Brand Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 24.dp, top = 8.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
-                }
-                if (isExpanded) {
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text("Profile Menu", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                        Text("Click to Login/Register", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF5252))
-                    }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(KuroNamiColors.Crimson),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = "Logo",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            if (isExpanded) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "KuroNami",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        text = "PRECISION STREAM",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KuroNamiColors.Cyan,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Navigation Items
         DrawerItem(
@@ -162,14 +191,7 @@ fun Sidebar(
             onClick = { onItemSelected("Home") }
         )
         DrawerItem(
-            icon = Icons.Filled.PlayArrow,
-            text = "Library",
-            isSelected = selectedItem == "Library",
-            isExpanded = isExpanded,
-            onClick = { onItemSelected("Library") }
-        )
-        DrawerItem(
-            icon = Icons.Filled.List,
+            icon = Icons.AutoMirrored.Filled.List,
             text = "History",
             isSelected = selectedItem == "History",
             isExpanded = isExpanded,
@@ -201,70 +223,192 @@ fun DrawerItem(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(8.dp)),
+            .padding(vertical = 4.dp),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isSelected) Color(0xFFE50914) else Color.Transparent,
-            contentColor = if (isSelected) Color.White else Color.LightGray,
-            focusedContainerColor = Color(0xFFE50914).copy(alpha = 0.8f),
+            containerColor = if (isSelected) KuroNamiColors.Crimson else Color.Transparent,
+            contentColor = if (isSelected) Color.White else KuroNamiColors.OnSurfaceVariant,
+            focusedContainerColor = KuroNamiColors.CrimsonContainer,
             focusedContentColor = Color.White
         )
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = text)
+            Icon(icon, contentDescription = text, modifier = Modifier.size(24.dp))
             if (isExpanded) {
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(text, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                )
             }
         }
     }
 }
 
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
     if (item == null) return
+    var isFocused by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp)
-            .padding(horizontal = 48.dp, vertical = 16.dp)
+            .height(340.dp)
+            .padding(horizontal = 48.dp, vertical = 12.dp)
     ) {
         Card(
             onClick = { onClick(item.id) },
-            modifier = Modifier.fillMaxSize()
+            colors = CardDefaults.colors(
+                containerColor = KuroNamiColors.SurfaceLow,
+                focusedContainerColor = KuroNamiColors.SurfaceHigh
+            ),
+            shape = CardDefaults.shape(RoundedCornerShape(16.dp)),
+            modifier = Modifier
+                .fillMaxSize()
+                .onFocusChanged { isFocused = it.isFocused }
+                .border(
+                    width = if (isFocused) 2.5.dp else 1.dp,
+                    color = if (isFocused) KuroNamiColors.Crimson else KuroNamiColors.Outline.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(16.dp)
+                )
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 AsyncImage(
-                    model = item.backdropUrl ?: item.posterUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(item.backdropUrl?.takeIf { it.isNotBlank() } ?: item.posterUrl)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+
+                // High-End Multi-Stop Vignette Gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    KuroNamiColors.Obsidian.copy(alpha = 0.95f),
+                                    KuroNamiColors.Obsidian.copy(alpha = 0.85f),
+                                    KuroNamiColors.Obsidian.copy(alpha = 0.4f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
+                                colors = listOf(
+                                    Color.Transparent,
+                                    KuroNamiColors.Obsidian.copy(alpha = 0.9f)
+                                )
                             )
                         )
                 )
+
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(32.dp)
+                        .fillMaxWidth(0.65f)
                 ) {
-                    Text(text = item.title, style = MaterialTheme.typography.displayMedium)
+                    // Quick Pill
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(KuroNamiColors.Crimson, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "FEATURED SPOTLIGHT",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+
+                        if (!item.rating.isNullOrBlank()) {
+                            Text(
+                                text = item.rating,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = KuroNamiColors.Gold,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        if (!item.releaseYear.isNullOrBlank()) {
+                            Text(
+                                text = "•  ${item.releaseYear}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = KuroNamiColors.OnSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
-                        text = item.description ?: "A great adventure awaits in this highly rated anime. Watch it now on AniCli TV.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(top = 8.dp)
+                        text = item.title,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = item.description ?: "Stream anime in ultra-crisp HD with synced dual-audio playback on KuroNami.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = KuroNamiColors.OnSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Action pill
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (isFocused) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHighest,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Watch Now",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -274,12 +418,26 @@ fun HeroBanner(item: MediaItem?, onClick: (String) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaItem) -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        Text(
-            text = row.title,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp)
-        )
+    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 48.dp, vertical = 6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(20.dp)
+                    .background(KuroNamiColors.Crimson, RoundedCornerShape(2.dp))
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = row.title,
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         TvLazyRow(
             modifier = Modifier.padding(horizontal = 40.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)
