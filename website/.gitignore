@@ -7,3 +7,4 @@ data/*.db-shm
 data/*.db-wal
 public/download/
 *.apk
+!public/ani-cli-tv.apk

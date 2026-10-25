@@ -1126,6 +1126,115 @@
     </div>
   </div>
 
+  <!-- ==========================================================================
+       SITE FOOTER
+       ========================================================================== -->
+  <footer class="w-full bg-surface-container-lowest border-t border-white/[0.08] mt-auto pb-20 md:pb-0">
+    <div class="max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 py-10 sm:py-14">
+
+      <!-- Top Row: Brand + Links -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
+
+        <!-- Brand Column -->
+        <div class="flex flex-col gap-3 sm:col-span-2 lg:col-span-1">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-surface-container border border-primary/40 flex items-center justify-center">
+              <span class="w-3.5 h-3.5 rounded-sm bg-gradient-to-br from-primary-container to-primary shadow-[0_0_12px_#ff4f73]"></span>
+            </div>
+            <span class="text-lg font-extrabold text-white tracking-tight uppercase">Om <span class="text-primary-container">CLI</span></span>
+          </div>
+          <p class="text-xs text-gray-400 leading-relaxed max-w-xs">
+            Precision anime streaming with obsidian dark aesthetics, instant dual-audio HLS playback, and synchronized cross-device watch history. 100% free &amp; open source.
+          </p>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"></span>
+              OPEN SOURCE
+            </span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary font-mono text-[10px] font-bold border border-primary/30">
+              100% FREE
+            </span>
+          </div>
+        </div>
+
+        <!-- Download Column -->
+        <div class="flex flex-col gap-3">
+          <h3 class="font-mono text-[11px] uppercase tracking-widest text-gray-500 font-bold">Download</h3>
+          <a href="/ani-cli-tv.apk" download class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low border border-white/[0.08] hover:border-primary/50 hover:bg-surface-container transition-all group cursor-pointer">
+            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+              <span class="material-symbols-outlined text-[22px] text-primary">tv</span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-xs font-bold text-white group-hover:text-primary transition-colors">Om CLI for Android TV</span>
+              <span class="text-[10px] font-mono text-gray-500">APK • Android 7.0+ • ~55 MB</span>
+            </div>
+            <span class="material-symbols-outlined text-[20px] text-gray-500 group-hover:text-primary ml-auto flex-shrink-0 transition-colors">download</span>
+          </a>
+          <a href="https://github.com/omspradippatil/ani-cli" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 rounded-xl bg-surface-container-low border border-white/[0.08] hover:border-secondary/50 hover:bg-surface-container transition-all group cursor-pointer">
+            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center flex-shrink-0 group-hover:bg-secondary/20 transition-colors">
+              <svg class="w-5 h-5 text-secondary" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-xs font-bold text-white group-hover:text-secondary transition-colors">Source Code on GitHub</span>
+              <span class="text-[10px] font-mono text-gray-500">omspradippatil/ani-cli</span>
+            </div>
+            <span class="material-symbols-outlined text-[20px] text-gray-500 group-hover:text-secondary ml-auto flex-shrink-0 transition-colors">open_in_new</span>
+          </a>
+        </div>
+
+        <!-- Contribute Column -->
+        <div class="flex flex-col gap-3">
+          <h3 class="font-mono text-[11px] uppercase tracking-widest text-gray-500 font-bold">Contribute</h3>
+          <p class="text-xs text-gray-400 leading-relaxed">
+            Om CLI is community-driven and welcomes contributions of all kinds — bug fixes, new features, UI improvements, documentation, and translations.
+          </p>
+          <div class="flex flex-col gap-2 mt-1">
+            <a href="https://github.com/omspradippatil/ani-cli/issues" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-xs text-gray-300 hover:text-primary transition-colors font-medium">
+              <span class="material-symbols-outlined text-[16px] text-primary">bug_report</span>
+              Report Bugs &amp; Issues
+            </a>
+            <a href="https://github.com/omspradippatil/ani-cli/pulls" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-xs text-gray-300 hover:text-secondary transition-colors font-medium">
+              <span class="material-symbols-outlined text-[16px] text-secondary">merge</span>
+              Submit Pull Requests
+            </a>
+            <a href="https://github.com/omspradippatil/ani-cli/stargazers" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-xs text-gray-300 hover:text-yellow-400 transition-colors font-medium">
+              <span class="material-symbols-outlined text-[16px] text-yellow-400" style="font-variation-settings: 'FILL' 1;">star</span>
+              Star us on GitHub
+            </a>
+          </div>
+        </div>
+
+        <!-- Quick Links Column -->
+        <div class="flex flex-col gap-3">
+          <h3 class="font-mono text-[11px] uppercase tracking-widest text-gray-500 font-bold">Quick Links</h3>
+          <div class="flex flex-col gap-2">
+            <a href="#home" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Home</a>
+            <a href="#browse" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Browse Anime</a>
+            <a href="#watchlist" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">My Watchlist</a>
+            <a href="#account" class="text-xs text-gray-300 hover:text-white transition-colors font-medium">Account</a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Divider -->
+      <div class="mt-8 sm:mt-10 pt-6 border-t border-white/[0.06]">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p class="text-[11px] font-mono text-gray-500 text-center sm:text-left">
+            &copy; 2026 Om CLI — Built with ❤️ by <a href="https://github.com/omspradippatil" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-white transition-colors font-bold">Om Pradip Patil</a>. Open source under MIT License.
+          </p>
+          <div class="flex items-center gap-4">
+            <a href="https://github.com/omspradippatil/ani-cli" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-white transition-colors" title="GitHub">
+              <svg class="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 24 24" width="18" height="18"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            </a>
+            <span class="font-mono text-[10px] text-gray-600 uppercase tracking-wider">v2.0 • Edge Deployed</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
   <!-- Toast Notification Container (Positioned safely above bottom nav on mobile) -->
   <div id="toast-container" class="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
