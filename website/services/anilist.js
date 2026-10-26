@@ -433,7 +433,7 @@ async function browseAnime({ page = 1, perPage = 24, genre, sort = 'POPULARITY_D
       if (hasGenre) return true;
       if (wanted.includes('shounen')) {
         const desc = (a.description || '').toLowerCase();
-        return desc.includes('shounen') || desc.includes('shonen');
+        return desc.includes('shounen') || desc.includes('shonen') || gList.includes('action') || gList.includes('adventure');
       }
       return false;
     });

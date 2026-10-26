@@ -75,6 +75,10 @@ fun HomeScreen(
         }
     }
 
+    BackHandler(enabled = selectedDrawerItem != "Home") {
+        selectedDrawerItem = "Home"
+    }
+
     NavigationDrawer(
         drawerContent = { drawerValue ->
             Sidebar(
@@ -102,38 +106,292 @@ fun HomeScreen(
                     }
                 }
             } else {
-                TvLazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 72.dp),
-                    contentPadding = PaddingValues(bottom = 64.dp, top = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        HeroBanner(
-                            item = focusedItem,
-                            isWatchlisted = state.favoriteMediaIds.contains(focusedItem?.id ?: ""),
-                            primaryFocusRequester = initialFocusRequester,
-                            onClick = { focusedItem?.let { onMediaClick(it.id) } },
-                            onToggleWatchlist = { focusedItem?.let { viewModel.toggleWatchlist(it) } }
-                        )
-                    }
-
-                    // Quick Category Presets Chips Bar (Matching Web /genre-bar)
-                    item {
-                        GenreChipsBar(
-                            selectedGenre = state.selectedGenre,
-                            onGenreSelect = { viewModel.selectGenre(it) }
-                        )
-                    }
-
-                    items(state.rows) { row ->
-                        HomeRow(
-                            row = row,
+                when (selectedDrawerItem) {
+                    "My Watchlist" -> {
+                        WatchlistView(
+                            rows = state.rows,
                             onMediaClick = onMediaClick,
-                            onFocusItem = { focusedItem = it }
+                            onExploreClick = { selectedDrawerItem = "Home" }
                         )
                     }
+                    "History" -> {
+                        HistoryView(
+                            rows = state.rows,
+                            onMediaClick = onMediaClick,
+                            onExploreClick = { selectedDrawerItem = "Home" }
+                        )
+                    }
+                    else -> {
+                        TvLazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 72.dp),
+                            contentPadding = PaddingValues(bottom = 64.dp, top = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                HeroBanner(
+                                    item = focusedItem,
+                                    isWatchlisted = state.favoriteMediaIds.contains(focusedItem?.id ?: ""),
+                                    primaryFocusRequester = initialFocusRequester,
+                                    onClick = { focusedItem?.let { onMediaClick(it.id) } },
+                                    onToggleWatchlist = { focusedItem?.let { viewModel.toggleWatchlist(it) } }
+                                )
+                            }
+
+                            // Quick Category Presets Chips Bar (Matching Web /genre-bar)
+                            item {
+                                GenreChipsBar(
+                                    selectedGenre = state.selectedGenre,
+                                    onGenreSelect = { viewModel.selectGenre(it) }
+                                )
+                            }
+
+                            items(state.rows) { row ->
+                                HomeRow(
+                                    row = row,
+                                    onMediaClick = onMediaClick,
+                                    onFocusItem = { focusedItem = it }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun WatchlistView(
+    rows: List<MediaRow>,
+    onMediaClick: (String) -> Unit,
+    onExploreClick: () -> Unit
+) {
+    val watchlistRow = rows.firstOrNull { it.title.equals("My Watchlist", ignoreCase = true) }
+    val items = watchlistRow?.items ?: emptyList()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 88.dp, end = 48.dp, top = 32.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(KuroNamiColors.Crimson)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "My Watchlist",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Box(
+                modifier = Modifier
+                    .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(12.dp))
+                    .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "${items.size} Titles",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = KuroNamiColors.Crimson,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        if (items.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
+                        .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 48.dp, vertical = 40.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.BookmarkBorder,
+                        contentDescription = null,
+                        tint = KuroNamiColors.Crimson,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Your Watchlist is Empty",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Add series to your watchlist to track and watch them later.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = KuroNamiColors.OnSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onExploreClick,
+                        colors = ButtonDefaults.colors(
+                            containerColor = KuroNamiColors.Crimson,
+                            focusedContainerColor = KuroNamiColors.CrimsonContainer,
+                            contentColor = Color.White
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                    ) {
+                        Text(
+                            text = "Explore Anime",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            TvLazyVerticalGrid(
+                columns = TvGridCells.Fixed(5),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 64.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(items) { item ->
+                    MediaCard(
+                        item = item,
+                        onClick = { onMediaClick(item.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun HistoryView(
+    rows: List<MediaRow>,
+    onMediaClick: (String) -> Unit,
+    onExploreClick: () -> Unit
+) {
+    val historyRow = rows.firstOrNull { it.title.equals("Continue Watching", ignoreCase = true) }
+    val items = historyRow?.items ?: emptyList()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 88.dp, end = 48.dp, top = 32.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(28.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(KuroNamiColors.Cyan)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Watch History & Continue Watching",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Box(
+                modifier = Modifier
+                    .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(12.dp))
+                    .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "${items.size} Active",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = KuroNamiColors.Cyan,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        if (items.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
+                        .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 48.dp, vertical = 40.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.History,
+                        contentDescription = null,
+                        tint = KuroNamiColors.Cyan,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No Watch History Yet",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Episodes you stream will automatically appear here with your saved progress.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = KuroNamiColors.OnSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onExploreClick,
+                        colors = ButtonDefaults.colors(
+                            containerColor = KuroNamiColors.Cyan,
+                            focusedContainerColor = KuroNamiColors.Cyan.copy(alpha = 0.8f),
+                            contentColor = Color.Black
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                    ) {
+                        Text(
+                            text = "Start Watching",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            TvLazyVerticalGrid(
+                columns = TvGridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 64.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(items) { item ->
+                    ContinueWatchingCard(
+                        item = item,
+                        onClick = { onMediaClick(item.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
