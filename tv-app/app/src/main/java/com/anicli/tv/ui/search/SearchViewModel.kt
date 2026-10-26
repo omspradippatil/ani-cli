@@ -24,18 +24,38 @@ class SearchViewModel @Inject constructor(
     
     private var searchJob: Job? = null
 
+    init {
+        loadRecommendations()
+    }
+
+    fun loadRecommendations() {
+        viewModelScope.launch {
+            try {
+                val provider = providerSelector.getActiveProvider()
+                provider.getHomeFeed().collect { result ->
+                    result.onSuccess { rows ->
+                        val trending = rows.firstOrNull { it.title.contains("Trending", ignoreCase = true) }?.items
+                            ?: rows.firstOrNull()?.items
+                            ?: emptyList()
+                        _state.update { it.copy(recommendations = trending) }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     fun search(query: String) {
         searchJob?.cancel()
-        if (query.isBlank()) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) {
             _state.update { it.copy(results = emptyList(), isLoading = false) }
             return
         }
         
         searchJob = viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            delay(500) // debounce
-            // Always use the currently active provider
-            val result = providerSelector.getActiveProvider().search(query)
+            delay(350) // snappier 350ms debounce
+            val result = providerSelector.getActiveProvider().search(trimmed)
             result.onSuccess { items ->
                 _state.update { it.copy(results = items, isLoading = false) }
             }.onFailure { error ->
@@ -48,5 +68,6 @@ class SearchViewModel @Inject constructor(
 data class SearchState(
     val isLoading: Boolean = false,
     val results: List<MediaItem> = emptyList(),
+    val recommendations: List<MediaItem> = emptyList(),
     val error: String? = null
 )

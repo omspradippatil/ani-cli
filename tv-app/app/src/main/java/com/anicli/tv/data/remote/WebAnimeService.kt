@@ -30,12 +30,18 @@ interface WebAnimeService {
 
     @GET("api/anime/{id}")
     suspend fun getAnimeDetails(
-        @Path("id") id: String
+        @Path("id") id: String,
+        @Query("title") title: String? = null
     ): WebApiResponse<WebAnimeDetail>
 
     @GET("api/episodes/{idOrSlug}")
     suspend fun getEpisodes(
         @Path("idOrSlug") idOrSlug: String
+    ): WebApiResponse<List<WebEpisode>>
+
+    @GET("api/episodes")
+    suspend fun getEpisodesByQuery(
+        @Query("query") query: String
     ): WebApiResponse<List<WebEpisode>>
 
     @GET("api/stream/{episodeId}")

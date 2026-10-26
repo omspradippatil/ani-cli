@@ -98,27 +98,42 @@ class WebApiMediaProvider @Inject constructor(
 
     override suspend fun getDetails(mediaId: String): Result<MediaDetail> = withContext(Dispatchers.IO) {
         try {
-            val response = webAnimeService.getAnimeDetails(mediaId)
+            val fallbackTitle = if (!mediaId.all { it.isDigit() }) {
+                mediaId.replace(Regex("-\\d+$"), "").replace("-", " ")
+                    .split(" ")
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ") { word -> word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
+            } else null
+
+            val response = webAnimeService.getAnimeDetails(mediaId, title = fallbackTitle)
             val detailData = response.data ?: return@withContext Result.failure(Exception("Anime not found"))
 
-            val title = detailData.title?.preferredTitle() ?: "Anime Details"
+            val title = detailData.title?.preferredTitle()?.takeIf { it != "Unknown Anime" }
+                ?: fallbackTitle
+                ?: "Anime Details"
             val posterUrl = detailData.coverImage?.bestImageUrl()?.takeIf { it.isNotBlank() }
                 ?: detailData.poster?.takeIf { it.isNotBlank() }
                 ?: detailData.image?.takeIf { it.isNotBlank() }
+                ?: detailData.hiAnimeMatch?.poster?.takeIf { it.isNotBlank() }
                 ?: ""
             val backdropUrl = detailData.bannerImage?.takeIf { it.isNotBlank() } ?: posterUrl
-            val cleanDesc = cleanHtmlText(detailData.description)
+            val cleanDesc = cleanHtmlText(detailData.description).takeIf { it != "No description available." }
+                ?: "Stream $title with precision dual-audio Japanese/English playback."
 
             // Resolve episodes from streamEpisodes, episodes, or fallback endpoint
             var rawEpisodes = detailData.streamEpisodes?.takeIf { it.isNotEmpty() }
                 ?: detailData.episodes?.takeIf { it.isNotEmpty() }
                 ?: emptyList()
             if (rawEpisodes.isEmpty()) {
+                val queryTitle = if (title != "Anime Details") title else (fallbackTitle ?: mediaId)
                 try {
-                    val epResponse = webAnimeService.getEpisodes(mediaId)
+                    val epResponse = webAnimeService.getEpisodesByQuery(queryTitle)
                     rawEpisodes = epResponse.data ?: emptyList()
                 } catch (e: Exception) {
-                    // ignore
+                    try {
+                        val epResponse = webAnimeService.getEpisodes(mediaId)
+                        rawEpisodes = epResponse.data ?: emptyList()
+                    } catch (_: Exception) {}
                 }
             }
 

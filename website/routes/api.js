@@ -135,13 +135,22 @@ router.get('/anime/:id', async (req, res) => {
       const prefix = titleParam.split(/[:\-]/)[0].trim();
       if (prefix.length >= 3) candidateTitles.add(prefix);
     }
-    for (const t of baseTitles) {
-      candidateTitles.add(t);
-      candidateTitles.add(t.replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim());
-      const prefix = t.split(/[:\-]/)[0].trim();
-      if (prefix.length >= 3) candidateTitles.add(prefix);
-      const noSeason = t.replace(/\b(Season \d+|Part \d+|\b\d+(?:st|nd|rd|th) Season\b)\b/gi, '').trim();
-      if (noSeason.length >= 3) candidateTitles.add(noSeason);
+    if (baseTitles.length > 0) {
+      for (const t of baseTitles) {
+        candidateTitles.add(t);
+        candidateTitles.add(t.replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim());
+        const prefix = t.split(/[:\-]/)[0].trim();
+        if (prefix.length >= 3) candidateTitles.add(prefix);
+        const noSeason = t.replace(/\b(Season \d+|Part \d+|\b\d+(?:st|nd|rd|th) Season\b)\b/gi, '').trim();
+        if (noSeason.length >= 3) candidateTitles.add(noSeason);
+      }
+    } else if (!titleParam && isNaN(Number(id))) {
+      const derived = id.replace(/-\d+$/, '').replace(/-/g, ' ').trim();
+      if (derived.length >= 2) {
+        candidateTitles.add(derived);
+        const noSeason = derived.replace(/\b(Season \d+|Part \d+|\b\d+(?:st|nd|rd|th) Season\b)\b/gi, '').trim();
+        if (noSeason.length >= 2) candidateTitles.add(noSeason);
+      }
     }
 
     let episodes = [];

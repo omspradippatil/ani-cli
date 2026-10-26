@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -199,30 +200,56 @@ fun SearchScreen(
             }
         } else if (state.results.isEmpty() && query.isNotEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No anime found for \"$query\"",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = KuroNamiColors.OnSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "No anime found for \"$query\"",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Try checking the spelling or searching by Japanese/Romaji title.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = KuroNamiColors.OnSurfaceVariant
+                    )
+                }
             }
         } else {
-            if (state.results.isNotEmpty()) {
-                Text(
-                    text = "Search Results (${state.results.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = KuroNamiColors.OnSurface,
-                    fontWeight = FontWeight.Bold,
+            val displayItems = if (query.isNotEmpty()) state.results else state.recommendations
+            val sectionTitle = if (query.isNotEmpty()) "Search Results (${state.results.size})" else "Trending & Recommended Anime"
+            val accentColor = if (query.isNotEmpty()) KuroNamiColors.Crimson else KuroNamiColors.Cyan
+
+            if (displayItems.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 12.dp)
-                )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(accentColor)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = sectionTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = KuroNamiColors.OnSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             TvLazyVerticalGrid(
                 columns = TvGridCells.Fixed(5),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 64.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(state.results) { item ->
+                items(displayItems) { item ->
                     MediaCard(
                         item = item,
                         onClick = { onMediaClick(item.id) },

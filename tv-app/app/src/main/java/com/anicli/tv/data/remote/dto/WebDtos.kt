@@ -64,7 +64,8 @@ data class WebSearchData(
 data class WebHiAnimeMatch(
     @SerializedName("id") val id: String? = null,
     @SerializedName("slug") val slug: String? = null,
-    @SerializedName("title") val title: String? = null
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("poster") val poster: String? = null
 )
 
 data class WebAnimeDetail(
@@ -82,7 +83,8 @@ data class WebAnimeDetail(
     @SerializedName("episodes") val episodes: List<WebEpisode>? = null,
     @SerializedName("totalEpisodes") val totalEpisodes: Int? = null,
     @SerializedName("averageScore") val averageScore: Int? = null,
-    @SerializedName("streamEpisodes") val streamEpisodes: List<WebEpisode>? = null
+    @SerializedName("streamEpisodes") val streamEpisodes: List<WebEpisode>? = null,
+    @SerializedName("hiAnimeMatch") val hiAnimeMatch: WebHiAnimeMatch? = null
 )
 
 data class WebEpisode(

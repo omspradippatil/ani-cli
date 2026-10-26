@@ -550,6 +550,13 @@ export default {
             const prefix = t.split(/[:\-]/)[0].trim();
             if (prefix.length >= 3) candidateTitles.add(prefix);
           });
+        } else if (!titleParam && isNaN(Number(animeId))) {
+          const derived = animeId.replace(/-\d+$/, '').replace(/-/g, ' ').trim();
+          if (derived.length >= 2) {
+            candidateTitles.add(derived);
+            const noSeason = derived.replace(/\b(Season \d+|Part \d+|\b\d+(?:st|nd|rd|th) Season\b)\b/gi, '').trim();
+            if (noSeason.length >= 2) candidateTitles.add(noSeason);
+          }
         }
 
         let episodes = [];
