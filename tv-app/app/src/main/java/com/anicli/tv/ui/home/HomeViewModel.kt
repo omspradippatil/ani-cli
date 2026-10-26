@@ -108,11 +108,13 @@ class HomeViewModel @Inject constructor(
 
                     allLoadedRows = finalRows
                     val filtered = applyGenreFilter(finalRows, _state.value.selectedGenre)
+                    val favIds = favoriteList.map { it.mediaId }.toSet()
                     _state.update { 
                         it.copy(
                             rows = filtered, 
                             isLoading = false, 
-                            activeProviderName = provider.name 
+                            activeProviderName = provider.name,
+                            favoriteMediaIds = favIds
                         ) 
                     }
                 }.onFailure { error ->

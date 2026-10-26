@@ -2173,15 +2173,19 @@ document.addEventListener('DOMContentLoaded', () => {
   async function handleLiveSearch(query) {
     try {
       let results = [];
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
-      if (res && res.ok) {
-        const json = await res.json().catch(() => ({}));
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          results = json.data;
-        }
-      }
-      if (!results.length && window.AniListClient) {
+      // 1. Direct Browser Client (window.AniListClient) - High-speed, unblocked, complete catalog
+      if (window.AniListClient) {
         results = await window.AniListClient.searchAnime(query, 1, 10).catch(() => []);
+      }
+      // 2. Server fallback if direct client failed or returned empty
+      if (!results.length) {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            results = json.data;
+          }
+        }
       }
 
       if (results.length > 0) {
@@ -2298,15 +2302,19 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       mobileSearchResults.innerHTML = '<div class="py-8 flex justify-center"><div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div></div>';
       let results = [];
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
-      if (res && res.ok) {
-        const json = await res.json().catch(() => ({}));
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          results = json.data;
-        }
-      }
-      if (!results.length && window.AniListClient) {
+      // 1. Direct Browser Client (window.AniListClient) - High-speed, unblocked, complete catalog
+      if (window.AniListClient) {
         results = await window.AniListClient.searchAnime(query, 1, 10).catch(() => []);
+      }
+      // 2. Server fallback if direct client failed or returned empty
+      if (!results.length) {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`).catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            results = json.data;
+          }
+        }
       }
 
       if (results.length > 0) {

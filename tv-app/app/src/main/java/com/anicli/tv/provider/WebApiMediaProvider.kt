@@ -102,7 +102,10 @@ class WebApiMediaProvider @Inject constructor(
             val detailData = response.data ?: return@withContext Result.failure(Exception("Anime not found"))
 
             val title = detailData.title?.preferredTitle() ?: "Anime Details"
-            val posterUrl = detailData.coverImage?.bestImageUrl() ?: ""
+            val posterUrl = detailData.coverImage?.bestImageUrl()?.takeIf { it.isNotBlank() }
+                ?: detailData.poster?.takeIf { it.isNotBlank() }
+                ?: detailData.image?.takeIf { it.isNotBlank() }
+                ?: ""
             val backdropUrl = detailData.bannerImage?.takeIf { it.isNotBlank() } ?: posterUrl
             val cleanDesc = cleanHtmlText(detailData.description)
 
@@ -240,12 +243,15 @@ class WebApiMediaProvider @Inject constructor(
 
     private fun WebAnimeItem.toMediaItem(): MediaItem {
         val titleText = title?.preferredTitle() ?: "Unknown Anime"
-        val poster = coverImage?.bestImageUrl() ?: ""
+        val poster = coverImage?.bestImageUrl()?.takeIf { it.isNotBlank() }
+            ?: poster?.takeIf { it.isNotBlank() }
+            ?: image?.takeIf { it.isNotBlank() }
+            ?: ""
         val backdrop = bannerImage?.takeIf { it.isNotBlank() } ?: poster
         val ratingText = averageScore?.let { "${String.format("%.1f", it / 10.0)} ★" } ?: ""
 
         return MediaItem(
-            id = id.toString(),
+            id = id,
             title = titleText,
             posterUrl = poster,
             backdropUrl = backdrop,
