@@ -1,6 +1,7 @@
 package com.anicli.tv.ui.search
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -9,11 +10,13 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onKeyEvent
@@ -43,6 +46,7 @@ fun SearchScreen(
     val state by viewModel.state.collectAsState()
     val focusManager = LocalFocusManager.current
     var query by remember { mutableStateOf("") }
+    var isSearchFocused by remember { mutableStateOf(false) }
 
     val quickPicks = listOf(
         "Solo Leveling",
@@ -61,19 +65,29 @@ fun SearchScreen(
             .background(KuroNamiColors.Obsidian)
             .padding(horizontal = 48.dp, vertical = 32.dp)
     ) {
-        // Search Input Box
+        // Search Input Box with Focus Border & 1-Click Clear
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(12.dp))
-                .border(1.5.dp, KuroNamiColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                .background(
+                    if (isSearchFocused) KuroNamiColors.SurfaceHigh else KuroNamiColors.SurfaceLow,
+                    RoundedCornerShape(12.dp)
+                )
+                .border(
+                    width = if (isSearchFocused) 2.5.dp else 1.5.dp,
+                    color = if (isSearchFocused) KuroNamiColors.Crimson else KuroNamiColors.Outline.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(12.dp)
+                )
                 .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(
                     Icons.Filled.Search,
                     contentDescription = null,
-                    tint = KuroNamiColors.Crimson,
+                    tint = if (isSearchFocused) KuroNamiColors.Crimson else KuroNamiColors.OnSurfaceVariant,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
@@ -94,7 +108,8 @@ fun SearchScreen(
                         focusManager.moveFocus(FocusDirection.Down)
                     }),
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
+                        .onFocusChanged { isSearchFocused = it.isFocused }
                         .onKeyEvent { keyEvent ->
                             if (keyEvent.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
                                 focusManager.moveFocus(FocusDirection.Down)
@@ -112,6 +127,31 @@ fun SearchScreen(
                         innerTextField()
                     }
                 )
+                if (query.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        onClick = {
+                            query = ""
+                            viewModel.search("")
+                        },
+                        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = KuroNamiColors.Surface,
+                            focusedContainerColor = KuroNamiColors.Crimson,
+                            contentColor = KuroNamiColors.OnSurfaceVariant,
+                            focusedContentColor = Color.White
+                        ),
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Clear search",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
 

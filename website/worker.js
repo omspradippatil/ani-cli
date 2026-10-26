@@ -492,8 +492,13 @@ export default {
         const { genre, sort, search, format, status } = Object.fromEntries(url.searchParams);
         const page = parseInt(url.searchParams.get('page')) || 1;
         const perPage = parseInt(url.searchParams.get('perPage')) || 24;
-        const res = await anilist.browseAnime({ page, perPage, genre, sort, search, format, status });
-        return jsonResponse({ success: true, data: res.items, pageInfo: res.pageInfo });
+        try {
+          const res = await anilist.browseAnime({ page, perPage, genre, sort, search, format, status });
+          return jsonResponse({ success: true, data: res?.items || [], pageInfo: res?.pageInfo || { hasNextPage: false, currentPage: page } });
+        } catch (e) {
+          console.error('[Worker] browseAnime error:', e);
+          return jsonResponse({ success: true, data: [], pageInfo: { hasNextPage: false, currentPage: page } });
+        }
       }
 
       // --- METADATA: SEARCH ---
