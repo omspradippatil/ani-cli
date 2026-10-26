@@ -191,9 +191,9 @@ async function searchAnime(keyword, page = 1, perPage = 20) {
           userPreferred: h.title
         },
         coverImage: {
-          extraLarge: h.poster,
-          large: h.poster,
-          medium: h.poster
+          extraLarge: h.poster || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/default.jpg',
+          large: h.poster || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg',
+          medium: h.poster || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/default.jpg'
         },
         format: h.type || 'TV',
         status: 'RELEASING',
@@ -276,31 +276,79 @@ async function browseAnime({ page = 1, perPage = 24, genre, sort = 'POPULARITY_D
     'episodes': 'EPISODES_DESC',
     'trending': 'TRENDING_DESC'
   };
-  const resolvedSort = sortMap[sort] || sort || 'POPULARITY_DESC';
 
-  const variables = { page: Number(page) || 1, perPage: Number(perPage) || 24, sort: resolvedSort };
-  const filterArgs = ['$page: Int', '$perPage: Int', '$sort: [MediaSort]'];
-  const mediaArgs = ['type: ANIME', 'sort: $sort', 'isAdult: false'];
+  const ANILIST_GENRES = new Set([
+    'action', 'adventure', 'comedy', 'drama', 'ecchi', 'fantasy', 'horror',
+    'mahou shoujo', 'mecha', 'music', 'mystery', 'psychological', 'romance',
+    'sci-fi', 'slice of life', 'sports', 'supernatural', 'thriller'
+  ]);
+
+  const variables = { page: Number(page) || 1, perPage: Number(perPage) || 24 };
+  const filterArgs = ['$page: Int', '$perPage: Int'];
+  const mediaArgs = ['type: ANIME', 'isAdult: false'];
 
   if (search && search.trim()) {
     variables.search = search.trim();
     filterArgs.push('$search: String');
     mediaArgs.push('search: $search');
+    if (!sort || sort === 'popularity' || sort === 'score') {
+      variables.sort = 'SEARCH_MATCH';
+      filterArgs.push('$sort: [MediaSort]');
+      mediaArgs.push('sort: $sort');
+    } else {
+      variables.sort = sortMap[sort] || sort;
+      filterArgs.push('$sort: [MediaSort]');
+      mediaArgs.push('sort: $sort');
+    }
+  } else {
+    const resolvedSort = sortMap[sort] || sort || 'POPULARITY_DESC';
+    variables.sort = resolvedSort;
+    filterArgs.push('$sort: [MediaSort]');
+    mediaArgs.push('sort: $sort');
   }
 
-  if (genre && genre !== 'All') {
-    variables.genre = genre;
+  // Handle genres and tags (like Shounen, Isekai, etc.)
+  const rawGenres = Array.isArray(genre) ? genre : (genre && genre !== 'All' ? String(genre).split(',') : []);
+  const matchedGenres = [];
+  const matchedTags = [];
+
+  for (const item of rawGenres) {
+    if (!item || item === 'All') continue;
+    const norm = item.trim();
+    if (ANILIST_GENRES.has(norm.toLowerCase())) {
+      matchedGenres.push(norm);
+    } else {
+      matchedTags.push(norm);
+    }
+  }
+
+  if (matchedGenres.length === 1) {
+    variables.genre = matchedGenres[0];
     filterArgs.push('$genre: String');
     mediaArgs.push('genre: $genre');
+  } else if (matchedGenres.length > 1) {
+    variables.genres = matchedGenres;
+    filterArgs.push('$genres: [String]');
+    mediaArgs.push('genre_in: $genres');
   }
 
-  if (format && format !== 'All') {
+  if (matchedTags.length === 1) {
+    variables.tag = matchedTags[0];
+    filterArgs.push('$tag: String');
+    mediaArgs.push('tag: $tag');
+  } else if (matchedTags.length > 1) {
+    variables.tags = matchedTags;
+    filterArgs.push('$tags: [String]');
+    mediaArgs.push('tag_in: $tags');
+  }
+
+  if (format && format !== 'All' && format !== 'all') {
     variables.format = format;
     filterArgs.push('$format: MediaFormat');
     mediaArgs.push('format: $format');
   }
 
-  if (status && status !== 'All') {
+  if (status && status !== 'All' && status !== 'all') {
     variables.status = status;
     filterArgs.push('$status: MediaStatus');
     mediaArgs.push('status: $status');
@@ -333,11 +381,72 @@ async function browseAnime({ page = 1, perPage = 24, genre, sort = 'POPULARITY_D
     console.warn('[AniList] browseAnime fallback:', err.message);
   }
 
+  // Offline / Error Fallbacks
   const allSeeds = [...trendingSeed, ...popularSeed, ...topRatedSeed];
   let filtered = allSeeds;
-  if (genre && genre !== 'All') {
-    filtered = filtered.filter(a => a.genres?.some(g => g.toLowerCase() === genre.toLowerCase()));
+
+  if (search && search.trim()) {
+    const normKey = search.toLowerCase().trim();
+    filtered = filtered.filter(a => {
+      const tEng = a.title?.english?.toLowerCase() || '';
+      const tRom = a.title?.romaji?.toLowerCase() || '';
+      const tUser = a.title?.userPreferred?.toLowerCase() || '';
+      const desc = a.description?.toLowerCase() || '';
+      return tEng.includes(normKey) || tRom.includes(normKey) || tUser.includes(normKey) || desc.includes(normKey);
+    });
+
+    if (filtered.length === 0) {
+      try {
+        const hianime = require('./hianime');
+        const hiResults = await hianime.search(search);
+        if (hiResults && hiResults.length > 0) {
+          return {
+            items: hiResults.slice((page - 1) * perPage, page * perPage).map(h => ({
+              id: h.slug || h.id,
+              title: {
+                english: h.title,
+                romaji: h.jname || h.title,
+                userPreferred: h.title
+              },
+              coverImage: {
+                extraLarge: h.poster || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/default.jpg',
+                large: h.poster || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg',
+                medium: h.poster || 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/default.jpg'
+              },
+              format: h.type || 'TV',
+              status: 'RELEASING',
+              episodes: h.episodes?.sub || h.episodes?.dub || null
+            })),
+            pageInfo: { hasNextPage: false, currentPage: page }
+          };
+        }
+      } catch (_) {}
+      return { items: [], pageInfo: { hasNextPage: false, currentPage: page } };
+    }
   }
+
+  if (matchedGenres.length > 0 || matchedTags.length > 0) {
+    const wanted = [...matchedGenres, ...matchedTags].map(s => s.toLowerCase());
+    filtered = filtered.filter(a => {
+      const gList = (a.genres || []).map(g => g.toLowerCase());
+      const hasGenre = wanted.some(w => gList.includes(w));
+      if (hasGenre) return true;
+      if (wanted.includes('shounen')) {
+        const desc = (a.description || '').toLowerCase();
+        return desc.includes('shounen') || desc.includes('shonen');
+      }
+      return false;
+    });
+  }
+
+  if (format && format !== 'All' && format !== 'all') {
+    filtered = filtered.filter(a => (a.format || '').toUpperCase() === format.toUpperCase());
+  }
+
+  if (status && status !== 'All' && status !== 'all') {
+    filtered = filtered.filter(a => (a.status || '').toUpperCase() === status.toUpperCase());
+  }
+
   return {
     items: filtered.slice((page - 1) * perPage, page * perPage),
     pageInfo: { hasNextPage: filtered.length > page * perPage, currentPage: page }

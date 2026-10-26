@@ -1,6 +1,7 @@
 package com.anicli.tv.ui.details
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
 import androidx.tv.foundation.lazy.list.TvLazyRow
@@ -436,17 +438,22 @@ fun EpisodeCard(
             containerColor = KuroNamiColors.SurfaceLow,
             focusedContainerColor = KuroNamiColors.SurfaceHigh
         ),
-        shape = CardDefaults.shape(RoundedCornerShape(12.dp)),
+        shape = CardDefaults.shape(
+            shape = RoundedCornerShape(12.dp)
+        ),
+        scale = CardDefaults.scale(
+            focusedScale = 1.05f
+        ),
+        border = CardDefaults.border(
+            border = Border(BorderStroke(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f))),
+            focusedBorder = Border(BorderStroke(2.5.dp, KuroNamiColors.Crimson))
+        ),
         modifier = Modifier
-            .width(220.dp)
+            .width(230.dp)
             .padding(6.dp)
             .aspectRatio(16f / 10f)
+            .zIndex(if (isFocused) 5f else 1f)
             .onFocusChanged { isFocused = it.isFocused }
-            .border(
-                width = if (isFocused) 2.5.dp else 1.dp,
-                color = if (isFocused) KuroNamiColors.Crimson else KuroNamiColors.Outline.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp)
-            )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(

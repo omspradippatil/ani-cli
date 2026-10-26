@@ -9,5 +9,6 @@ data class MediaItem(
     val releaseYear: String? = null,
     val rating: String? = null,
     val tags: List<String> = emptyList(),
-    val progressPercent: Float? = null
+    val progressPercent: Float? = null,
+    val episodeLabel: String? = null
 )

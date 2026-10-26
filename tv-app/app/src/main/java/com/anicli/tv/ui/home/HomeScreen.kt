@@ -29,6 +29,7 @@ import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.anicli.tv.core.presentation.ContinueWatchingCard
 import com.anicli.tv.core.presentation.MediaCard
 import com.anicli.tv.core.theme.KuroNamiColors
 import com.anicli.tv.domain.model.MediaItem
@@ -101,7 +102,8 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(start = 72.dp),
-                    contentPadding = PaddingValues(bottom = 48.dp, top = 16.dp)
+                    contentPadding = PaddingValues(bottom = 64.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
                         HeroBanner(
@@ -494,8 +496,9 @@ fun HeroBanner(
                 }
 
                 if (!item.rating.isNullOrBlank()) {
+                    val cleanRating = item.rating.replace("★", "").trim()
                     Text(
-                        text = "★ ${item.rating}",
+                        text = "★ $cleanRating",
                         style = MaterialTheme.typography.labelMedium,
                         color = KuroNamiColors.Gold,
                         fontWeight = FontWeight.Bold
@@ -529,7 +532,7 @@ fun HeroBanner(
             // Action Buttons with standard focusable buttons
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Button(
                     onClick = { onClick(item.id) },
@@ -542,7 +545,7 @@ fun HeroBanner(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Icon(
                             Icons.Filled.PlayArrow,
@@ -555,7 +558,8 @@ fun HeroBanner(
                             text = "Watch Episode 1",
                             style = MaterialTheme.typography.labelLarge,
                             color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
                     }
                 }
@@ -570,7 +574,7 @@ fun HeroBanner(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Icon(
                             if (isWatchlisted) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
@@ -583,7 +587,8 @@ fun HeroBanner(
                             text = if (isWatchlisted) "In Watchlist" else "Add to Watchlist",
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.White,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
                         )
                     }
                 }
@@ -598,7 +603,7 @@ fun HeroBanner(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Icon(
                             Icons.Filled.Info,
@@ -611,7 +616,8 @@ fun HeroBanner(
                             text = "Details",
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.White,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
                         )
                     }
                 }
@@ -623,7 +629,9 @@ fun HeroBanner(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaItem) -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+    val isContinueWatching = row.title.equals("Continue Watching", ignoreCase = true)
+
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 48.dp, vertical = 6.dp)
@@ -632,7 +640,10 @@ fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaIt
                 modifier = Modifier
                     .width(4.dp)
                     .height(20.dp)
-                    .background(KuroNamiColors.Crimson, RoundedCornerShape(2.dp))
+                    .background(
+                        if (isContinueWatching) KuroNamiColors.Cyan else KuroNamiColors.Crimson,
+                        RoundedCornerShape(2.dp)
+                    )
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
@@ -641,18 +652,42 @@ fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaIt
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )
+            if (isContinueWatching) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .background(KuroNamiColors.CyanContainer, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "JUMP BACK IN",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KuroNamiColors.Cyan,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
         }
 
         TvLazyRow(
             modifier = Modifier.padding(horizontal = 40.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp)
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(row.items) { item ->
-                MediaCard(
-                    item = item,
-                    onClick = { onMediaClick(item.id) },
-                    onFocus = { onFocusItem(item) }
-                )
+                if (isContinueWatching) {
+                    ContinueWatchingCard(
+                        item = item,
+                        onClick = { onMediaClick(item.id) },
+                        onFocus = { onFocusItem(item) }
+                    )
+                } else {
+                    MediaCard(
+                        item = item,
+                        onClick = { onMediaClick(item.id) },
+                        onFocus = { onFocusItem(item) }
+                    )
+                }
             }
         }
     }

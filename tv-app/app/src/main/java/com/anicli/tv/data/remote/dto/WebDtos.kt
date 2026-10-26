@@ -9,11 +9,13 @@ data class WebApiResponse<T>(
 )
 
 data class WebAnimeItem(
-    @SerializedName("id") val id: Int,
-    @SerializedName("idMal") val idMal: Int? = null,
+    @SerializedName("id") val id: String = "",
+    @SerializedName("idMal") val idMal: Any? = null,
     @SerializedName("title") val title: WebTitle? = null,
     @SerializedName("coverImage") val coverImage: WebCoverImage? = null,
     @SerializedName("bannerImage") val bannerImage: String? = null,
+    @SerializedName("poster") val poster: String? = null,
+    @SerializedName("image") val image: String? = null,
     @SerializedName("format") val format: String? = null,
     @SerializedName("status") val status: String? = null,
     @SerializedName("episodes") val episodes: Int? = null,
@@ -66,11 +68,13 @@ data class WebHiAnimeMatch(
 )
 
 data class WebAnimeDetail(
-    @SerializedName("id") val id: Int,
-    @SerializedName("idMal") val idMal: Int? = null,
+    @SerializedName("id") val id: String = "",
+    @SerializedName("idMal") val idMal: Any? = null,
     @SerializedName("title") val title: WebTitle? = null,
     @SerializedName("coverImage") val coverImage: WebCoverImage? = null,
     @SerializedName("bannerImage") val bannerImage: String? = null,
+    @SerializedName("poster") val poster: String? = null,
+    @SerializedName("image") val image: String? = null,
     @SerializedName("genres") val genres: List<String>? = null,
     @SerializedName("description") val description: String? = null,
     @SerializedName("format") val format: String? = null,

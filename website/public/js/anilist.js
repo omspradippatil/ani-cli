@@ -174,31 +174,79 @@
         'episodes': 'EPISODES_DESC',
         'trending': 'TRENDING_DESC'
       };
-      const resolvedSort = sortMap[sort] || sort || 'POPULARITY_DESC';
 
-      const variables = { page: Number(page) || 1, perPage: Number(perPage) || 24, sort: resolvedSort };
-      const filterArgs = ['$page: Int', '$perPage: Int', '$sort: [MediaSort]'];
-      const mediaArgs = ['type: ANIME', 'sort: $sort', 'isAdult: false'];
+      const ANILIST_GENRES = new Set([
+        'action', 'adventure', 'comedy', 'drama', 'ecchi', 'fantasy', 'horror',
+        'mahou shoujo', 'mecha', 'music', 'mystery', 'psychological', 'romance',
+        'sci-fi', 'slice of life', 'sports', 'supernatural', 'thriller'
+      ]);
+
+      const variables = { page: Number(page) || 1, perPage: Number(perPage) || 24 };
+      const filterArgs = ['$page: Int', '$perPage: Int'];
+      const mediaArgs = ['type: ANIME', 'isAdult: false'];
 
       if (search && search.trim()) {
         variables.search = search.trim();
         filterArgs.push('$search: String');
         mediaArgs.push('search: $search');
+        if (!sort || sort === 'popularity' || sort === 'score') {
+          variables.sort = 'SEARCH_MATCH';
+          filterArgs.push('$sort: [MediaSort]');
+          mediaArgs.push('sort: $sort');
+        } else {
+          variables.sort = sortMap[sort] || sort;
+          filterArgs.push('$sort: [MediaSort]');
+          mediaArgs.push('sort: $sort');
+        }
+      } else {
+        const resolvedSort = sortMap[sort] || sort || 'POPULARITY_DESC';
+        variables.sort = resolvedSort;
+        filterArgs.push('$sort: [MediaSort]');
+        mediaArgs.push('sort: $sort');
       }
 
-      if (genre && genre !== 'All') {
-        variables.genre = genre;
+      // Handle genres and tags (like Shounen, Isekai, etc.)
+      const rawGenres = Array.isArray(genre) ? genre : (genre && genre !== 'All' ? String(genre).split(',') : []);
+      const matchedGenres = [];
+      const matchedTags = [];
+
+      for (const item of rawGenres) {
+        if (!item || item === 'All') continue;
+        const norm = item.trim();
+        if (ANILIST_GENRES.has(norm.toLowerCase())) {
+          matchedGenres.push(norm);
+        } else {
+          matchedTags.push(norm);
+        }
+      }
+
+      if (matchedGenres.length === 1) {
+        variables.genre = matchedGenres[0];
         filterArgs.push('$genre: String');
         mediaArgs.push('genre: $genre');
+      } else if (matchedGenres.length > 1) {
+        variables.genres = matchedGenres;
+        filterArgs.push('$genres: [String]');
+        mediaArgs.push('genre_in: $genres');
       }
 
-      if (format && format !== 'All') {
+      if (matchedTags.length === 1) {
+        variables.tag = matchedTags[0];
+        filterArgs.push('$tag: String');
+        mediaArgs.push('tag: $tag');
+      } else if (matchedTags.length > 1) {
+        variables.tags = matchedTags;
+        filterArgs.push('$tags: [String]');
+        mediaArgs.push('tag_in: $tags');
+      }
+
+      if (format && format !== 'All' && format !== 'all') {
         variables.format = format;
         filterArgs.push('$format: MediaFormat');
         mediaArgs.push('format: $format');
       }
 
-      if (status && status !== 'All') {
+      if (status && status !== 'All' && status !== 'all') {
         variables.status = status;
         filterArgs.push('$status: MediaStatus');
         mediaArgs.push('status: $status');

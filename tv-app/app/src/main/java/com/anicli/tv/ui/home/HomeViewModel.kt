@@ -83,7 +83,9 @@ class HomeViewModel @Inject constructor(
                                 id = it.mediaId, 
                                 title = it.mediaTitle, 
                                 posterUrl = it.posterUrl,
-                                progressPercent = progressRatio
+                                backdropUrl = it.posterUrl,
+                                progressPercent = progressRatio,
+                                episodeLabel = it.episodeTitle.ifBlank { "EP 1" }
                             )
                         }
                         finalRows.add(MediaRow("Continue Watching", continueItems))

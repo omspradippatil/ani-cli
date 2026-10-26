@@ -37,8 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
     userHistory: [],
     genresList: [
       'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 
-      'Horror', 'Mystery', 'Psychological', 'Romance', 
-      'Sci-Fi', 'Shounen', 'Slice of Life', 'Supernatural', 'Thriller'
+      'Horror', 'Isekai', 'Mecha', 'Music', 'Mystery', 
+      'Psychological', 'Romance', 'Sci-Fi', 'Shounen', 
+      'Slice of Life', 'Sports', 'Supernatural', 'Thriller'
     ]
   };
 
@@ -634,10 +635,55 @@ document.addEventListener('DOMContentLoaded', () => {
       loadContinueWatching();
     } else if (path === 'browse') {
       views.browse.classList.remove('hidden');
-      if (params.get('search')) {
-        browseSearchInput.value = params.get('search');
-        state.browseFilters.search = params.get('search');
+      const searchParam = params.get('search');
+      const genreParam = params.get('genre');
+      const sortParam = params.get('sort');
+      const formatParam = params.get('format');
+      const statusParam = params.get('status');
+
+      if (searchParam) {
+        browseSearchInput.value = searchParam;
+        state.browseFilters.search = searchParam;
+      } else {
+        browseSearchInput.value = '';
+        state.browseFilters.search = '';
       }
+
+      if (genreParam) {
+        state.browseFilters.genre = genreParam;
+        filterGenresMatrix.querySelectorAll('.genre-matrix-chk').forEach(c => {
+          c.checked = (c.value.toLowerCase() === genreParam.toLowerCase());
+        });
+      }
+
+      if (sortParam) {
+        state.browseFilters.sort = sortParam;
+        browseSortSelect.value = sortParam;
+        if (mobileBrowseSortSelect) mobileBrowseSortSelect.value = sortParam;
+      }
+
+      if (formatParam) {
+        state.browseFilters.format = formatParam;
+        filterFormatGroup.querySelectorAll('.filter-btn').forEach(b => {
+          if (b.dataset.format && b.dataset.format.toLowerCase() === formatParam.toLowerCase()) {
+            b.className = 'filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold';
+          } else {
+            b.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold';
+          }
+        });
+      }
+
+      if (statusParam) {
+        state.browseFilters.status = statusParam;
+        filterStatusGroup.querySelectorAll('.filter-btn').forEach(b => {
+          if (b.dataset.status && b.dataset.status.toLowerCase() === statusParam.toLowerCase()) {
+            b.className = 'filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold';
+          } else {
+            b.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold';
+          }
+        });
+      }
+
       executeBrowse();
     } else if (path === 'watch') {
       views.watch.classList.remove('hidden');
@@ -921,17 +967,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const chip = e.target.closest('.genre-chip');
     if (!chip) return;
 
+    const wasActive = chip.classList.contains('active');
+    const genre = chip.dataset.genre || 'All';
+
+    // If already active and clicked again on a specific genre, jump straight to full Browse catalog!
+    if (wasActive && genre !== 'All') {
+      navigateTo(`browse?genre=${encodeURIComponent(genre)}`);
+      return;
+    }
+
     genreBar.querySelectorAll('.genre-chip').forEach(c => {
       c.className = 'genre-chip px-4 py-1.5 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap';
     });
     chip.className = 'genre-chip active px-4 py-1.5 rounded-full bg-primary-container text-white font-mono text-xs font-bold tracking-wide transition-all whitespace-nowrap shadow-sm';
 
-    const genre = chip.dataset.genre;
     if (genre === 'All') {
       renderAnimeCards(trendingGrid, state.rawTrendingList);
     } else {
-      const filtered = state.rawTrendingList.filter(a => (a.genres || []).includes(genre));
-      renderAnimeCards(trendingGrid, filtered);
+      const gNorm = genre.toLowerCase();
+      const filtered = state.rawTrendingList.filter(a => {
+        const gList = (a.genres || []).map(g => g.toLowerCase());
+        if (gList.includes(gNorm)) return true;
+        if (gNorm === 'shounen') {
+          const desc = (a.description || '').toLowerCase();
+          return desc.includes('shounen') || desc.includes('shonen') || gList.includes('action') || gList.includes('adventure');
+        }
+        return false;
+      });
+
+      if (filtered.length > 0) {
+        renderAnimeCards(trendingGrid, filtered);
+      } else {
+        // No items in memory trending feed, navigate directly to full catalog in browse
+        navigateTo(`browse?genre=${encodeURIComponent(genre)}`);
+      }
     }
   });
 
@@ -1069,12 +1138,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
 
   function buildGenreMatrix() {
-    filterGenresMatrix.innerHTML = state.genresList.map(g => `
-      <label class="flex items-center gap-2 p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer text-xs text-gray-300">
-        <input type="checkbox" value="${g}" class="genre-matrix-chk rounded bg-surface-container-high border-white/[0.1] text-primary focus:ring-0">
-        <span>${g}</span>
-      </label>
-    `).join('');
+    filterGenresMatrix.innerHTML = state.genresList.map(g => {
+      const isChecked = state.browseFilters.genre && state.browseFilters.genre.toLowerCase() === g.toLowerCase();
+      return `
+        <label class="flex items-center gap-2 p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer text-xs text-gray-300">
+          <input type="checkbox" value="${g}" ${isChecked ? 'checked' : ''} class="genre-matrix-chk rounded bg-surface-container-high border-white/[0.1] text-primary focus:ring-0">
+          <span>${g}</span>
+        </label>
+      `;
+    }).join('');
 
     filterGenresMatrix.querySelectorAll('.genre-matrix-chk').forEach(chk => {
       chk.addEventListener('change', () => {
@@ -1204,24 +1276,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.browseFilters.sort) queryParams.set('sort', state.browseFilters.sort);
     if (state.browseFilters.format && state.browseFilters.format !== 'all') queryParams.set('format', state.browseFilters.format);
     if (state.browseFilters.status && state.browseFilters.status !== 'all') queryParams.set('status', state.browseFilters.status);
-    if (selectedGenres.length > 0) queryParams.set('genre', selectedGenres[0]);
+    if (selectedGenres.length > 0) queryParams.set('genre', selectedGenres.join(','));
 
     try {
       let browseItems = null;
-      const res = await fetch(`/api/browse?${queryParams.toString()}`).catch(() => null);
-      if (res && res.ok) {
-        const json = await res.json().catch(() => ({}));
-        if (json.success && Array.isArray(json.data)) browseItems = json.data;
-      }
-      if (!browseItems && window.AniListClient) {
-        const fallback = await window.AniListClient.browseAnime({
+
+      // 1. Direct Browser Client (window.AniListClient) - High-speed, unblocked, complete 10,000+ catalog
+      if (window.AniListClient) {
+        const clientRes = await window.AniListClient.browseAnime({
           search: state.browseFilters.search,
           sort: state.browseFilters.sort,
           format: state.browseFilters.format,
           status: state.browseFilters.status,
-          genre: selectedGenres[0] || 'All'
-        }).catch(() => null);
-        if (fallback && Array.isArray(fallback.items)) browseItems = fallback.items;
+          genre: selectedGenres.length > 0 ? selectedGenres : (state.browseFilters.genre || 'All')
+        }).catch(err => {
+          console.warn('[Browse] Direct AniListClient error, falling back:', err.message);
+          return null;
+        });
+
+        if (clientRes && Array.isArray(clientRes.items) && clientRes.items.length > 0) {
+          browseItems = clientRes.items;
+        }
+      }
+
+      // 2. Server fallback if direct client failed or returned empty
+      if (!browseItems || browseItems.length === 0) {
+        const res = await fetch(`/api/browse?${queryParams.toString()}`).catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            browseItems = json.data;
+          }
+        }
       }
 
       if (browseItems && browseItems.length > 0) {

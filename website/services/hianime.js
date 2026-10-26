@@ -22,21 +22,28 @@ async function search(keyword) {
 
     const mainPart = html.split('id="main-sidebar"')[0] || html;
     const results = [];
-    const titleRegex = /<h3 class="film-name">\s*<a href="[^"]*\/([^"/]+)"\s*title="([^"]+)"/g;
-    let match;
+    const blocks = mainPart.split('<div class="flw-item').slice(1);
 
-    while ((match = titleRegex.exec(mainPart)) !== null) {
-      const slug = match[1];
-      const title = match[2]
+    for (const block of blocks) {
+      const titleMatch = block.match(/<h3 class="film-name">\s*<a href="[^"]*\/([^"/]+)"\s*title="([^"]+)"/);
+      if (!titleMatch) continue;
+
+      const slug = titleMatch[1];
+      const title = titleMatch[2]
         .replace(/&#039;/g, "'")
         .replace(/&quot;/g, '"')
         .replace(/&amp;/g, '&');
       const animeId = slug.split('-').pop();
 
+      const posterMatch = block.match(/<img[^>]+(?:src|data-src)="([^"]+)"[^>]*class="[^"]*film-poster-img/i) ||
+                          block.match(/<img[^>]+class="[^"]*film-poster-img[^"]*"[^>]+(?:src|data-src)="([^"]+)"/i);
+      const poster = posterMatch ? posterMatch[1] : '';
+
       results.push({
         id: animeId,
         slug,
-        title
+        title,
+        poster
       });
     }
 
