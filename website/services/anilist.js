@@ -146,17 +146,63 @@ async function getTopRated(page = 1, perPage = 20) {
  * Search anime by title keyword
  */
 async function searchAnime(keyword, page = 1, perPage = 20) {
-  const query = `
-    query ($search: String, $page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(type: ANIME, search: $search, sort: SEARCH_MATCH, isAdult: false) {
-          ${MEDIA_FIELDS}
+  try {
+    const query = `
+      query ($search: String, $page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          media(type: ANIME, search: $search, sort: SEARCH_MATCH, isAdult: false) {
+            ${MEDIA_FIELDS}
+          }
         }
       }
+    `;
+    const data = await fetchAniList(query, { search: keyword, page, perPage });
+    if (data?.Page?.media && data.Page.media.length > 0) {
+      return data.Page.media;
     }
-  `;
-  const data = await fetchAniList(query, { search: keyword, page, perPage });
-  return data?.Page?.media || [];
+  } catch (err) {
+    console.warn('[AniList] searchAnime fallback:', err.message);
+  }
+
+  // Fallback 1: Match against local seed databases
+  const normKey = keyword.toLowerCase().trim();
+  const allSeeds = [...trendingSeed, ...popularSeed, ...topRatedSeed];
+  const matched = allSeeds.filter(a => {
+    const tEng = a.title?.english?.toLowerCase() || '';
+    const tRom = a.title?.romaji?.toLowerCase() || '';
+    const tUser = a.title?.userPreferred?.toLowerCase() || '';
+    const desc = a.description?.toLowerCase() || '';
+    return tEng.includes(normKey) || tRom.includes(normKey) || tUser.includes(normKey) || desc.includes(normKey);
+  });
+  if (matched.length > 0) {
+    return matched.slice(0, perPage);
+  }
+
+  // Fallback 2: Search HiAnime
+  try {
+    const hianime = require('./hianime');
+    const hiResults = await hianime.search(keyword);
+    if (hiResults && hiResults.length > 0) {
+      return hiResults.slice(0, perPage).map(h => ({
+        id: h.slug || h.id,
+        title: {
+          english: h.title,
+          romaji: h.jname || h.title,
+          userPreferred: h.title
+        },
+        coverImage: {
+          extraLarge: h.poster,
+          large: h.poster,
+          medium: h.poster
+        },
+        format: h.type || 'TV',
+        status: 'RELEASING',
+        episodes: h.episodes?.sub || h.episodes?.dub || null
+      }));
+    }
+  } catch (_) {}
+
+  return [];
 }
 
 /**
@@ -275,10 +321,26 @@ async function browseAnime({ page = 1, perPage = 24, genre, sort = 'POPULARITY_D
     }
   `;
 
-  const data = await fetchAniList(query, variables);
+  try {
+    const data = await fetchAniList(query, variables);
+    if (data?.Page?.media && data.Page.media.length > 0) {
+      return {
+        items: data.Page.media,
+        pageInfo: data.Page.pageInfo || { hasNextPage: false, currentPage: 1 }
+      };
+    }
+  } catch (err) {
+    console.warn('[AniList] browseAnime fallback:', err.message);
+  }
+
+  const allSeeds = [...trendingSeed, ...popularSeed, ...topRatedSeed];
+  let filtered = allSeeds;
+  if (genre && genre !== 'All') {
+    filtered = filtered.filter(a => a.genres?.some(g => g.toLowerCase() === genre.toLowerCase()));
+  }
   return {
-    items: data?.Page?.media || [],
-    pageInfo: data?.Page?.pageInfo || { hasNextPage: false, currentPage: 1 }
+    items: filtered.slice((page - 1) * perPage, page * perPage),
+    pageInfo: { hasNextPage: filtered.length > page * perPage, currentPage: page }
   };
 }
 

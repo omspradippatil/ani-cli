@@ -15,6 +15,7 @@ import com.anicli.tv.data.local.dao.WatchProgressDao
 import com.anicli.tv.data.local.dao.FavoriteDao
 import com.anicli.tv.data.local.entity.FavoriteEntity
 import com.anicli.tv.data.repository.FirebaseRepository
+import com.anicli.tv.data.repository.WebUserRepository
 import com.anicli.tv.domain.model.MediaItem
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
@@ -24,7 +25,8 @@ class HomeViewModel @Inject constructor(
     private val providerSelector: ProviderSelector,
     private val watchProgressDao: WatchProgressDao,
     private val favoriteDao: FavoriteDao,
-    private val firebaseRepository: FirebaseRepository
+    private val firebaseRepository: FirebaseRepository,
+    private val webUserRepository: WebUserRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
@@ -36,12 +38,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             
-            // Sync cloud progress if logged in
+            // Sync cloud progress & watchlist from SQLite backend if logged in
             try {
-                val cloudProgress = firebaseRepository.fetchCloudWatchProgress()
-                for (prog in cloudProgress) {
-                    watchProgressDao.insertProgress(prog)
-                }
+                webUserRepository.syncWatchHistory()
+                webUserRepository.syncWatchlist()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -153,17 +153,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val isFav = _state.value.favoriteMediaIds.contains(item.id)
             if (isFav) {
-                favoriteDao.deleteFavorite(item.id)
+                webUserRepository.removeFromWatchlist(item.id)
                 _state.update { it.copy(favoriteMediaIds = it.favoriteMediaIds - item.id) }
             } else {
-                favoriteDao.insertFavorite(
-                    FavoriteEntity(
-                        mediaId = item.id,
-                        title = item.title,
-                        posterUrl = item.posterUrl,
-                        addedAt = System.currentTimeMillis()
-                    )
-                )
+                webUserRepository.addToWatchlist(item.id, item.title, item.posterUrl)
                 _state.update { it.copy(favoriteMediaIds = it.favoriteMediaIds + item.id) }
             }
         }

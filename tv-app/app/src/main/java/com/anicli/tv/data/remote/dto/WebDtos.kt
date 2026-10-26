@@ -120,3 +120,121 @@ data class WebSkipRange(
     @SerializedName("start") val start: Int? = null,
     @SerializedName("end") val end: Int? = null
 )
+
+// ─── SQLite / Cloudflare D1 Backend Auth & User DTOs ──────────────────────────
+
+data class AuthLoginRequest(
+    @SerializedName("username") val username: String,
+    @SerializedName("password") val password: String
+)
+
+data class AuthRegisterRequest(
+    @SerializedName("username") val username: String,
+    @SerializedName("email") val email: String? = null,
+    @SerializedName("password") val password: String
+)
+
+data class WebUser(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("username") val username: String = "",
+    @SerializedName("email") val email: String? = null,
+    @SerializedName("avatar") val avatar: String? = null,
+    @SerializedName("tier") val tier: String? = "Community Otaku",
+    @SerializedName("level") val level: Int = 1,
+    @SerializedName("created_at") val createdAt: Long? = null
+)
+
+data class WebUserStats(
+    @SerializedName("totalEpisodesWatched") val totalEpisodesWatched: Int? = null,
+    @SerializedName("totalDaysWatched") val totalDaysWatched: String? = null,
+    @SerializedName("completedSeriesCount") val completedSeriesCount: Int? = null,
+    @SerializedName("watchlistCount") val watchlistCount: Int? = null,
+    @SerializedName("meanScore") val meanScore: String? = null,
+    @SerializedName("episodesWatched") val episodesWatched: Int? = null,
+    @SerializedName("watchTimeHours") val watchTimeHours: Int? = null,
+    @SerializedName("totalWatched") val totalWatched: Int? = null,
+    @SerializedName("timeSpentMinutes") val timeSpentMinutes: Int? = null,
+    @SerializedName("favoriteGenre") val favoriteGenre: String? = null
+)
+
+data class WebUserSettings(
+    @SerializedName("user_id") val userId: Int? = null,
+    @SerializedName("preferred_audio") val preferredAudio: String? = "sub",
+    @SerializedName("auto_next") val autoNext: Int? = 1,
+    @SerializedName("auto_skip_intro") val autoSkipIntro: Int? = 1,
+    @SerializedName("auto_play") val autoPlay: Int? = 1,
+    @SerializedName("preferred_quality") val preferredQuality: String? = "auto",
+    @SerializedName("updated_at") val updatedAt: Long? = null
+)
+
+data class AuthData(
+    @SerializedName("user") val user: WebUser? = null,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("stats") val stats: WebUserStats? = null,
+    @SerializedName("settings") val settings: WebUserSettings? = null
+)
+
+data class AuthResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: WebUser? = null,
+    @SerializedName("data") val data: AuthData? = null,
+    @SerializedName("error") val error: String? = null
+)
+
+data class UserProfileData(
+    @SerializedName("user") val user: WebUser? = null,
+    @SerializedName("stats") val stats: WebUserStats? = null,
+    @SerializedName("settings") val settings: WebUserSettings? = null
+)
+
+data class WebHistoryItem(
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("user_id") val userId: Int? = null,
+    @SerializedName("anime_id") val animeId: String? = null,
+    @SerializedName("anime_title") val animeTitle: String? = null,
+    @SerializedName("poster") val poster: String? = null,
+    @SerializedName("episode_num") val episodeNum: Float? = null,
+    @SerializedName("episode_id") val episodeId: String? = null,
+    @SerializedName("progress_seconds") val progressSeconds: Float? = null,
+    @SerializedName("duration_seconds") val durationSeconds: Float? = null,
+    @SerializedName("updated_at") val updatedAt: Long? = null
+)
+
+data class SaveHistoryRequest(
+    @SerializedName("animeId") val animeId: String,
+    @SerializedName("animeTitle") val animeTitle: String,
+    @SerializedName("poster") val poster: String? = null,
+    @SerializedName("episodeNum") val episodeNum: Float,
+    @SerializedName("episodeId") val episodeId: String,
+    @SerializedName("progressSeconds") val progressSeconds: Float,
+    @SerializedName("durationSeconds") val durationSeconds: Float
+)
+
+data class WebWatchlistItem(
+    @SerializedName("id") val id: Int? = null,
+    @SerializedName("user_id") val userId: Int? = null,
+    @SerializedName("anime_id") val animeId: String? = null,
+    @SerializedName("anime_title") val animeTitle: String? = null,
+    @SerializedName("poster") val poster: String? = null,
+    @SerializedName("format") val format: String? = "TV",
+    @SerializedName("score") val score: Float? = null,
+    @SerializedName("status") val status: String? = "Watching",
+    @SerializedName("updated_at") val updatedAt: Long? = null
+)
+
+data class SaveWatchlistRequest(
+    @SerializedName("animeId") val animeId: String,
+    @SerializedName("animeTitle") val animeTitle: String,
+    @SerializedName("poster") val poster: String? = null,
+    @SerializedName("format") val format: String? = "TV",
+    @SerializedName("score") val score: Float? = 0f,
+    @SerializedName("status") val status: String? = "Watching"
+)
+
+data class CheckWatchlistResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("isWatchlisted") val isWatchlisted: Boolean = false,
+    @SerializedName("status") val status: String? = null
+)
+

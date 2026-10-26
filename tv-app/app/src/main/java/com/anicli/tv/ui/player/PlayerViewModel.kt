@@ -15,12 +15,14 @@ import okhttp3.OkHttpClient
 import com.anicli.tv.data.local.dao.WatchProgressDao
 import com.anicli.tv.data.local.entity.WatchProgressEntity
 import com.anicli.tv.data.repository.FirebaseRepository
+import com.anicli.tv.data.repository.WebUserRepository
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val providerSelector: ProviderSelector,
     private val watchProgressDao: WatchProgressDao,
     private val firebaseRepository: FirebaseRepository,
+    private val webUserRepository: WebUserRepository,
     @javax.inject.Named("VideoClient") val okHttpClient: OkHttpClient
 ) : ViewModel() {
 
@@ -98,18 +100,16 @@ class PlayerViewModel @Inject constructor(
                     ?: cachedMediaDetail?.backdropUrl?.takeIf { it.isNotBlank() }
                     ?: ""
 
-                val entity = WatchProgressEntity(
-                    mediaId = mediaId,
-                    episodeId = "$mediaId|$epNum",
-                    mediaTitle = title,
-                    episodeTitle = "Episode $epNum",
-                    posterUrl = poster,
+                val epId = currentEpisodeId.ifBlank { "$mediaId|$epNum" }
+                webUserRepository.saveHistory(
+                    animeId = mediaId,
+                    title = title,
+                    poster = poster,
+                    epNum = epNum.toFloat(),
+                    episodeId = epId,
                     progressMs = currentPosition,
-                    totalDurationMs = duration,
-                    lastUpdated = System.currentTimeMillis()
+                    durationMs = duration
                 )
-                watchProgressDao.insertProgress(entity)
-                firebaseRepository.syncWatchProgressToCloud(listOf(entity))
             } catch (e: Exception) {
                 e.printStackTrace()
             }

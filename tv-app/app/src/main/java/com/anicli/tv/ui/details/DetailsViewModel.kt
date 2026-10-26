@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.anicli.tv.data.local.dao.FavoriteDao
 import com.anicli.tv.data.local.entity.FavoriteEntity
 import com.anicli.tv.data.repository.FirebaseRepository
+import com.anicli.tv.data.repository.WebUserRepository
 import com.anicli.tv.domain.model.MediaDetail
 import com.anicli.tv.domain.provider.ProviderSelector
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,8 @@ class DetailsViewModel @Inject constructor(
     private val providerSelector: ProviderSelector,
     private val favoriteDao: FavoriteDao,
     private val watchProgressDao: WatchProgressDao,
-    private val firebaseRepository: FirebaseRepository
+    private val firebaseRepository: FirebaseRepository,
+    private val webUserRepository: WebUserRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DetailsState())
@@ -62,19 +64,14 @@ class DetailsViewModel @Inject constructor(
             val currentDetail = _state.value.detail ?: return@launch
             val isFav = _state.value.isFavorite
             
-            val entity = FavoriteEntity(
-                mediaId = mediaId,
-                title = currentDetail.title,
-                posterUrl = currentDetail.posterUrl,
-                addedAt = System.currentTimeMillis()
-            )
-            
             if (isFav) {
-                favoriteDao.deleteFavorite(mediaId)
-                firebaseRepository.removeFavoriteFromCloud(entity)
+                webUserRepository.removeFromWatchlist(mediaId)
             } else {
-                favoriteDao.insertFavorite(entity)
-                firebaseRepository.syncFavoritesToCloud(listOf(entity))
+                webUserRepository.addToWatchlist(
+                    animeId = mediaId,
+                    title = currentDetail.title,
+                    poster = currentDetail.posterUrl
+                )
             }
         }
     }
