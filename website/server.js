@@ -37,9 +37,18 @@ app.use('/api/proxy', proxyRoutes);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Download route shortcut for TV APK
-app.get('/download/tv-apk', (req, res) => {
+app.get(['/download/tv-apk', '/download/ani-cli-tv.apk', '/ani-cli-tv.apk'], (req, res) => {
+  const fs = require('fs');
   const apkPath = path.join(__dirname, 'ani-cli-production-signed.apk');
-  res.download(apkPath, 'ani-cli-tv.apk');
+  if (fs.existsSync(apkPath)) {
+    return res.download(apkPath, 'ani-cli-tv.apk');
+  }
+  res.redirect('https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk');
+});
+
+// Donate / Support shortcut
+app.get(['/donate', '/support'], (req, res) => {
+  res.redirect('https://razorpay.me/@ompradippatil');
 });
 
 // Single Page Application (SPA) routing fallback

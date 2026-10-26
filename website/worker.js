@@ -138,6 +138,16 @@ export default {
       return corsPreflight();
     }
 
+    // TV APK Download Route (Redirect directly to genuine signed Android TV APK on GitHub CDN)
+    if (pathname === '/ani-cli-tv.apk' || pathname === '/download/tv-apk' || pathname === '/download/ani-cli-tv.apk') {
+      return Response.redirect('https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk', 302);
+    }
+
+    // Donate / Support shortcut
+    if (pathname === '/donate' || pathname === '/support') {
+      return Response.redirect('https://razorpay.me/@ompradippatil', 302);
+    }
+
     // Serve Frontend Static Assets (HTML, CSS, JS, Images) from Edge
     if (!pathname.startsWith('/api/')) {
       if (env.ASSETS) {
