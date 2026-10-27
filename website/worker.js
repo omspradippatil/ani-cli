@@ -138,6 +138,11 @@ export default {
       return corsPreflight();
     }
 
+    // Favicon handler (avoids 404 console errors in browsers)
+    if (pathname === '/favicon.ico') {
+      return new Response(null, { status: 204 });
+    }
+
     // TV APK Download Route (Redirect directly to genuine signed Android TV APK on GitHub CDN)
     if (pathname === '/ani-cli-tv.apk' || pathname === '/download/tv-apk' || pathname === '/download/ani-cli-tv.apk') {
       return Response.redirect('https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk', 302);
@@ -688,11 +693,30 @@ export default {
           }
         });
 
-        const contentType = pathname.endsWith('vtt') ? 'text/vtt' : 'video/mp2t';
+        if (pathname.endsWith('vtt')) {
+          let vttText = await upRes.text();
+          vttText = vttText
+            .replace(/&lt;(\/?[a-zA-Z0-9]+)&gt;/gi, '<$1>')
+            .replace(/&lt;(\/?[a-zA-Z0-9]+)\s+([^&]*?)&gt;/gi, '<$1 $2>')
+            .replace(/\{\\i1\}/g, '<i>')
+            .replace(/\{\\i0\}/g, '</i>')
+            .replace(/\{\\b1\}/g, '<b>')
+            .replace(/\{\\b0\}/g, '</b>')
+            .replace(/\{[^\}]*\}/g, '');
+          return new Response(vttText, {
+            status: upRes.status,
+            headers: {
+              'Content-Type': 'text/vtt; charset=utf-8',
+              'Access-Control-Allow-Origin': '*',
+              'Cache-Control': 'public, max-age=86400, immutable'
+            }
+          });
+        }
+
         return new Response(upRes.body, {
           status: upRes.status,
           headers: {
-            'Content-Type': contentType,
+            'Content-Type': 'video/mp2t',
             'Access-Control-Allow-Origin': '*',
             'Cache-Control': 'public, max-age=86400, immutable'
           }

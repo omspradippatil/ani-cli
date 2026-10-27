@@ -1,6 +1,21 @@
 // website/public/js/player.js
 // Cinema-Grade Artplayer.js Video Player Engine with Hls.js & Subtitles for Om CLI
 
+function sanitizeVtt(vtt) {
+  if (typeof vtt !== 'string') return vtt;
+  return vtt
+    // Unescape pre-escaped HTML formatting tags so they don't print as raw literal text
+    .replace(/&lt;(\/?[a-zA-Z0-9]+)&gt;/gi, '<$1>')
+    .replace(/&lt;(\/?[a-zA-Z0-9]+)\s+([^&]*?)&gt;/gi, '<$1 $2>')
+    // Convert ASS style tags into standard WebVTT formatting
+    .replace(/\{\\i1\}/g, '<i>')
+    .replace(/\{\\i0\}/g, '</i>')
+    .replace(/\{\\b1\}/g, '<b>')
+    .replace(/\{\\b0\}/g, '</b>')
+    // Remove other ASS position and override tags
+    .replace(/\{[^\}]*\}/g, '');
+}
+
 class AnimePlayer {
   constructor(mountSelector) {
     this.mountSelector = mountSelector;
@@ -57,7 +72,10 @@ class AnimePlayer {
 
         if (posterUrl) this.art.poster = posterUrl;
         if (subUrl && this.art.subtitle) {
-          this.art.subtitle.switch(subUrl);
+          this.art.subtitle.switch(subUrl, {
+            escape: false,
+            onVttLoad: sanitizeVtt
+          });
           this.art.subtitle.show = this.captionsEnabled;
         } else if (this.art.subtitle) {
           this.art.subtitle.show = false;
@@ -267,6 +285,8 @@ class AnimePlayer {
             fontWeight: '600'
           },
           encoding: 'utf-8',
+          escape: false,
+          onVttLoad: sanitizeVtt,
         },
         controls: [
           // Previous Episode button (Left controls)
@@ -369,6 +389,21 @@ class AnimePlayer {
 
       this.art.on('fullscreenWeb', (isFull) => {
         self.handleFullscreenChange(isFull);
+      });
+
+      // Clean any raw or escaped HTML tags in subtitle lines so <i> or <b> never display as literal text
+      this.art.on('subtitleAfterUpdate', () => {
+        try {
+          const subLines = self.art.template?.$subtitle?.querySelectorAll('.art-subtitle-line');
+          if (subLines) {
+            subLines.forEach(line => {
+              if (line.innerHTML.includes('&lt;i&gt;') || line.innerHTML.includes('&lt;/i&gt;') || line.innerHTML.includes('&lt;b&gt;') || line.innerHTML.includes('&lt;/b&gt;')) {
+                line.innerHTML = line.innerHTML
+                  .replace(/&lt;(\/?[a-zA-Z0-9]+)&gt;/gi, '<$1>');
+              }
+            });
+          }
+        } catch (e) {}
       });
 
       this.art.on('video:timeupdate', () => {

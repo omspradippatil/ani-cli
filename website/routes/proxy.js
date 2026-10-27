@@ -159,7 +159,17 @@ router.get('/vtt', async (req, res) => {
 
     if (!upstreamRes.ok) return res.status(upstreamRes.status).send('VTT fetch failed');
 
-    const text = await upstreamRes.text();
+    let text = await upstreamRes.text();
+    // Normalize pre-escaped HTML entities and ASS subtitle tags into standard WebVTT formatting
+    text = text
+      .replace(/&lt;(\/?[a-zA-Z0-9]+)&gt;/gi, '<$1>')
+      .replace(/&lt;(\/?[a-zA-Z0-9]+)\s+([^&]*?)&gt;/gi, '<$1 $2>')
+      .replace(/\{\\i1\}/g, '<i>')
+      .replace(/\{\\i0\}/g, '</i>')
+      .replace(/\{\\b1\}/g, '<b>')
+      .replace(/\{\\b0\}/g, '</b>')
+      .replace(/\{[^\}]*\}/g, '');
+
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'public, max-age=86400');

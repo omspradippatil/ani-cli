@@ -401,6 +401,18 @@ body {
   transition: bottom 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
+.art-video-player .art-subtitle i,
+.art-video-player .art-subtitle-line i {
+  font-style: italic !important;
+  font-family: inherit !important;
+}
+
+.art-video-player .art-subtitle b,
+.art-video-player .art-subtitle-line b {
+  font-weight: 700 !important;
+  font-family: inherit !important;
+}
+
 .art-video-player.art-hover .art-subtitle,
 .art-video-player.art-lock .art-subtitle,
 .art-video-player.art-control-show .art-subtitle {

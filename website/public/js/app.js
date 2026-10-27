@@ -1092,7 +1092,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const epCount = item.episodes ? `${item.episodes} EP` : 'Simulcast';
 
       return `
-        <div class="group relative bg-surface-container-low border border-white/[0.08] hover:border-primary/50 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 flex flex-col cursor-pointer" onclick="window.location.hash='watch?anime=${item.id}&ep=1'">
+        <div class="anime-card group relative bg-surface-container-low border border-white/[0.08] hover:border-primary/50 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 flex flex-col cursor-pointer" onclick="window.location.hash='watch?anime=${item.id}&ep=1'">
           <div class="relative aspect-[2/3] w-full bg-surface-container-high overflow-hidden">
             <img src="${poster}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             <div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent opacity-90"></div>
