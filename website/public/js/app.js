@@ -1065,13 +1065,19 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="relative aspect-video w-full bg-surface-container-high overflow-hidden">
             <img src="${item.poster || 'https://via.placeholder.com/300x170'}" alt="${item.anime_title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             <div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
+            
+            <!-- Quick Remove Button -->
+            <button class="btn-remove-continue absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110 active:scale-90 cursor-pointer" title="Remove from Continue Watching" onclick="event.stopPropagation(); window.removeHistoryItem('${item.anime_id}');">
+              <span class="material-symbols-outlined text-[15px]">close</span>
+            </button>
+
             <div class="absolute bottom-2 left-2 right-2">
               <span class="px-2 py-0.5 rounded bg-primary-container text-white font-mono text-[10px] font-bold shadow-sm">
                 EP ${item.episode_num}
               </span>
             </div>
             <!-- Play overlay -->
-            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 backdrop-blur-[2px] transition-opacity">
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 backdrop-blur-[2px] transition-opacity pointer-events-none">
               <span class="w-10 h-10 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg">
                 <span class="material-symbols-outlined text-[24px]">play_arrow</span>
               </span>
@@ -2088,18 +2094,59 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.removeHistoryItem = async function(animeId) {
-    if (!state.auth.token) return;
+    if (!state.auth.token) {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.includes(`_${animeId}_`) || key.endsWith(`_${animeId}`) || key.startsWith(`ani_progress_${animeId}`))) {
+          localStorage.removeItem(key);
+        }
+      }
+      showToast('Removed from Continue Watching', 'info');
+      loadContinueWatching();
+      return;
+    }
+
     try {
       await fetch(`/api/user/history/${animeId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${state.auth.token}` }
       });
-      showToast('Item removed from history', 'info');
+      showToast('Removed from Continue Watching', 'info');
       state.userHistory = (state.userHistory || []).filter(h => String(h.anime_id) !== String(animeId));
       loadAccountHistory();
       loadContinueWatching();
     } catch {}
   };
+
+  // Rail Header Clear All
+  const btnClearContinueWatching = document.getElementById('btn-clear-continue-watching');
+  if (btnClearContinueWatching) {
+    btnClearContinueWatching.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!confirm('Clear all items from Continue Watching?')) return;
+
+      if (state.auth.token) {
+        try {
+          await fetch('/api/user/history', {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${state.auth.token}` }
+          });
+        } catch {}
+      }
+
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('ani_progress_') || key.startsWith('artplayer_settings_'))) {
+          localStorage.removeItem(key);
+        }
+      }
+
+      state.userHistory = [];
+      showToast('Continue Watching cleared', 'info');
+      loadContinueWatching();
+      loadAccountHistory();
+    });
+  }
 
   btnClearAllHistory.addEventListener('click', async () => {
     if (!state.auth.token || !confirm('Are you sure you want to clear your entire watch history?')) return;
