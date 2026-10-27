@@ -658,14 +658,14 @@ export default {
             if (line.includes('URI="')) {
               line = line.replace(/URI="([^"]+)"/g, (match, uri) => {
                 const abs = new URL(uri, targetUrl).href;
-                const endpoint = abs.endsWith('.m3u8') ? '/api/proxy/m3u8' : '/api/proxy/ts';
+                const endpoint = abs.includes('.m3u8') ? '/api/proxy/m3u8' : '/api/proxy/ts';
                 return `URI="${endpoint}?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(referer)}"`;
               });
             }
             rewritten.push(line);
           } else {
             const abs = new URL(line, targetUrl).href;
-            const endpoint = abs.endsWith('.m3u8') ? '/api/proxy/m3u8' : '/api/proxy/ts';
+            const endpoint = abs.includes('.m3u8') ? '/api/proxy/m3u8' : '/api/proxy/ts';
             rewritten.push(`${endpoint}?url=${encodeURIComponent(abs)}&ref=${encodeURIComponent(referer)}`);
           }
         }
@@ -716,7 +716,7 @@ export default {
         return new Response(upRes.body, {
           status: upRes.status,
           headers: {
-            'Content-Type': 'video/mp2t',
+            'Content-Type': upRes.headers.get('content-type') || 'video/mp2t',
             'Access-Control-Allow-Origin': '*',
             'Cache-Control': 'public, max-age=86400, immutable'
           }

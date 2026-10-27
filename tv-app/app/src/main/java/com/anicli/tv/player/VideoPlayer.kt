@@ -93,11 +93,13 @@ fun VideoPlayer(
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             audioManager?.let { am ->
-                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
-                val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-                if (curVol < maxVol) {
-                    am.setStreamVolume(AudioManager.STREAM_MUSIC, maxVol, 0)
+                if (!am.isVolumeFixed) {
+                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+                    val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    if (curVol <= 0) {
+                        am.setStreamVolume(AudioManager.STREAM_MUSIC, (maxVol * 0.85f).toInt().coerceAtLeast(1), 0)
+                    }
                 }
             }
         } catch (_: Exception) {}
@@ -127,13 +129,18 @@ fun VideoPlayer(
                 buildUponParameters()
                     .setForceLowestBitrate(false)
                     .setAllowMultipleAdaptiveSelections(true)
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    .setPreferredAudioLanguage(null)
+                    .setSelectUndeterminedTextLanguage(true)
             )
         }
     }
 
     val exoPlayer = remember {
         val renderersFactory = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
+            .setEnableAudioFloatOutput(false)
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(40000, 100000, 2500, 5000)
@@ -148,7 +155,8 @@ fun VideoPlayer(
             .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .build().apply {
-                setAudioAttributes(audioAttributes, true)
+                // Pass false for handleAudioFocus so TV system UI / Leanback focus events NEVER silence the stream!
+                setAudioAttributes(audioAttributes, false)
                 volume = 1.0f
                 playWhenReady = true
             }
@@ -255,6 +263,7 @@ fun VideoPlayer(
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
         exoPlayer.volume = 1.0f
+        isMuted = false
     }
 
     DisposableEffect(Unit) {
@@ -269,6 +278,27 @@ fun VideoPlayer(
             }
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+            }
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                // Ensure active audio track selection across dual-audio and single-track streams
+                val hasSelectedAudio = tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+                if (!hasSelectedAudio) {
+                    for (group in tracks.groups) {
+                        if (group.type == C.TRACK_TYPE_AUDIO && group.mediaTrackGroup.length > 0) {
+                            val params = trackSelector.buildUponParameters()
+                                .setOverrideForType(
+                                    TrackSelectionOverride(group.mediaTrackGroup, listOf(0))
+                                )
+                                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                                .build()
+                            trackSelector.setParameters(params)
+                            break
+                        }
+                    }
+                }
+            }
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                android.util.Log.e("AniCliPlayer", "Playback error: ${error.errorCodeName} - ${error.message}", error)
             }
         }
         exoPlayer.addListener(listener)

@@ -380,7 +380,27 @@ class AnimePlayer {
         if (this.art.subtitle) {
           this.art.subtitle.show = this.captionsEnabled;
         }
+        // Guarantee audio is unmuted and at full volume
+        try {
+          if (this.art.video) {
+            this.art.video.muted = false;
+            this.art.volume = 0.90;
+          }
+        } catch (e) {}
       });
+
+      // Handle browser autoplay policy restrictions: unmute on first user click/touch/remote press
+      const ensureAudioAudible = () => {
+        try {
+          if (self.art && self.art.video && self.art.video.muted) {
+            self.art.video.muted = false;
+            self.art.volume = 0.90;
+          }
+        } catch (e) {}
+      };
+      window.addEventListener('click', ensureAudioAudible, { once: true });
+      window.addEventListener('keydown', ensureAudioAudible, { once: true });
+      window.addEventListener('touchstart', ensureAudioAudible, { once: true });
 
       // Fullscreen and Orientation Event Sync
       this.art.on('fullscreen', (isFull) => {
