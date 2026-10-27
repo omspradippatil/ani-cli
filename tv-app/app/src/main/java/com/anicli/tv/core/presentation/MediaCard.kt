@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -210,12 +212,14 @@ fun ContinueWatchingCard(
     item: MediaItem,
     onClick: () -> Unit,
     onFocus: () -> Unit = {},
+    onRemove: (() -> Unit)? = null,
     modifier: Modifier = Modifier.width(260.dp)
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
     Card(
         onClick = onClick,
+        onLongClick = onRemove,
         colors = CardDefaults.colors(
             containerColor = KuroNamiColors.SurfaceLow,
             focusedContainerColor = KuroNamiColors.SurfaceHigh
@@ -238,6 +242,17 @@ fun ContinueWatchingCard(
                 if (state.isFocused) {
                     onFocus()
                 }
+            }
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && onRemove != null) {
+                    if (event.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_MENU ||
+                        event.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_DEL ||
+                        event.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_FORWARD_DEL) {
+                        onRemove()
+                        return@onKeyEvent true
+                    }
+                }
+                false
             }
     ) {
         Column(
@@ -302,6 +317,41 @@ fun ContinueWatchingCard(
                     )
                 }
 
+                // Top Right: Remove Badge Hint on Focus
+                if (isFocused && onRemove != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .background(
+                                color = KuroNamiColors.Crimson.copy(alpha = 0.90f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .border(
+                                width = 0.8.dp,
+                                color = KuroNamiColors.Crimson,
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Remove",
+                                tint = Color.White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "HOLD OK TO REMOVE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                }
+
                 // Center Play Icon on Focus
                 if (isFocused) {
                     Box(
@@ -356,7 +406,11 @@ fun ContinueWatchingCard(
 
                 val percentText = ((item.progressPercent ?: 0f) * 100).toInt()
                 Text(
-                    text = if (percentText > 0) "$percentText% watched • Press OK to resume" else "Press OK to resume",
+                    text = if (isFocused) {
+                        if (percentText > 0) "$percentText% • Press OK to play • Hold OK to remove" else "Press OK to play • Hold OK to remove"
+                    } else {
+                        if (percentText > 0) "$percentText% watched • Press OK to resume" else "Press OK to resume"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isFocused) KuroNamiColors.CyanSoft else KuroNamiColors.OnSurfaceVariant,
                     maxLines = 1,

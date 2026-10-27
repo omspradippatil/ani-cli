@@ -3,6 +3,7 @@ package com.anicli.tv.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +52,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     var selectedDrawerItem by remember { mutableStateOf("Home") }
     var focusedItem by remember { mutableStateOf<MediaItem?>(null) }
+    var itemToRemoveFromContinueWatching by remember { mutableStateOf<MediaItem?>(null) }
     val initialFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -118,7 +120,8 @@ fun HomeScreen(
                         HistoryView(
                             rows = state.rows,
                             onMediaClick = onMediaClick,
-                            onExploreClick = { selectedDrawerItem = "Home" }
+                            onExploreClick = { selectedDrawerItem = "Home" },
+                            onRemoveContinueWatching = { itemToRemoveFromContinueWatching = it }
                         )
                     }
                     else -> {
@@ -149,8 +152,117 @@ fun HomeScreen(
                                 HomeRow(
                                     row = row,
                                     onMediaClick = onMediaClick,
-                                    onFocusItem = { focusedItem = it }
+                                    onFocusItem = { focusedItem = it },
+                                    onRemoveContinueWatching = { itemToRemoveFromContinueWatching = it }
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sleek Remove Confirmation Dialog for Continue Watching
+            itemToRemoveFromContinueWatching?.let { item ->
+                val removeButtonFocusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    delay(100)
+                    try {
+                        removeButtonFocusRequester.requestFocus()
+                    } catch (_: Exception) {}
+                }
+
+                BackHandler { itemToRemoveFromContinueWatching = null }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.85f))
+                        .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
+                            // Consume background clicks
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(440.dp)
+                            .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
+                            .border(1.5.dp, KuroNamiColors.Crimson, RoundedCornerShape(16.dp))
+                            .padding(28.dp)
+                            .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
+                                // Consume dialog window clicks
+                            }
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(KuroNamiColors.Crimson.copy(alpha = 0.16f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Remove",
+                                    tint = KuroNamiColors.Crimson,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = "Remove from Continue Watching?",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "\"${item.title}\" will be removed from your Continue Watching row on the Home Screen.",
+                                color = KuroNamiColors.OnSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        viewModel.removeFromContinueWatching(item.id)
+                                        itemToRemoveFromContinueWatching = null
+                                    },
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = KuroNamiColors.Crimson,
+                                        focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                    ),
+                                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .focusRequester(removeButtonFocusRequester)
+                                ) {
+                                    Text(
+                                        "Remove",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                }
+                                Button(
+                                    onClick = { itemToRemoveFromContinueWatching = null },
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = KuroNamiColors.SurfaceHigh,
+                                        focusedContainerColor = KuroNamiColors.Surface
+                                    ),
+                                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        "Cancel",
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -283,7 +395,8 @@ fun WatchlistView(
 fun HistoryView(
     rows: List<MediaRow>,
     onMediaClick: (String) -> Unit,
-    onExploreClick: () -> Unit
+    onExploreClick: () -> Unit,
+    onRemoveContinueWatching: ((MediaItem) -> Unit)? = null
 ) {
     val historyRow = rows.firstOrNull { it.title.equals("Continue Watching", ignoreCase = true) }
     val items = historyRow?.items ?: emptyList()
@@ -388,6 +501,7 @@ fun HistoryView(
                     ContinueWatchingCard(
                         item = item,
                         onClick = { onMediaClick(item.id) },
+                        onRemove = if (onRemoveContinueWatching != null) { { onRemoveContinueWatching(item) } } else null,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -888,7 +1002,12 @@ fun HeroBanner(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaItem) -> Unit) {
+fun HomeRow(
+    row: MediaRow,
+    onMediaClick: (String) -> Unit,
+    onFocusItem: (MediaItem) -> Unit,
+    onRemoveContinueWatching: ((MediaItem) -> Unit)? = null
+) {
     val isContinueWatching = row.title.equals("Continue Watching", ignoreCase = true)
 
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -938,7 +1057,8 @@ fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaIt
                     ContinueWatchingCard(
                         item = item,
                         onClick = { onMediaClick(item.id) },
-                        onFocus = { onFocusItem(item) }
+                        onFocus = { onFocusItem(item) },
+                        onRemove = if (onRemoveContinueWatching != null) { { onRemoveContinueWatching(item) } } else null
                     )
                 } else {
                     MediaCard(
