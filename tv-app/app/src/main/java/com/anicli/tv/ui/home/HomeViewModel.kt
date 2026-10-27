@@ -153,6 +153,18 @@ class HomeViewModel @Inject constructor(
         }.ifEmpty { rows } // fallback to full rows if no exact tag matches to prevent empty screen
     }
 
+    fun removeFromContinueWatching(mediaId: String) {
+        viewModelScope.launch {
+            try {
+                webUserRepository.deleteHistoryItem(mediaId)
+            } catch (e: Exception) {
+                try {
+                    watchProgressDao.deleteProgress(mediaId)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     fun toggleWatchlist(item: MediaItem) {
         viewModelScope.launch {
             val isFav = _state.value.favoriteMediaIds.contains(item.id)
