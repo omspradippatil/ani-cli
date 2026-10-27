@@ -92,6 +92,10 @@ class AnimePlayer {
         if (resumeTime > 0) {
           this.art.currentTime = resumeTime;
         }
+        if (this.art.video) {
+          this.art.video.muted = false;
+          this.art.video.volume = 0.90;
+        }
         if (this.art.notice) {
           this.art.notice.show = `Loaded Episode (${mode.toUpperCase()})`;
         }
@@ -244,10 +248,11 @@ class AnimePlayer {
           }
         },
         poster: posterUrl || '',
-        volume: 0.85,
+        volume: 0.90,
         isLive: false,
         muted: false,
         autoplay: true,
+        storage: false,
         pip: false,
         autoSize: false,
         autoMini: false,

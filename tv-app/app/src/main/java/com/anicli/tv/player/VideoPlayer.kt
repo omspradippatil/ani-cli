@@ -137,22 +137,12 @@ fun VideoPlayer(
     }
 
     val exoPlayer = remember {
-        val renderersFactory = DefaultRenderersFactory(context)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-            .setEnableDecoderFallback(true)
-            .setEnableAudioFloatOutput(false)
-
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(40000, 100000, 2500, 5000)
-            .build()
-
         val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
-        ExoPlayer.Builder(context, renderersFactory)
-            .setLoadControl(loadControl)
+        ExoPlayer.Builder(context)
             .setTrackSelector(trackSelector)
             .build().apply {
                 // Pass false for handleAudioFocus so TV system UI / Leanback focus events NEVER silence the stream!
