@@ -757,12 +757,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Down Fullscreen ("Make Again Full Big") Button
   if (btnFullscreenDown) {
     btnFullscreenDown.addEventListener('click', () => {
-      if (state.player && state.player.art) {
-        try {
-          state.player.art.fullscreen = !state.player.art.fullscreen;
-        } catch(e) {
-          state.player.art.fullscreenWeb = !state.player.art.fullscreenWeb;
-        }
+      if (state.player && typeof state.player.toggleFullscreen === 'function') {
+        state.player.toggleFullscreen();
+      } else if (state.player && state.player.art) {
+        state.player.art.fullscreen = !state.player.art.fullscreen;
       }
     });
   }

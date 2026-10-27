@@ -239,8 +239,9 @@ class AnimePlayer {
         flip: false,
         playbackRate: true,
         aspectRatio: false,
-        fullscreen: true,
-        fullscreenWeb: false,
+        fullscreen: false,
+        fullscreenWeb: true,
+        autoOrientation: true,
         subtitleOffset: true,
         miniProgressBar: true,
         mutex: true,
@@ -252,14 +253,16 @@ class AnimePlayer {
         lang: 'en',
         moreVideoAttr: {
           crossOrigin: 'anonymous',
+          playsinline: 'true',
+          'webkit-playsinline': 'true'
         },
         subtitle: {
           url: subUrl,
           type: 'vtt',
           style: {
             color: '#ffffff',
-            fontSize: '22px',
-            textShadow: '0 0 5px #000, 0 0 8px #000',
+            fontSize: 'clamp(13px, 3vw, 20px)',
+            textShadow: '0 0 4px #000, 0 0 8px #000, 0 2px 4px #000',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
             fontWeight: '600'
           },
@@ -334,6 +337,16 @@ class AnimePlayer {
             onSelect: function (item) {
               return self.setQuality(item.level);
             },
+          },
+          // Unified Master Fullscreen Button with auto-rotation (Right controls)
+          {
+            name: 'custom-fullscreen-btn',
+            position: 'right',
+            index: 99,
+            html: '<button class="art-icon-btn art-btn-fs" title="Toggle Fullscreen" style="display:inline-flex;align-items:center;justify-content:center;color:#00e3fd;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>',
+            click: function () {
+              self.toggleFullscreen();
+            },
           }
         ]
       });
@@ -347,6 +360,15 @@ class AnimePlayer {
         if (this.art.subtitle) {
           this.art.subtitle.show = this.captionsEnabled;
         }
+      });
+
+      // Fullscreen and Orientation Event Sync
+      this.art.on('fullscreen', (isFull) => {
+        self.handleFullscreenChange(isFull);
+      });
+
+      this.art.on('fullscreenWeb', (isFull) => {
+        self.handleFullscreenChange(isFull);
       });
 
       this.art.on('video:timeupdate', () => {
@@ -441,9 +463,111 @@ class AnimePlayer {
   }
 
   /**
+   * Universal Mobile & Desktop Fullscreen with Automatic Orientation Rotation
+   */
+  async toggleFullscreen() {
+    if (!this.art) return false;
+
+    const isCurrentlyFull = !!(this.art.fullscreen || this.art.fullscreenWeb || document.fullscreenElement);
+
+    if (isCurrentlyFull) {
+      if (this.art.fullscreen) this.art.fullscreen = false;
+      if (this.art.fullscreenWeb) this.art.fullscreenWeb = false;
+      if (document.fullscreenElement) {
+        try { await document.exitFullscreen(); } catch (e) {}
+      }
+      this.handleFullscreenChange(false);
+      return false;
+    }
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window.innerWidth < 768 && 'ontouchstart' in window);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // Standard HTML5 Fullscreen (Desktop & Android Chrome/Firefox)
+    const canNativeFs = !!(document.fullscreenEnabled || document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+
+    if (canNativeFs && !isIOS) {
+      try {
+        this.art.fullscreen = true;
+        this.handleFullscreenChange(true);
+        return true;
+      } catch (err) {
+        console.warn('[Player] Native fullscreen failed, attempting web fullscreen:', err);
+      }
+    }
+
+    // Web Fullscreen Fallback (100% reliable on iOS Safari, PWA, and all mobile viewports)
+    this.art.fullscreenWeb = true;
+    this.handleFullscreenChange(true);
+    return true;
+  }
+
+  /**
+   * Synchronizes orientation, body classes, and UI buttons when fullscreen changes
+   */
+  async handleFullscreenChange(isFull) {
+    if (isFull) {
+      document.body.classList.add('player-in-fullscreen');
+
+      // Attempt screen orientation lock to landscape on mobile devices
+      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+        try {
+          await screen.orientation.lock('landscape');
+        } catch (e) {
+          console.warn('[Player] screen.orientation.lock unavailable or denied:', e.message);
+        }
+      }
+    } else {
+      document.body.classList.remove('player-in-fullscreen');
+
+      if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+        try {
+          screen.orientation.unlock();
+        } catch (e) {}
+      }
+    }
+
+    this.updateFullscreenIcons(isFull);
+    if (typeof this.onFullscreenChange === 'function') {
+      this.onFullscreenChange(isFull);
+    }
+  }
+
+  updateFullscreenIcons(isFull) {
+    // In-player custom fullscreen button
+    const fsBtn = this.art?.template?.$controls?.querySelector('.art-btn-fs');
+    if (fsBtn) {
+      fsBtn.innerHTML = isFull
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
+      fsBtn.setAttribute('title', isFull ? 'Exit Fullscreen' : 'Enter Fullscreen');
+    }
+
+    // External Down Fullscreen button (#btn-fullscreen-down)
+    const btnDown = document.getElementById('btn-fullscreen-down');
+    if (btnDown) {
+      btnDown.innerHTML = isFull
+        ? '<span class="material-symbols-outlined text-[17px]">fullscreen_exit</span><span class="hidden sm:inline">Exit Fullscreen</span>'
+        : '<span class="material-symbols-outlined text-[17px]">fullscreen</span><span class="hidden sm:inline">Fullscreen</span>';
+      if (isFull) {
+        btnDown.classList.add('border-primary/50', 'text-primary');
+        btnDown.classList.remove('border-secondary/30', 'text-secondary');
+      } else {
+        btnDown.classList.remove('border-primary/50', 'text-primary');
+        btnDown.classList.add('border-secondary/30', 'text-secondary');
+      }
+    }
+  }
+
+  /**
    * Completely stops, pauses, and tears down video/audio to guarantee no background sound
    */
   stop() {
+    document.body.classList.remove('player-in-fullscreen');
+    if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+      try { screen.orientation.unlock(); } catch (e) {}
+    }
+
     if (this.art) {
       try {
         if (this.art.hls && typeof this.art.hls.destroy === 'function') {

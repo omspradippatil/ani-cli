@@ -123,9 +123,7 @@ fun HomeScreen(
                     }
                     else -> {
                         TvLazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(start = 72.dp),
+                            modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 64.dp, top = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
@@ -175,7 +173,7 @@ fun WatchlistView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 88.dp, end = 48.dp, top = 32.dp)
+            .padding(start = 24.dp, end = 28.dp, top = 24.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -293,7 +291,7 @@ fun HistoryView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 88.dp, end = 48.dp, top = 32.dp)
+            .padding(start = 24.dp, end = 28.dp, top = 24.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -592,9 +590,9 @@ fun GenreChipsBar(
     TvLazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 48.dp, vertical = 8.dp),
+            .padding(start = 24.dp, end = 28.dp, top = 4.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(end = 48.dp)
+        contentPadding = PaddingValues(end = 28.dp)
     ) {
         items(genres) { (key, label) ->
             val isSelected = selectedGenre == key
@@ -643,7 +641,7 @@ fun HeroBanner(
         modifier = Modifier
             .fillMaxWidth()
             .height(340.dp)
-            .padding(horizontal = 48.dp, vertical = 12.dp)
+            .padding(start = 24.dp, end = 28.dp, top = 8.dp, bottom = 12.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(KuroNamiColors.SurfaceLow)
             .border(
@@ -896,7 +894,7 @@ fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaIt
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 6.dp)
+            modifier = Modifier.padding(start = 24.dp, end = 28.dp, top = 6.dp, bottom = 6.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -932,8 +930,7 @@ fun HomeRow(row: MediaRow, onMediaClick: (String) -> Unit, onFocusItem: (MediaIt
         }
 
         TvLazyRow(
-            modifier = Modifier.padding(horizontal = 40.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp),
+            contentPadding = PaddingValues(start = 24.dp, end = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(row.items) { item ->
