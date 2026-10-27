@@ -576,6 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // STOP AUDIO / VIDEO PLAYBACK IMMEDIATELY IF LEAVING WATCH VIEW!
     if (path !== 'watch' && state.player) {
       state.player.stop();
+      state.currentAnime = null;
     }
 
     // Auto-close any mobile overlays on route navigation
@@ -1019,22 +1020,36 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.warn('[History] Fetch failed:', err);
       }
-    }
-
-    // Fallback: Check localStorage progress keys if user not logged in or history empty
-    if (!history.length) {
+    } else {
+      // Guest mode fallback: check local progress keys only when not authenticated
       const localProgressKeys = Object.keys(localStorage).filter(k => k.startsWith('ani_progress_'));
       if (localProgressKeys.length) {
-        continueSection.classList.remove('hidden');
+        history = localProgressKeys.map(k => {
+          try {
+            const data = JSON.parse(localStorage.getItem(k));
+            const epId = k.replace('ani_progress_', '');
+            return {
+              anime_id: epId.split('-')[0] || epId,
+              anime_title: 'Continue Episode',
+              episode_num: 1,
+              progress_seconds: data.time || 0,
+              duration_seconds: data.duration || 1420
+            };
+          } catch {
+            return null;
+          }
+        }).filter(Boolean);
       }
     }
 
     if (history.length > 0) {
       continueSection.classList.remove('hidden');
-      flyoutHistoryCount.textContent = history.length;
+      if (flyoutHistoryCount) flyoutHistoryCount.textContent = history.length;
       renderContinueWatchingRail(history);
     } else {
       continueSection.classList.add('hidden');
+      continueGrid.innerHTML = '';
+      if (flyoutHistoryCount) flyoutHistoryCount.textContent = '0';
     }
   }
 
@@ -2079,7 +2094,9 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Authorization': `Bearer ${state.auth.token}` }
       });
       showToast('Item removed from history', 'info');
+      state.userHistory = (state.userHistory || []).filter(h => String(h.anime_id) !== String(animeId));
       loadAccountHistory();
+      loadContinueWatching();
     } catch {}
   };
 
@@ -2091,7 +2108,9 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Authorization': `Bearer ${state.auth.token}` }
       });
       showToast('Watch history cleared', 'info');
+      state.userHistory = [];
       loadAccountHistory();
+      loadContinueWatching();
     } catch {}
   });
 

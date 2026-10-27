@@ -80,11 +80,3 @@ VALUES (
 
 INSERT OR IGNORE INTO user_settings (user_id, preferred_audio, auto_next, auto_skip_intro, auto_play, preferred_quality, updated_at)
 VALUES (1, 'sub', 1, 1, 1, 'auto', 1700000000000);
-
--- Initial sample history
-INSERT OR IGNORE INTO watch_history (user_id, anime_id, anime_title, poster, episode_num, episode_id, progress_seconds, duration_seconds, updated_at)
-VALUES (1, '20', 'Naruto', 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx20-YJvLbgjjdFYI.jpg', 1, '22676', 740, 1420, 1700000000000);
-
--- Initial sample watchlist
-INSERT OR IGNORE INTO watchlist (user_id, anime_id, anime_title, poster, format, score, status, updated_at)
-VALUES (1, '20', 'Naruto', 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx20-YJvLbgjjdFYI.jpg', 'TV', 7.9, 'Watching', 1700000000000);

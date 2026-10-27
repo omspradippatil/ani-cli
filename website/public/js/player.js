@@ -151,8 +151,13 @@ class AnimePlayer {
         subUrl = primarySub.proxySrc || primarySub.src || '';
       }
 
+      // Clear legacy muted state from localStorage artplayer settings if present
+      try {
+        localStorage.removeItem('artplayer_settings');
+      } catch {}
+
       // Create a fresh dedicated stage element inside mount to guarantee NO DOM collision
-      mount.innerHTML = '<div id="artplayer-inner-stage" class="w-full h-full" style="width:100%;height:100%;"></div>';
+      mount.innerHTML = '<div id="artplayer-inner-stage" class="w-full h-full relative" style="width:100%;height:100%;"></div>';
 
       const self = this;
 
@@ -248,7 +253,7 @@ class AnimePlayer {
           }
         },
         poster: posterUrl || '',
-        volume: 0.90,
+        volume: 1.0,
         isLive: false,
         muted: false,
         autoplay: true,
@@ -377,35 +382,65 @@ class AnimePlayer {
       });
 
       // Events
+      const checkMuteState = () => {
+        try {
+          const v = self.art?.video;
+          const stage = document.querySelector('#artplayer-inner-stage') || mount;
+          const existing = stage?.querySelector('.ani-unmute-badge');
+          if (v && v.muted) {
+            if (!existing && stage) {
+              const badge = document.createElement('button');
+              badge.className = 'ani-unmute-badge';
+              badge.style.cssText = 'position:absolute;top:20px;left:20px;z-index:999;display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:9999px;background:#e11d48;color:#fff;font-weight:700;font-size:13px;border:none;box-shadow:0 10px 25px rgba(0,0,0,0.5);cursor:pointer;';
+              badge.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg> <span>Sound Muted — Tap to Unmute</span>';
+              badge.onclick = (e) => {
+                e.stopPropagation();
+                if (self.art?.video) {
+                  self.art.video.muted = false;
+                  self.art.video.volume = 1.0;
+                }
+                badge.remove();
+              };
+              stage.appendChild(badge);
+            }
+          } else if (existing) {
+            existing.remove();
+          }
+        } catch (e) {}
+      };
+
+      const ensureAudioAudible = () => {
+        try {
+          if (self.art && self.art.video) {
+            self.art.video.muted = false;
+            self.art.video.volume = 1.0;
+            self.art.volume = 1.0;
+          }
+          checkMuteState();
+        } catch (e) {}
+      };
+
       this.art.on('ready', () => {
         if (savedTime > 0) {
           this.art.currentTime = savedTime;
         }
-        // Sync initial captions state
         if (this.art.subtitle) {
           this.art.subtitle.show = this.captionsEnabled;
         }
-        // Guarantee audio is unmuted and at full volume
-        try {
-          if (this.art.video) {
-            this.art.video.muted = false;
-            this.art.volume = 0.90;
-          }
-        } catch (e) {}
+        ensureAudioAudible();
       });
 
-      // Handle browser autoplay policy restrictions: unmute on first user click/touch/remote press
-      const ensureAudioAudible = () => {
-        try {
-          if (self.art && self.art.video && self.art.video.muted) {
-            self.art.video.muted = false;
-            self.art.volume = 0.90;
-          }
-        } catch (e) {}
-      };
-      window.addEventListener('click', ensureAudioAudible, { once: true });
-      window.addEventListener('keydown', ensureAudioAudible, { once: true });
-      window.addEventListener('touchstart', ensureAudioAudible, { once: true });
+      this.art.on('video:play', ensureAudioAudible);
+      this.art.on('video:playing', () => {
+        ensureAudioAudible();
+        checkMuteState();
+      });
+      this.art.on('video:volumechange', checkMuteState);
+
+      // Handle browser autoplay policy restrictions: unmute on user interaction anywhere
+      ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(evt => {
+        window.addEventListener(evt, ensureAudioAudible, { passive: true });
+      });
 
       // Fullscreen and Orientation Event Sync
       this.art.on('fullscreen', (isFull) => {

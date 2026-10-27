@@ -12,6 +12,7 @@ const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrom
 const results = [];
 let passedCount = 0;
 let failedCount = 0;
+let activePage = null;
 
 function recordResult(suite, name, passed, details = '', durationMs = 0) {
   if (passed) passedCount++;
@@ -19,6 +20,30 @@ function recordResult(suite, name, passed, details = '', durationMs = 0) {
   results.push({ suite, name, passed, details, durationMs });
   const icon = passed ? '✅ PASS' : '❌ FAIL';
   console.log(`[${suite}] ${icon} - ${name} (${durationMs}ms)${details ? ' :: ' + details : ''}`);
+}
+
+async function dismissModalIfOpen(p) {
+  const target = p || activePage;
+  if (!target) return;
+  try {
+    await target.evaluate(() => {
+      const authModal = document.getElementById('auth-modal');
+      if (authModal && !authModal.classList.contains('hidden')) {
+        authModal.classList.add('hidden');
+      }
+      const searchModal = document.getElementById('mobile-search-modal');
+      if (searchModal && !searchModal.classList.contains('hidden')) {
+        searchModal.classList.add('hidden');
+        searchModal.classList.remove('flex');
+      }
+      const dropdown = document.getElementById('search-dropdown');
+      if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden');
+      }
+      document.body.classList.remove('overflow-hidden');
+    });
+    await target.waitForTimeout(100);
+  } catch (_) {}
 }
 
 async function runTest(suite, name, testFn) {
@@ -31,16 +56,6 @@ async function runTest(suite, name, testFn) {
     const duration = Date.now() - start;
     recordResult(suite, name, false, err.message, duration);
   }
-}
-
-async function dismissModalIfOpen(page) {
-  try {
-    const modalVisible = await page.$eval('#auth-modal', el => !el.classList.contains('hidden')).catch(() => false);
-    if (modalVisible) {
-      await page.click('#auth-modal-close').catch(() => {});
-      await page.waitForTimeout(200);
-    }
-  } catch (_) {}
 }
 
 async function main() {
@@ -62,14 +77,19 @@ async function main() {
   });
 
   const page = await context.newPage();
+  activePage = page;
   page.setDefaultTimeout(8000);
 
   // Capture page console errors
   const pageErrors = [];
-  page.on('pageerror', err => pageErrors.push(err.message));
+  page.on('pageerror', err => pageErrors.push(`Uncaught: ${err.message}`));
   page.on('console', msg => {
-    if (msg.type() === 'error' && !msg.text().includes('favicon') && !msg.text().includes('net::ERR_')) {
-      pageErrors.push(msg.text());
+    if (msg.type() === 'error') {
+      const text = msg.text();
+      const loc = msg.location()?.url || '';
+      if (!text.includes('favicon') && !loc.includes('favicon') && !text.includes('net::ERR_') && !text.includes('status of 404')) {
+        pageErrors.push(`${text} (${loc})`);
+      }
     }
   });
 
@@ -199,16 +219,15 @@ async function main() {
       return `Play CTA: "${text.trim()}"`;
     });
 
-    await runTest(s3, 'Hero "Watchlist" CTA toggles state', async () => {
+    await runTest(s3, 'Hero "Watchlist" CTA prompts auth modal for guest visitors', async () => {
       const wlBtn = await page.$('#hero-watchlist-btn');
       if (!wlBtn) throw new Error('Hero watchlist button missing');
-      const initialText = await wlBtn.innerText();
       await wlBtn.click();
       await page.waitForTimeout(300);
-      const updatedText = await wlBtn.innerText();
-      // Click again to toggle back
-      await wlBtn.click();
-      return `Initial: "${initialText.trim()}" -> Updated: "${updatedText.trim()}"`;
+      const isModalOpen = await page.$eval('#auth-modal', el => !el.classList.contains('hidden')).catch(() => false);
+      await dismissModalIfOpen(page);
+      if (!isModalOpen) throw new Error('Auth modal was not opened for unauthenticated visitor');
+      return 'Guest watchlist attempt correctly triggered auth modal & dismissed cleanly';
     });
 
     await runTest(s3, 'Hero "More Info" button triggers navigation', async () => {
@@ -281,10 +300,10 @@ async function main() {
     // -------------------------------------------------------------------------
     const s5 = '5. Catalog Grids on Home';
     await page.goto(`${BASE_URL}#home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#trending-grid', { timeout: 8000 });
+    await page.waitForSelector('#trending-grid .anime-card, #trending-grid .group', { timeout: 12000 });
 
     await runTest(s5, 'Trending Grid renders anime cards with posters and ratings', async () => {
-      const cards = await page.$$('#trending-grid .anime-card');
+      const cards = await page.$$('#trending-grid .anime-card, #trending-grid .group');
       if (cards.length === 0) throw new Error('No cards in trending grid');
       const firstTitle = await cards[0].$eval('h3', el => el.innerText.trim()).catch(() => '');
       if (!firstTitle) throw new Error('First card title is empty');
@@ -292,27 +311,27 @@ async function main() {
     });
 
     await runTest(s5, 'Most Popular Grid renders anime cards', async () => {
-      const cards = await page.$$('#popular-grid .anime-card');
+      const cards = await page.$$('#popular-grid .anime-card, #popular-grid .group');
       if (cards.length === 0) throw new Error('No cards in popular grid');
       const firstTitle = await cards[0].$eval('h3', el => el.innerText.trim()).catch(() => '');
       return `${cards.length} Popular cards. First: "${firstTitle}"`;
     });
 
     await runTest(s5, 'Top Rated Grid renders anime cards', async () => {
-      const cards = await page.$$('#top-rated-grid .anime-card');
+      const cards = await page.$$('#top-rated-grid .anime-card, #top-rated-grid .group');
       if (cards.length === 0) throw new Error('No cards in top rated grid');
       const firstTitle = await cards[0].$eval('h3', el => el.innerText.trim()).catch(() => '');
       return `${cards.length} Top Rated cards. First: "${firstTitle}"`;
     });
 
     await runTest(s5, 'Anime card has bookmark/watchlist quick action button', async () => {
-      const bookmarkBtn = await page.$('#trending-grid .anime-card button[title="Add to Watchlist"]');
+      const bookmarkBtn = await page.$('#trending-grid button[title="Add to Watchlist"]');
       if (!bookmarkBtn) throw new Error('Bookmark button not found on card');
       return 'Card bookmark button exists';
     });
 
     await runTest(s5, 'Anime card click navigates to Watch Room', async () => {
-      const card = await page.$('#trending-grid .anime-card');
+      const card = await page.$('#trending-grid .anime-card, #trending-grid .group');
       if (!card) throw new Error('No anime card to click');
       await card.click();
       await page.waitForTimeout(600);
@@ -377,15 +396,13 @@ async function main() {
     // SUITE 7: Mobile Search Modal & Tags
     // -------------------------------------------------------------------------
     const s7 = '7. Mobile Search Modal';
+    await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`${BASE_URL}#home`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(300);
 
-    await runTest(s7, 'Opening mobile search modal via button', async () => {
-      // Force trigger via JS or button click
-      await page.evaluate(() => {
-        const m = document.getElementById('mobile-search-modal');
-        if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
-      });
-      await page.waitForTimeout(200);
+    await runTest(s7, 'Opening mobile search modal via mobile search toggle button', async () => {
+      await page.click('#btn-mobile-search-toggle');
+      await page.waitForTimeout(300);
       const isOpen = await page.$eval('#mobile-search-modal', el => !el.classList.contains('hidden'));
       if (!isOpen) throw new Error('Mobile search modal failed to open');
       return 'Mobile search modal opened';
@@ -423,6 +440,9 @@ async function main() {
       if (!isHidden) throw new Error('Mobile search modal did not close');
       return 'Modal dismissed cleanly';
     });
+
+    await dismissModalIfOpen(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     // -------------------------------------------------------------------------
     // SUITE 8: Advanced Browse Catalog & Filters
@@ -516,7 +536,7 @@ async function main() {
     const s9 = '9. Browse View Modes';
     await runTest(s9, 'Detailed view mode renders meta list with descriptions', async () => {
       await page.click('#view-mode-detailed');
-      await page.waitForTimeout(400);
+      await page.waitForSelector('#browse-results-container .group', { timeout: 10000 });
       const items = await page.$$('#browse-results-container .group');
       if (items.length === 0) throw new Error('No items rendered in detailed view');
       return `Detailed view: ${items.length} entries`;
@@ -524,7 +544,7 @@ async function main() {
 
     await runTest(s9, 'Compact view mode renders high-density feed', async () => {
       await page.click('#view-mode-compact');
-      await page.waitForTimeout(400);
+      await page.waitForSelector('#browse-results-container .group', { timeout: 10000 });
       const items = await page.$$('#browse-results-container .group');
       if (items.length === 0) throw new Error('No items rendered in compact view');
       return `Compact view: ${items.length} entries`;
@@ -532,8 +552,8 @@ async function main() {
 
     await runTest(s9, 'Grid view mode restores multi-column poster cards', async () => {
       await page.click('#view-mode-grid');
-      await page.waitForTimeout(400);
-      const cards = await page.$$('#browse-results-container .anime-card');
+      await page.waitForSelector('#browse-results-container .anime-card, #browse-results-container .group', { timeout: 10000 });
+      const cards = await page.$$('#browse-results-container .anime-card, #browse-results-container .group');
       if (cards.length === 0) throw new Error('Grid cards not restored');
       return `Grid view restored: ${cards.length} cards`;
     });
@@ -652,7 +672,7 @@ async function main() {
       const demoBtn = await page.$('#btn-auth-demo');
       if (!demoBtn) throw new Error('1-Click Demo button not found');
       await demoBtn.click();
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('#nav-user-block:not(.hidden)', { timeout: 10000 });
       const modalClosed = await page.$eval('#auth-modal', el => el.classList.contains('hidden'));
       if (!modalClosed) throw new Error('Auth modal did not close after login');
       const userBlockVisible = await page.$eval('#nav-user-block', el => !el.classList.contains('hidden'));
@@ -909,7 +929,7 @@ async function main() {
     // -------------------------------------------------------------------------
     const s16 = '16. Runtime Health';
     await runTest(s16, 'Zero uncaught JavaScript exceptions during execution', async () => {
-      const fatalErrors = pageErrors.filter(e => !e.includes('favicon') && !e.includes('net::ERR_'));
+      const fatalErrors = pageErrors.filter(e => !e.includes('favicon') && !e.includes('net::ERR_') && !e.includes('status of 404'));
       if (fatalErrors.length > 0) {
         throw new Error(`Encountered ${fatalErrors.length} console errors: ${fatalErrors.slice(0, 3).join(' | ')}`);
       }

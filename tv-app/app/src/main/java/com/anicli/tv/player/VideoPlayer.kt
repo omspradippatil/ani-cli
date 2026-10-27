@@ -88,16 +88,16 @@ fun VideoPlayer(
     var captionsEnabled by remember { mutableStateOf(true) }
     var isMuted by remember { mutableStateOf(false) }
 
-    // Ensure device audio stream is unmuted and at full volume on startup
+    // Ensure device audio stream is unmuted and at healthy volume on startup
     LaunchedEffect(Unit) {
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             audioManager?.let { am ->
+                am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
                 if (!am.isVolumeFixed) {
-                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
                     val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                     val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    if (curVol <= 0) {
+                    if (curVol <= (maxVol * 0.3f)) {
                         am.setStreamVolume(AudioManager.STREAM_MUSIC, (maxVol * 0.85f).toInt().coerceAtLeast(1), 0)
                     }
                 }
@@ -130,23 +130,24 @@ fun VideoPlayer(
                     .setForceLowestBitrate(false)
                     .setAllowMultipleAdaptiveSelections(true)
                     .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
-                    .setPreferredAudioLanguage(null)
                     .setSelectUndeterminedTextLanguage(true)
             )
         }
     }
 
     val exoPlayer = remember {
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setEnableDecoderFallback(true)
+
         val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
-        ExoPlayer.Builder(context)
+        ExoPlayer.Builder(context, renderersFactory)
             .setTrackSelector(trackSelector)
             .build().apply {
-                // Pass false for handleAudioFocus so TV system UI / Leanback focus events NEVER silence the stream!
-                setAudioAttributes(audioAttributes, false)
+                setAudioAttributes(audioAttributes, true)
                 volume = 1.0f
                 playWhenReady = true
             }
@@ -270,20 +271,9 @@ fun VideoPlayer(
                 isPlaying = playing
             }
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                // Ensure active audio track selection across dual-audio and single-track streams
-                val hasSelectedAudio = tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
-                if (!hasSelectedAudio) {
-                    for (group in tracks.groups) {
-                        if (group.type == C.TRACK_TYPE_AUDIO && group.mediaTrackGroup.length > 0) {
-                            val params = trackSelector.buildUponParameters()
-                                .setOverrideForType(
-                                    TrackSelectionOverride(group.mediaTrackGroup, listOf(0))
-                                )
-                                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
-                                .build()
-                            trackSelector.setParameters(params)
-                            break
-                        }
+                for (group in tracks.groups) {
+                    if (group.type == C.TRACK_TYPE_AUDIO) {
+                        android.util.Log.d("AniCliPlayer", "Audio track group length: ${group.mediaTrackGroup.length}, isSelected: ${group.isSelected}")
                     }
                 }
             }
