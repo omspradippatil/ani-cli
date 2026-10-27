@@ -441,6 +441,22 @@ export default {
         return jsonResponse({ success: true, message: 'Watchlist item removed' });
       }
 
+      // --- USER: DELETE ACCOUNT ---
+      if ((pathname === '/api/user/account' || pathname === '/api/user') && method === 'DELETE') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+        if (db) {
+          await db.batch([
+            db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id),
+            db.prepare('DELETE FROM watch_history WHERE user_id = ?').bind(user.id),
+            db.prepare('DELETE FROM watchlist WHERE user_id = ?').bind(user.id),
+            db.prepare('DELETE FROM user_settings WHERE user_id = ?').bind(user.id),
+            db.prepare('DELETE FROM users WHERE id = ?').bind(user.id)
+          ]);
+        }
+        return jsonResponse({ success: true, message: 'Account permanently deleted' });
+      }
+
       // --- USER: SETTINGS ---
       if (pathname === '/api/user/settings' && method === 'GET') {
         const user = await getAuthUser(request, db);

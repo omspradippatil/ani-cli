@@ -216,4 +216,26 @@ router.put('/settings', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/user/account or DELETE /api/user
+ * Permanently delete user account and all associated data
+ */
+router.delete('/account', requireAuth, async (req, res) => {
+  try {
+    await db.deleteAccount(req.user.id);
+    res.json({ success: true, message: 'Account permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/', requireAuth, async (req, res) => {
+  try {
+    await db.deleteAccount(req.user.id);
+    res.json({ success: true, message: 'Account permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

@@ -212,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const accInputUsername = document.getElementById('acc-input-username');
   const accInputEmail = document.getElementById('acc-input-email');
   const btnAccLogoutBottom = document.getElementById('btn-acc-logout-bottom');
+  const btnDeleteAccount = document.getElementById('btn-delete-account');
 
   // Toast Container
   const toastContainer = document.getElementById('toast-container');
@@ -2154,6 +2155,48 @@ document.addEventListener('DOMContentLoaded', () => {
       btnSavePreferences.textContent = 'Save Playback Preferences';
     }
   });
+
+  // Permanently Delete Account
+  if (btnDeleteAccount) {
+    btnDeleteAccount.addEventListener('click', async () => {
+      if (!state.auth.token) return;
+
+      const confirmed = confirm(
+        '⚠️ PERMANENT ACCOUNT DELETION\n\nAre you sure you want to permanently delete your Om CLI account?\n\nThis will permanently erase:\n• All your watch progress & history\n• All your watchlist items\n• All playback preferences & settings\n• Your account profile and credentials\n\nThis action CANNOT be undone. Proceed?'
+      );
+
+      if (!confirmed) return;
+
+      btnDeleteAccount.disabled = true;
+      btnDeleteAccount.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Deleting...';
+
+      try {
+        const res = await fetch('/api/user/account', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${state.auth.token}`
+          }
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          state.userHistory = [];
+          clearAuth();
+          showToast('Account permanently deleted.', 'info');
+          loadContinueWatching();
+          navigateTo('home');
+        } else {
+          showToast(json.error || 'Failed to delete account', 'error');
+          btnDeleteAccount.disabled = false;
+          btnDeleteAccount.innerHTML = '<span class="material-symbols-outlined text-[16px]">delete_forever</span> Delete Account';
+        }
+      } catch (err) {
+        showToast('Error deleting account: ' + err.message, 'error');
+        btnDeleteAccount.disabled = false;
+        btnDeleteAccount.innerHTML = '<span class="material-symbols-outlined text-[16px]">delete_forever</span> Delete Account';
+      }
+    });
+  }
 
   // ============================================================================
   // LIVE FLOATING SEARCH DROPDOWN

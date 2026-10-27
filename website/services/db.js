@@ -522,6 +522,36 @@ async function clearWatchHistory(userId) {
   }
 }
 
+async function deleteAccount(userId) {
+  const uid = Number(userId);
+  if (isCloudflareD1Api) {
+    await queryCloudflareD1('DELETE FROM sessions WHERE user_id = ?', [uid]);
+    await queryCloudflareD1('DELETE FROM watch_history WHERE user_id = ?', [uid]);
+    await queryCloudflareD1('DELETE FROM watchlist WHERE user_id = ?', [uid]);
+    await queryCloudflareD1('DELETE FROM user_settings WHERE user_id = ?', [uid]);
+    await queryCloudflareD1('DELETE FROM users WHERE id = ?', [uid]);
+  } else if (!useMemoryFallback && localSqliteDb) {
+    const del = localSqliteDb.transaction((id) => {
+      localSqliteDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+      localSqliteDb.prepare('DELETE FROM watch_history WHERE user_id = ?').run(id);
+      localSqliteDb.prepare('DELETE FROM watchlist WHERE user_id = ?').run(id);
+      localSqliteDb.prepare('DELETE FROM user_settings WHERE user_id = ?').run(id);
+      localSqliteDb.prepare('DELETE FROM users WHERE id = ?').run(id);
+    });
+    del(uid);
+  } else {
+    for (const [token, sess] of memoryStore.sessions.entries()) {
+      if (sess.user_id === uid) memoryStore.sessions.delete(token);
+    }
+    memoryStore.history.delete(uid);
+    memoryStore.watchlist.delete(uid);
+    memoryStore.settings.delete(uid);
+    for (const [id, u] of memoryStore.users.entries()) {
+      if (u.id === uid) memoryStore.users.delete(id);
+    }
+  }
+}
+
 /**
  * Watchlist
  */
@@ -803,5 +833,6 @@ module.exports = {
   isWatchlisted,
   getUserSettings,
   updateUserSettings,
-  getUserStats
+  getUserStats,
+  deleteAccount
 };
