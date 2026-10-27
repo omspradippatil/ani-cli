@@ -1,13 +1,83 @@
-.idea/
+# ==============================================================================
+# Om CLI Monorepo — Unified .gitignore
+# ==============================================================================
+
+# Operating System Files
 .DS_Store
-node_modules/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# IDE & Editor Configurations
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+*.swp
+*.swo
+*~
+
+# Environment & Sensitive Secrets
 .env
-.wrangler/
-website/.env
-website/.wrangler/
-website/data/*.db
-website/data/*.db-shm
-website/data/*.db-wal
+.env.*
+!.env.example
+*.env
+local.properties
 google-services.json
 **/google-services.json
 tv-app/app/google-services.json
+*.pem
+*.key
+*.cert
+
+# Node.js & Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+
+# Cloudflare & Deployment Build Caches
+.wrangler/
+website/.wrangler/
+.vercel/
+website/.vercel/
+
+# SQLite & Local Databases
+website/data/*.db
+website/data/*.db-shm
+website/data/*.db-wal
+*.sqlite
+*.sqlite3
+
+# Android & Gradle Build Artifacts
+.gradle/
+**/build/
+!build.gradle*
+app/build/
+tv-app/app/build/
+tv-app/build/
+.cxx/
+.externalNativeBuild/
+captures/
+*.apk.idsig
+
+# Intermediate & Generated APKs (Keep explicitly tracked production release builds)
+website/public/*.apk
+tv-app/app/build/outputs/apk/debug/*.apk
+!ani-cli-production-signed.apk
+!website/ani-cli-production-signed.apk
+
+# Test and Log Outputs
+coverage/
+*.log
