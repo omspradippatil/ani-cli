@@ -1,13 +1,26 @@
 {
   "version": 2,
+  "redirects": [
+    {
+      "source": "/download/tv-apk",
+      "destination": "https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk",
+      "permanent": false
+    },
+    {
+      "source": "/download/ani-cli-tv.apk",
+      "destination": "https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk",
+      "permanent": false
+    },
+    {
+      "source": "/ani-cli-tv.apk",
+      "destination": "https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "https://om-cli-anime.omspradippatil.workers.dev/api/$1"
-    },
-    {
-      "source": "/download/tv-apk",
-      "destination": "/website/ani-cli-production-signed.apk"
     },
     {
       "source": "/((?!api/).*)",
