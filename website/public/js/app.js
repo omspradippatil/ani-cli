@@ -90,6 +90,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const regInputEmail = document.getElementById('reg-input-email');
   const regInputPassword = document.getElementById('reg-input-password');
 
+  // TV Link Modal Elements
+  const tvLinkModal = document.getElementById('tv-link-modal');
+  const tvLinkModalClose = document.getElementById('tv-link-modal-close');
+  const btnOpenLinkTv = document.getElementById('btn-open-link-tv');
+  const btnLinkTvGuest = document.getElementById('btn-link-tv-guest');
+  const formTvLink = document.getElementById('form-tv-link');
+  const inputTvCode = document.getElementById('input-tv-code');
+  const tvLinkAlert = document.getElementById('tv-link-alert');
+  const btnSubmitTvLink = document.getElementById('btn-submit-tv-link');
+
   // Home View Elements
   const heroBackdrop = document.getElementById('hero-backdrop');
   const heroRank = document.getElementById('hero-rank');
@@ -537,6 +547,98 @@ document.addEventListener('DOMContentLoaded', () => {
     navigateTo('home');
   }
 
+  // --- TV Link Modal Handlers ---
+  function openTvLinkModal() {
+    if (!state.auth.token) {
+      openAuthModal();
+      showAuthAlert('Please sign in or create an account first to link your Android TV.');
+      return;
+    }
+    if (tvLinkAlert) {
+      tvLinkAlert.classList.add('hidden');
+      tvLinkAlert.textContent = '';
+    }
+    if (inputTvCode) inputTvCode.value = '';
+    if (tvLinkModal) tvLinkModal.classList.remove('hidden');
+    if (inputTvCode) inputTvCode.focus();
+  }
+
+  function closeTvLinkModal() {
+    if (tvLinkModal) tvLinkModal.classList.add('hidden');
+  }
+
+  if (btnOpenLinkTv) btnOpenLinkTv.addEventListener('click', openTvLinkModal);
+  if (btnLinkTvGuest) btnLinkTvGuest.addEventListener('click', openTvLinkModal);
+  if (tvLinkModalClose) tvLinkModalClose.addEventListener('click', closeTvLinkModal);
+  if (tvLinkModal) {
+    tvLinkModal.addEventListener('click', (e) => {
+      if (e.target === tvLinkModal) closeTvLinkModal();
+    });
+  }
+
+  if (inputTvCode) {
+    inputTvCode.addEventListener('input', (e) => {
+      let val = e.target.value.toUpperCase().replace(/[^23456789ABCDEFGHJKLMNPQRSTUVWXYZ]/g, '');
+      if (val.length > 3) {
+        val = val.slice(0, 3) + '-' + val.slice(3, 6);
+      }
+      e.target.value = val;
+    });
+  }
+
+  if (formTvLink) {
+    formTvLink.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = inputTvCode.value.trim().toUpperCase().replace(/[\s-]/g, '');
+      if (!code || code.length < 4) {
+        showTvLinkAlert('Please enter a valid 6-character code', false);
+        return;
+      }
+
+      try {
+        btnSubmitTvLink.disabled = true;
+        btnSubmitTvLink.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span> Linking TV...';
+
+        const res = await fetch('/api/auth/tv-code/pair', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.auth.token}`
+          },
+          body: JSON.stringify({ code })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          showTvLinkAlert(`🎉 ${json.message || 'TV successfully linked!'}`, true);
+          showToast(`TV successfully linked to account: ${state.auth.user?.username || 'You'}!`, 'success');
+          setTimeout(() => {
+            closeTvLinkModal();
+          }, 2500);
+        } else {
+          throw new Error(json.error || 'Failed to link TV');
+        }
+      } catch (err) {
+        showTvLinkAlert(err.message, false);
+      } finally {
+        btnSubmitTvLink.disabled = false;
+        btnSubmitTvLink.innerHTML = '<span class="material-symbols-outlined text-[18px]">sync_alt</span> <span>Connect & Sync TV</span>';
+      }
+    });
+  }
+
+  function showTvLinkAlert(msg, isSuccess) {
+    if (!tvLinkAlert) return;
+    tvLinkAlert.textContent = msg;
+    tvLinkAlert.className = `p-3 rounded-lg text-xs font-mono font-medium ${isSuccess ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`;
+    tvLinkAlert.classList.remove('hidden');
+  }
+
+  // Support directly opening via URL hash #tv or /tv
+  if (window.location.hash === '#tv' || window.location.hash === '#link-tv' || window.location.pathname === '/tv') {
+    setTimeout(openTvLinkModal, 400);
+  }
+
   // ============================================================================
   // ROUTING & SPA VIEW MANAGEMENT
   // ============================================================================
@@ -643,49 +745,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const formatParam = params.get('format');
       const statusParam = params.get('status');
 
-      if (searchParam) {
-        browseSearchInput.value = searchParam;
-        state.browseFilters.search = searchParam;
+      if (queryStr) {
+        state.browseFilters.search = searchParam || '';
+        state.browseFilters.genre = genreParam || 'All';
+        state.browseFilters.sort = sortParam || state.browseFilters.sort || 'score';
+        state.browseFilters.format = formatParam || 'all';
+        state.browseFilters.status = statusParam || 'all';
       } else {
-        browseSearchInput.value = '';
+        // Fresh navigation to browse catalog without query parameters: reset to defaults
         state.browseFilters.search = '';
+        state.browseFilters.genre = 'All';
+        state.browseFilters.format = 'all';
+        state.browseFilters.status = 'all';
+        state.browseFilters.sort = 'score';
       }
 
-      if (genreParam) {
-        state.browseFilters.genre = genreParam;
-        filterGenresMatrix.querySelectorAll('.genre-matrix-chk').forEach(c => {
-          c.checked = (c.value.toLowerCase() === genreParam.toLowerCase());
-        });
-      }
-
-      if (sortParam) {
-        state.browseFilters.sort = sortParam;
-        browseSortSelect.value = sortParam;
-        if (mobileBrowseSortSelect) mobileBrowseSortSelect.value = sortParam;
-      }
-
-      if (formatParam) {
-        state.browseFilters.format = formatParam;
-        filterFormatGroup.querySelectorAll('.filter-btn').forEach(b => {
-          if (b.dataset.format && b.dataset.format.toLowerCase() === formatParam.toLowerCase()) {
-            b.className = 'filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold';
-          } else {
-            b.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold';
-          }
-        });
-      }
-
-      if (statusParam) {
-        state.browseFilters.status = statusParam;
-        filterStatusGroup.querySelectorAll('.filter-btn').forEach(b => {
-          if (b.dataset.status && b.dataset.status.toLowerCase() === statusParam.toLowerCase()) {
-            b.className = 'filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold';
-          } else {
-            b.className = 'filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold';
-          }
-        });
-      }
-
+      syncFilterUIWithState();
       executeBrowse();
     } else if (path === 'watch') {
       views.watch.classList.remove('hidden');
@@ -1243,6 +1318,108 @@ document.addEventListener('DOMContentLoaded', () => {
     executeBrowse();
   });
 
+  function syncFilterUIWithState() {
+    if (browseSearchInput) browseSearchInput.value = state.browseFilters.search || '';
+    if (browseSortSelect) browseSortSelect.value = state.browseFilters.sort || 'score';
+    if (mobileBrowseSortSelect) mobileBrowseSortSelect.value = state.browseFilters.sort || 'score';
+
+    if (filterFormatGroup) {
+      filterFormatGroup.querySelectorAll('.filter-btn').forEach(b => {
+        const isAct = (b.dataset.format || '').toLowerCase() === (state.browseFilters.format || 'all').toLowerCase();
+        b.className = isAct 
+          ? 'filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold'
+          : 'filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold';
+      });
+    }
+
+    if (filterStatusGroup) {
+      filterStatusGroup.querySelectorAll('.filter-btn').forEach(b => {
+        const isAct = (b.dataset.status || '').toLowerCase() === (state.browseFilters.status || 'all').toLowerCase();
+        b.className = isAct 
+          ? 'filter-btn active px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-primary/30 text-white font-mono text-[11px] font-bold'
+          : 'filter-btn px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.06] text-gray-400 hover:text-white font-mono text-[11px] font-bold';
+      });
+    }
+
+    if (filterGenresMatrix) {
+      const activeGenres = (state.browseFilters.genre || '').split(',').map(s => s.trim().toLowerCase()).filter(s => s && s !== 'all');
+      filterGenresMatrix.querySelectorAll('.genre-matrix-chk').forEach(c => {
+        c.checked = activeGenres.includes(c.value.toLowerCase());
+      });
+    }
+  }
+
+  function renderActiveTags() {
+    if (!browseActiveTags) return;
+    const tags = [];
+
+    if (state.browseFilters.search) {
+      tags.push(`
+        <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary/15 border border-secondary/30 text-secondary font-mono text-[10px] font-bold hover:bg-secondary/25 transition-all cursor-pointer" onclick="window.clearBrowseSearch()">
+          <span>"${state.browseFilters.search}"</span>
+          <span class="material-symbols-outlined text-[13px]">close</span>
+        </button>
+      `);
+    }
+
+    const checkedGenres = Array.from(filterGenresMatrix ? filterGenresMatrix.querySelectorAll('.genre-matrix-chk:checked') : []).map(c => c.value);
+    checkedGenres.forEach(g => {
+      tags.push(`
+        <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-container/20 border border-primary/40 text-primary font-mono text-[10px] font-bold hover:bg-primary-container/30 transition-all cursor-pointer" onclick="window.removeBrowseGenre('${g}')">
+          <span>${g}</span>
+          <span class="material-symbols-outlined text-[13px]">close</span>
+        </button>
+      `);
+    });
+
+    if (state.browseFilters.format && state.browseFilters.format.toLowerCase() !== 'all') {
+      tags.push(`
+        <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high border border-white/20 text-gray-200 font-mono text-[10px] font-bold hover:bg-white/10 transition-all cursor-pointer" onclick="window.clearBrowseFormat()">
+          <span>${state.browseFilters.format}</span>
+          <span class="material-symbols-outlined text-[13px]">close</span>
+        </button>
+      `);
+    }
+
+    if (state.browseFilters.status && state.browseFilters.status.toLowerCase() !== 'all') {
+      tags.push(`
+        <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high border border-white/20 text-gray-200 font-mono text-[10px] font-bold hover:bg-white/10 transition-all cursor-pointer" onclick="window.clearBrowseStatus()">
+          <span>${state.browseFilters.status}</span>
+          <span class="material-symbols-outlined text-[13px]">close</span>
+        </button>
+      `);
+    }
+
+    browseActiveTags.innerHTML = tags.join('');
+  }
+
+  window.clearBrowseSearch = () => {
+    state.browseFilters.search = '';
+    if (browseSearchInput) browseSearchInput.value = '';
+    executeBrowse();
+  };
+
+  window.removeBrowseGenre = (genre) => {
+    if (filterGenresMatrix) {
+      filterGenresMatrix.querySelectorAll('.genre-matrix-chk').forEach(c => {
+        if (c.value.toLowerCase() === genre.toLowerCase()) c.checked = false;
+      });
+    }
+    executeBrowse();
+  };
+
+  window.clearBrowseFormat = () => {
+    state.browseFilters.format = 'all';
+    syncFilterUIWithState();
+    executeBrowse();
+  };
+
+  window.clearBrowseStatus = () => {
+    state.browseFilters.status = 'all';
+    syncFilterUIWithState();
+    executeBrowse();
+  };
+
   // Quick Chips in Browse
   browseQuickChips.addEventListener('click', (e) => {
     const chip = e.target.closest('.browse-chip');
@@ -1253,11 +1430,25 @@ document.addEventListener('DOMContentLoaded', () => {
     chip.className = 'browse-chip active px-3 py-1 rounded-full bg-primary-container text-white font-mono text-[11px] font-bold whitespace-nowrap';
 
     const preset = chip.dataset.preset;
-    if (preset === 'top_rated') state.browseFilters.sort = 'score';
-    if (preset === 'trending') state.browseFilters.sort = 'popularity';
-    if (preset === 'movies') state.browseFilters.format = 'MOVIE';
-    if (preset === 'completed') state.browseFilters.status = 'FINISHED';
+    if (preset === 'top_rated') {
+      state.browseFilters.sort = 'score';
+      state.browseFilters.format = 'all';
+      state.browseFilters.status = 'all';
+    } else if (preset === 'trending') {
+      state.browseFilters.sort = 'popularity';
+      state.browseFilters.format = 'all';
+      state.browseFilters.status = 'all';
+    } else if (preset === 'movies') {
+      state.browseFilters.sort = 'popularity';
+      state.browseFilters.format = 'MOVIE';
+      state.browseFilters.status = 'all';
+    } else if (preset === 'completed') {
+      state.browseFilters.sort = 'popularity';
+      state.browseFilters.format = 'all';
+      state.browseFilters.status = 'FINISHED';
+    }
 
+    syncFilterUIWithState();
     executeBrowse();
   });
 
@@ -1271,9 +1462,13 @@ document.addEventListener('DOMContentLoaded', () => {
       viewMode: state.browseFilters.viewMode,
       preset: 'trending'
     };
-    browseSearchInput.value = '';
-    browseSortSelect.value = 'score';
-    filterGenresMatrix.querySelectorAll('.genre-matrix-chk').forEach(c => c.checked = false);
+    browseQuickChips.querySelectorAll('.browse-chip').forEach(c => {
+      c.className = 'browse-chip px-3 py-1 rounded-full bg-surface-container-low border border-white/[0.06] text-gray-300 hover:bg-surface-container font-mono text-[11px] font-bold whitespace-nowrap';
+    });
+    const trendingChip = browseQuickChips.querySelector('[data-preset="trending"]');
+    if (trendingChip) trendingChip.className = 'browse-chip active px-3 py-1 rounded-full bg-primary-container text-white font-mono text-[11px] font-bold whitespace-nowrap';
+
+    syncFilterUIWithState();
     executeBrowse();
   });
 
@@ -1281,15 +1476,19 @@ document.addEventListener('DOMContentLoaded', () => {
     browseResultsContainer.innerHTML = '<div class="col-span-full py-12 flex justify-center"><div class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div></div>';
 
     // Gather checked genres
-    const selectedGenres = Array.from(filterGenresMatrix.querySelectorAll('.genre-matrix-chk:checked')).map(c => c.value);
+    const selectedGenres = Array.from(filterGenresMatrix ? filterGenresMatrix.querySelectorAll('.genre-matrix-chk:checked') : []).map(c => c.value);
+    state.browseFilters.genre = selectedGenres.length > 0 ? selectedGenres.join(',') : 'All';
 
     // Update active filter counter badges
     let activeFilterCount = selectedGenres.length;
+    if (state.browseFilters.search) activeFilterCount++;
     if (state.browseFilters.format && state.browseFilters.format !== 'all') activeFilterCount++;
     if (state.browseFilters.status && state.browseFilters.status !== 'all') activeFilterCount++;
     if (mobileFilterCountBadge) mobileFilterCountBadge.textContent = activeFilterCount;
     if (browseResetFilters) browseResetFilters.textContent = `Reset (${activeFilterCount})`;
     if (mobileBrowseSortSelect) mobileBrowseSortSelect.value = state.browseFilters.sort;
+
+    renderActiveTags();
 
     const queryParams = new URLSearchParams();
     if (state.browseFilters.search) queryParams.set('search', state.browseFilters.search);

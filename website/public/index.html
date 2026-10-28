@@ -129,9 +129,13 @@
           <span class="material-symbols-outlined text-[14px]">lock_open</span> 100% FREE
         </span>
 
-        <!-- GUEST STATE: Sign In Button -->
-        <div id="nav-guest-block">
-          <button id="btn-sign-in-nav" class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-gradient-to-r from-primary-container to-[#ff1a53] text-white text-xs font-bold uppercase tracking-wider shadow-[0_0_18px_rgba(255,79,115,0.35)] hover:brightness-110 active:scale-95 transition-all">
+        <!-- GUEST STATE: Sign In & Link TV Buttons -->
+        <div id="nav-guest-block" class="flex items-center gap-2">
+          <button id="btn-link-tv-guest" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-high border border-secondary/40 text-secondary text-xs font-bold uppercase tracking-wider hover:bg-secondary/15 active:scale-95 transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-[16px]">tv</span>
+            <span>Link TV</span>
+          </button>
+          <button id="btn-sign-in-nav" class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg bg-gradient-to-r from-primary-container to-[#ff1a53] text-white text-xs font-bold uppercase tracking-wider shadow-[0_0_18px_rgba(255,79,115,0.35)] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
             <span class="material-symbols-outlined text-[16px]">account_circle</span>
             <span class="inline">Sign In</span>
           </button>
@@ -161,6 +165,12 @@
               <span id="flyout-user-email" class="text-[11px] font-mono text-gray-400">alex@omcli.io</span>
             </div>
             <div class="py-1 flex flex-col gap-0.5">
+              <button id="btn-open-link-tv" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-secondary hover:bg-secondary/10 transition-all text-left font-bold cursor-pointer">
+                <span class="flex items-center gap-2.5">
+                  <span class="material-symbols-outlined text-[16px] text-secondary">tv</span>Link Android TV
+                </span>
+                <span class="px-1.5 py-0.5 rounded bg-secondary/20 text-secondary font-mono text-[9px] font-bold">PAIR</span>
+              </button>
               <a href="#watchlist" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-surface-container hover:text-white transition-all">
                 <span class="flex items-center gap-2.5">
                   <span class="material-symbols-outlined text-[16px] text-secondary">bookmark</span>My Watchlist
@@ -1159,6 +1169,42 @@
       <!-- Error / Notice Box -->
       <div id="auth-alert-box" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hidden"></div>
 
+    </div>
+  </div>
+
+  <!-- Link Android TV Modal (Fast Pairing with Web Account) -->
+  <div id="tv-link-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl hidden">
+    <div class="relative w-full max-w-md bg-surface-container-low border border-secondary/40 rounded-2xl p-6 sm:p-8 shadow-[0_0_50px_rgba(0,218,243,0.15)] flex flex-col">
+      <button id="tv-link-modal-close" class="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-surface-container transition-all cursor-pointer" title="Close">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-xl bg-secondary/15 border border-secondary/30 flex items-center justify-center text-secondary">
+          <span class="material-symbols-outlined text-[28px]">tv</span>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Link Android TV App</h3>
+          <p class="text-xs text-gray-400 font-mono">Connect your TV for unified watch sync</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-300 leading-relaxed mb-5">
+        Enter the 6-character link code displayed on your Android TV screen under <strong>Settings &gt; Account</strong>:
+      </p>
+
+      <form id="form-tv-link" class="flex flex-col gap-4">
+        <div class="flex justify-center">
+          <input id="input-tv-code" type="text" maxlength="8" placeholder="A 8 9 - K 2 F" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" class="w-full text-center tracking-[0.25em] font-mono text-2xl font-black uppercase py-3.5 px-4 rounded-xl bg-surface-container border-2 border-white/10 focus:border-secondary focus:outline-none focus:shadow-[0_0_20px_rgba(0,218,243,0.3)] text-white transition-all placeholder:text-gray-600 placeholder:tracking-normal placeholder:text-base">
+        </div>
+
+        <div id="tv-link-alert" class="hidden p-3 rounded-lg text-xs font-mono font-medium"></div>
+
+        <button type="submit" id="btn-submit-tv-link" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-secondary to-[#00b4cc] text-on-secondary font-bold text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(0,218,243,0.3)] hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer">
+          <span class="material-symbols-outlined text-[18px]">sync_alt</span>
+          <span>Connect &amp; Sync TV</span>
+        </button>
+      </form>
     </div>
   </div>
 

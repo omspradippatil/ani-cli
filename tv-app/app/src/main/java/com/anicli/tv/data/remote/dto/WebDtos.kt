@@ -188,6 +188,28 @@ data class AuthResponse(
     @SerializedName("error") val error: String? = null
 )
 
+data class WebAccountsResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("accounts") val accounts: List<WebUser> = emptyList(),
+    @SerializedName("error") val error: String? = null
+)
+
+data class TvCodeGenerateResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("code") val code: String? = null,
+    @SerializedName("expiresIn") val expiresIn: Int? = 600,
+    @SerializedName("error") val error: String? = null
+)
+
+data class TvCodeStatusResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("user") val user: WebUser? = null,
+    @SerializedName("data") val data: AuthData? = null,
+    @SerializedName("error") val error: String? = null
+)
+
 data class UserProfileData(
     @SerializedName("user") val user: WebUser? = null,
     @SerializedName("stats") val stats: WebUserStats? = null,

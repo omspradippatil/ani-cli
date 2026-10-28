@@ -531,14 +531,18 @@ async function deleteAccount(userId) {
     await queryCloudflareD1('DELETE FROM user_settings WHERE user_id = ?', [uid]);
     await queryCloudflareD1('DELETE FROM users WHERE id = ?', [uid]);
   } else if (!useMemoryFallback && localSqliteDb) {
-    const del = localSqliteDb.transaction((id) => {
-      localSqliteDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
-      localSqliteDb.prepare('DELETE FROM watch_history WHERE user_id = ?').run(id);
-      localSqliteDb.prepare('DELETE FROM watchlist WHERE user_id = ?').run(id);
-      localSqliteDb.prepare('DELETE FROM user_settings WHERE user_id = ?').run(id);
-      localSqliteDb.prepare('DELETE FROM users WHERE id = ?').run(id);
-    });
-    del(uid);
+    localSqliteDb.exec('BEGIN TRANSACTION;');
+    try {
+      localSqliteDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(uid);
+      localSqliteDb.prepare('DELETE FROM watch_history WHERE user_id = ?').run(uid);
+      localSqliteDb.prepare('DELETE FROM watchlist WHERE user_id = ?').run(uid);
+      localSqliteDb.prepare('DELETE FROM user_settings WHERE user_id = ?').run(uid);
+      localSqliteDb.prepare('DELETE FROM users WHERE id = ?').run(uid);
+      localSqliteDb.exec('COMMIT;');
+    } catch (err) {
+      localSqliteDb.exec('ROLLBACK;');
+      throw err;
+    }
   } else {
     for (const [token, sess] of memoryStore.sessions.entries()) {
       if (sess.user_id === uid) memoryStore.sessions.delete(token);

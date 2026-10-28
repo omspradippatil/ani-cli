@@ -87,7 +87,7 @@ class WebUserRepository @Inject constructor(
         }
     }
 
-    private fun persistSession(tokenVal: String, user: WebUser?, stats: WebUserStats?, settings: WebUserSettings?) {
+    fun persistSession(tokenVal: String, user: WebUser?, stats: WebUserStats?, settings: WebUserSettings?) {
         _token.value = tokenVal
         _currentUser.value = user
         _userStats.value = stats
@@ -184,7 +184,18 @@ class WebUserRepository @Inject constructor(
                 Result.failure(Exception(response.error ?: "Invalid username or password"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            val friendlyMsg = if (e is retrofit2.HttpException) {
+                try {
+                    val errorJson = e.response()?.errorBody()?.string()
+                    val parsed = gson.fromJson(errorJson, Map::class.java)
+                    parsed["error"]?.toString() ?: "Invalid username/email or password"
+                } catch (_: Exception) {
+                    "Invalid username/email or password"
+                }
+            } else {
+                e.message ?: "Network error during login"
+            }
+            Result.failure(Exception(friendlyMsg))
         }
     }
 
@@ -201,9 +212,76 @@ class WebUserRepository @Inject constructor(
 
             if (response.success && tokenVal != null && userVal != null) {
                 persistSession(tokenVal, userVal, response.data?.stats, response.data?.settings)
+                syncWatchHistory()
+                syncWatchlist()
                 Result.success(userVal)
             } else {
                 Result.failure(Exception(response.error ?: "Registration failed"))
+            }
+        } catch (e: Exception) {
+            val friendlyMsg = if (e is retrofit2.HttpException) {
+                try {
+                    val errorJson = e.response()?.errorBody()?.string()
+                    val parsed = gson.fromJson(errorJson, Map::class.java)
+                    parsed["error"]?.toString() ?: "Registration failed"
+                } catch (_: Exception) {
+                    "Registration failed"
+                }
+            } else {
+                e.message ?: "Network error during registration"
+            }
+            Result.failure(Exception(friendlyMsg))
+        }
+    }
+
+    /**
+     * TV Code Pairing: Request 6-digit link code for Android TV
+     */
+    suspend fun generateTvCode(): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = webAnimeService.generateTvCode()
+            val code = response.code
+            if (response.success && !code.isNullOrBlank()) {
+                Result.success(code)
+            } else {
+                Result.failure(Exception(response.error ?: "Failed to generate TV link code"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * TV Code Pairing: Poll status of TV link code
+     */
+    suspend fun checkTvCodeStatus(code: String): Result<TvCodeStatusResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = webAnimeService.checkTvCodeStatus(code)
+            if (response.success) {
+                if (response.status == "paired" && response.token != null && response.user != null) {
+                    persistSession(response.token, response.user, response.data?.stats, response.data?.settings)
+                    syncWatchHistory()
+                    syncWatchlist()
+                }
+                Result.success(response)
+            } else {
+                Result.failure(Exception(response.error ?: "Code expired"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch registered public accounts for quick switcher
+     */
+    suspend fun getAvailableAccounts(): Result<List<WebUser>> = withContext(Dispatchers.IO) {
+        try {
+            val response = webAnimeService.getAccounts()
+            if (response.success) {
+                Result.success(response.accounts)
+            } else {
+                Result.failure(Exception(response.error ?: "Failed to fetch accounts"))
             }
         } catch (e: Exception) {
             Result.failure(e)

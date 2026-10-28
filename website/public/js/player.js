@@ -201,15 +201,19 @@ class AnimePlayer {
                   self.levels = levels;
 
                   // Update dynamic quality selector in Artplayer
-                  art.setting.update({
-                    name: 'quality',
-                    html: 'Quality',
-                    tooltip: self.currentQualityLabel,
-                    selector: levels,
-                    onSelect: function (item) {
-                      return self.setQuality(item.level);
-                    }
-                  });
+                  try {
+                    art.setting.update({
+                      name: 'quality',
+                      html: 'Quality',
+                      tooltip: self.currentQualityLabel,
+                      selector: levels,
+                      onSelect: function (item) {
+                        return self.setQuality(item.level);
+                      }
+                    });
+                  } catch (e) {
+                    console.warn('[Player] Quality setting update skipped:', e);
+                  }
 
                   // Update in-player Quality control dropdown
                   if (art.controls && art.controls['quality-btn']) {
@@ -263,12 +267,23 @@ class AnimePlayer {
         autoMini: false,
         screenshot: false,
         setting: true,
+        settings: [
+          {
+            name: 'quality',
+            html: 'Quality',
+            tooltip: 'Auto',
+            selector: [{ html: 'Auto', level: -1, default: true }],
+            onSelect: function (item) {
+              return self.setQuality(item.level);
+            }
+          }
+        ],
         loop: false,
         flip: false,
         playbackRate: true,
         aspectRatio: false,
         fullscreen: false,
-        fullscreenWeb: true,
+        fullscreenWeb: false,
         autoOrientation: true,
         subtitleOffset: true,
         miniProgressBar: true,
@@ -299,11 +314,12 @@ class AnimePlayer {
           onVttLoad: sanitizeVtt,
         },
         controls: [
+          // Play button is index 10 by default
           // Previous Episode button (Left controls)
           {
             name: 'prev-ep-btn',
             position: 'left',
-            index: 10,
+            index: 12,
             html: '<button class="art-icon-btn" title="Previous Episode"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5"></line></svg></button>',
             click: function () {
               if (typeof self.onPrevEpisode === 'function') {
@@ -315,7 +331,7 @@ class AnimePlayer {
           {
             name: 'next-ep-btn',
             position: 'left',
-            index: 11,
+            index: 14,
             html: '<button class="art-icon-btn" title="Next Episode"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5"></line></svg></button>',
             click: function () {
               if (typeof self.onNextEpisode === 'function') {
@@ -327,7 +343,7 @@ class AnimePlayer {
           {
             name: 'skip-intro-btn',
             position: 'left',
-            index: 12,
+            index: 16,
             html: '<button class="art-btn-skip" title="Skip Opening (+85s)">+85s</button>',
             click: function () {
               if (self.art) {
@@ -351,7 +367,7 @@ class AnimePlayer {
           {
             name: 'cc-btn',
             position: 'right',
-            index: 11,
+            index: 12,
             html: `<button class="art-btn-cc ${this.captionsEnabled ? '' : 'disabled'}" title="Toggle Captions (CC)">CC</button>`,
             click: function () {
               self.toggleCaptions();
@@ -361,7 +377,7 @@ class AnimePlayer {
           {
             name: 'quality-btn',
             position: 'right',
-            index: 12,
+            index: 14,
             html: `<button class="art-btn-quality" title="Change Streaming Quality">${this.currentQualityLabel}</button>`,
             selector: [{ html: 'Auto', level: -1, default: true }],
             onSelect: function (item) {
@@ -412,9 +428,7 @@ class AnimePlayer {
       const ensureAudioAudible = () => {
         try {
           if (self.art && self.art.video) {
-            self.art.video.muted = false;
-            self.art.video.volume = 1.0;
-            self.art.volume = 1.0;
+            if (self.art.video.muted) self.art.video.muted = false;
           }
           checkMuteState();
         } catch (e) {}
@@ -428,6 +442,15 @@ class AnimePlayer {
           this.art.subtitle.show = this.captionsEnabled;
         }
         ensureAudioAudible();
+
+        // Prevent setting panel click/touch from propagating to video player to stop glitching/closing
+        try {
+          const settingEl = this.art.template?.$setting;
+          if (settingEl) {
+            settingEl.addEventListener('click', (e) => e.stopPropagation());
+            settingEl.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+          }
+        } catch (e) {}
       });
 
       this.art.on('video:play', ensureAudioAudible);
@@ -437,9 +460,19 @@ class AnimePlayer {
       });
       this.art.on('video:volumechange', checkMuteState);
 
-      // Handle browser autoplay policy restrictions: unmute on user interaction anywhere
+      // Handle browser autoplay policy restrictions: run once on first user gesture
+      let hasUserInteracted = false;
+      const onFirstGestureUnmute = () => {
+        if (hasUserInteracted) return;
+        hasUserInteracted = true;
+        ensureAudioAudible();
+        ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(evt => {
+          window.removeEventListener(evt, onFirstGestureUnmute);
+        });
+      };
+
       ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(evt => {
-        window.addEventListener(evt, ensureAudioAudible, { passive: true });
+        window.addEventListener(evt, onFirstGestureUnmute, { passive: true, once: true });
       });
 
       // Fullscreen and Orientation Event Sync

@@ -3,18 +3,29 @@ package com.anicli.tv.ui.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -39,8 +50,18 @@ fun SettingsScreen(
     val isAuthLoading by viewModel.isAuthLoading.collectAsState()
     val authError by viewModel.authError.collectAsState()
 
+    val tvPairCode by viewModel.tvPairCode.collectAsState()
+    val isTvCodeLoading by viewModel.isTvCodeLoading.collectAsState()
+    val tvPairStatus by viewModel.tvPairStatus.collectAsState()
+    val availableAccounts by viewModel.availableAccounts.collectAsState()
+
     var usernameInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
+
+    val usernameFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val signInBtnFocusRequester = remember { FocusRequester() }
+    val backendInputFocusRequester = remember { FocusRequester() }
 
     val preferredLanguage by viewModel.preferredLanguage.collectAsState()
     val activeProvider by viewModel.activeProvider.collectAsState()
@@ -179,6 +200,7 @@ fun SettingsScreen(
                     label = { androidx.compose.material3.Text("Server URL", color = KuroNamiColors.OnSurfaceVariant) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { viewModel.setBackendUrl(backendInput) }),
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = KuroNamiColors.OnSurface,
@@ -187,7 +209,9 @@ fun SettingsScreen(
                         focusedIndicatorColor = KuroNamiColors.Crimson,
                         unfocusedIndicatorColor = KuroNamiColors.Outline.copy(alpha = 0.4f)
                     ),
-                    modifier = Modifier.fillMaxWidth(0.9f)
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .focusRequester(backendInputFocusRequester)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
@@ -370,70 +394,203 @@ fun SettingsScreen(
                     Text("Sign Out", fontWeight = FontWeight.Bold)
                 }
             } else {
-                // ── 1-Click TV Remote Demo Login ──
-                Button(
-                    onClick = { viewModel.demoLogin() },
-                    colors = ButtonDefaults.colors(
-                        containerColor = KuroNamiColors.Crimson,
-                        focusedContainerColor = KuroNamiColors.CrimsonContainer
-                    ),
-                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
-                    modifier = Modifier.fillMaxWidth()
+                // ── 1. TV Link Code (Fastest & Zero Remote Typing) ──
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(KuroNamiColors.Surface, RoundedCornerShape(12.dp))
+                        .border(1.5.dp, KuroNamiColors.CyanSoft.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                        .padding(14.dp)
                 ) {
-                    Text(
-                        if (isAuthLoading) "Connecting to SQLite..." else "⚡ 1-Click Demo Login (Alex Mercer)",
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Tv,
+                                contentDescription = null,
+                                tint = KuroNamiColors.Cyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Link via Phone / Browser",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Text(
+                            text = "Open ani-cli on Web & click 'Link Android TV'",
+                            color = KuroNamiColors.OnSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                        )
+
+                        // 6-Character Code Display
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(8.dp))
+                                .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(vertical = 8.dp, horizontal = 12.dp)
+                        ) {
+                            Text(
+                                text = if (isTvCodeLoading) "GENERATING..." else (tvPairCode?.chunked(3)?.joinToString(" - ") ?: "------"),
+                                color = KuroNamiColors.Cyan,
+                                fontSize = 24.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Button(
+                                onClick = { viewModel.generateTvPairCode() },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.Crimson
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.Sync,
+                                        contentDescription = "New Code",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("New Code", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+
+                        if (!tvPairStatus.isNullOrBlank()) {
+                            Text(
+                                text = tvPairStatus ?: "",
+                                color = if (tvPairStatus!!.contains("Success", ignoreCase = true)) Color(0xFF10B981) else KuroNamiColors.Crimson,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.weight(1f).height(1.dp).background(KuroNamiColors.Outline.copy(alpha = 0.3f)))
+                // ── 2. Discovered Accounts Quick Switcher ──
+                if (availableAccounts.isNotEmpty()) {
                     Text(
-                        "  OR SIGN IN  ",
+                        text = "Or Select Web Account:",
                         color = KuroNamiColors.OnSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
                     )
-                    Box(modifier = Modifier.weight(1f).height(1.dp).background(KuroNamiColors.Outline.copy(alpha = 0.3f)))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        availableAccounts.take(3).forEach { acc ->
+                            Button(
+                                onClick = {
+                                    usernameInput = acc.username
+                                    try { passwordFocusRequester.requestFocus() } catch (_: Exception) {}
+                                },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = if (usernameInput == acc.username) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHigh,
+                                    focusedContainerColor = KuroNamiColors.CrimsonContainer
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = acc.username,
+                                    maxLines = 1,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
+                // ── 3. TV Remote Navigable Input Fields ──
                 OutlinedTextField(
                     value = usernameInput,
                     onValueChange = { usernameInput = it },
                     label = { androidx.compose.material3.Text("Username or Email", color = KuroNamiColors.OnSurfaceVariant) },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = {
+                        try { passwordFocusRequester.requestFocus() } catch (_: Exception) {}
+                    }),
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedContainerColor = KuroNamiColors.Surface,
                         unfocusedContainerColor = KuroNamiColors.Surface,
-                        focusedIndicatorColor = KuroNamiColors.Crimson
+                        focusedIndicatorColor = KuroNamiColors.Crimson,
+                        unfocusedIndicatorColor = KuroNamiColors.Outline.copy(alpha = 0.4f)
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(usernameFocusRequester)
+                        .onKeyEvent { keyEvent ->
+                            if (keyEvent.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                if (keyEvent.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                                    try { passwordFocusRequester.requestFocus() } catch (_: Exception) {}
+                                    return@onKeyEvent true
+                                }
+                            }
+                            false
+                        }
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = passwordInput,
                     onValueChange = { passwordInput = it },
                     label = { androidx.compose.material3.Text("Password", color = KuroNamiColors.OnSurfaceVariant) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        viewModel.login(usernameInput, passwordInput)
+                    }),
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedContainerColor = KuroNamiColors.Surface,
                         unfocusedContainerColor = KuroNamiColors.Surface,
-                        focusedIndicatorColor = KuroNamiColors.Crimson
+                        focusedIndicatorColor = KuroNamiColors.Crimson,
+                        unfocusedIndicatorColor = KuroNamiColors.Outline.copy(alpha = 0.4f)
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(passwordFocusRequester)
+                        .onKeyEvent { keyEvent ->
+                            if (keyEvent.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                when (keyEvent.nativeKeyEvent.keyCode) {
+                                    android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                        try { usernameFocusRequester.requestFocus() } catch (_: Exception) {}
+                                        return@onKeyEvent true
+                                    }
+                                    android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                        try { signInBtnFocusRequester.requestFocus() } catch (_: Exception) {}
+                                        return@onKeyEvent true
+                                    }
+                                }
+                            }
+                            false
+                        }
                 )
 
                 if (authError != null) {
@@ -441,20 +598,35 @@ fun SettingsScreen(
                         text = authError ?: "",
                         color = KuroNamiColors.Crimson,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Button(
                         onClick = { viewModel.login(usernameInput, passwordInput) },
                         colors = ButtonDefaults.colors(
                             containerColor = KuroNamiColors.Crimson,
                             focusedContainerColor = KuroNamiColors.CrimsonContainer
                         ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(signInBtnFocusRequester)
+                            .onKeyEvent { keyEvent ->
+                                if (keyEvent.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                    if (keyEvent.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) {
+                                        try { passwordFocusRequester.requestFocus() } catch (_: Exception) {}
+                                        return@onKeyEvent true
+                                    }
+                                }
+                                false
+                            }
                     ) {
                         Text(if (isAuthLoading) "Signing in..." else "Sign In", fontWeight = FontWeight.Bold)
                     }
@@ -465,9 +637,21 @@ fun SettingsScreen(
                             containerColor = KuroNamiColors.SurfaceHigh,
                             focusedContainerColor = KuroNamiColors.SurfaceHighest
                         ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text("Register", fontWeight = FontWeight.Medium)
+                    }
+
+                    Button(
+                        onClick = { viewModel.demoLogin() },
+                        colors = ButtonDefaults.colors(
+                            containerColor = KuroNamiColors.SurfaceHigh,
+                            focusedContainerColor = KuroNamiColors.Crimson
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                    ) {
+                        Text("Demo", fontWeight = FontWeight.Medium)
                     }
                 }
             }

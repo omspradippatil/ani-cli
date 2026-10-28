@@ -52,8 +52,19 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     var selectedDrawerItem by remember { mutableStateOf("Home") }
     var focusedItem by remember { mutableStateOf<MediaItem?>(null) }
+    var rawFocusedItem by remember { mutableStateOf<MediaItem?>(null) }
     var itemToRemoveFromContinueWatching by remember { mutableStateOf<MediaItem?>(null) }
     val initialFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(rawFocusedItem) {
+        val target = rawFocusedItem ?: return@LaunchedEffect
+        if (focusedItem == null) {
+            focusedItem = target
+        } else {
+            delay(180) // Debounce rapid D-pad browsing so HeroBanner image decoding doesn't lag the UI
+            focusedItem = target
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadFeed()
@@ -148,11 +159,11 @@ fun HomeScreen(
                                 )
                             }
 
-                            items(state.rows) { row ->
+                            items(state.rows, key = { it.title }) { row ->
                                 HomeRow(
                                     row = row,
                                     onMediaClick = onMediaClick,
-                                    onFocusItem = { focusedItem = it },
+                                    onFocusItem = { rawFocusedItem = it },
                                     onRemoveContinueWatching = { itemToRemoveFromContinueWatching = it }
                                 )
                             }
@@ -1052,7 +1063,7 @@ fun HomeRow(
             contentPadding = PaddingValues(start = 24.dp, end = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(row.items) { item ->
+            items(row.items, key = { it.id }) { item ->
                 if (isContinueWatching) {
                     ContinueWatchingCard(
                         item = item,

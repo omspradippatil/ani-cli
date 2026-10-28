@@ -160,8 +160,15 @@ object DataModule {
         sharedPreferences: SharedPreferences
     ): com.anicli.tv.data.remote.WebAnimeService {
         val defaultUrl = com.anicli.tv.provider.WebApiMediaProvider.DEFAULT_BACKEND_URL
-        val prefUrl = sharedPreferences.getString(com.anicli.tv.provider.WebApiMediaProvider.PREF_BACKEND_URL, defaultUrl)
+        var prefUrl = sharedPreferences.getString(com.anicli.tv.provider.WebApiMediaProvider.PREF_BACKEND_URL, defaultUrl)
             ?.trim()?.takeIf { it.isNotBlank() } ?: defaultUrl
+
+        // Automatically migrate legacy / proxy URLs directly to production Cloudflare Worker
+        if (prefUrl.contains("localhost") || prefUrl.contains("10.0.2.2") || prefUrl.contains("vercel.app")) {
+            prefUrl = defaultUrl
+            sharedPreferences.edit().putString(com.anicli.tv.provider.WebApiMediaProvider.PREF_BACKEND_URL, defaultUrl).apply()
+        }
+
         val baseUrl = if (prefUrl.endsWith("/")) prefUrl else "$prefUrl/"
 
         return Retrofit.Builder()

@@ -62,7 +62,7 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-async function hashPassword(password, saltHex = null) {
+async function hashPassword(password, saltHex = null, useLegacySha512 = false) {
   const enc = new TextEncoder();
   const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
@@ -72,6 +72,22 @@ async function hashPassword(password, saltHex = null) {
     false,
     ['deriveBits']
   );
+  if (useLegacySha512) {
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt,
+        iterations: 100000,
+        hash: 'SHA-512'
+      },
+      keyMaterial,
+      512
+    );
+    return {
+      hash: bytesToHex(new Uint8Array(derivedBits)),
+      salt: bytesToHex(salt)
+    };
+  }
   const derivedBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
@@ -245,7 +261,8 @@ export default {
           return jsonResponse({ success: false, error: 'Invalid username/email or password' }, 401);
         }
 
-        const { hash } = await hashPassword(password, userWithSecret.salt);
+        const isLegacySha512 = userWithSecret.password_hash && userWithSecret.password_hash.length === 128;
+        const { hash } = await hashPassword(password, userWithSecret.salt, isLegacySha512);
         if (hash !== userWithSecret.password_hash) {
           return jsonResponse({ success: false, error: 'Invalid username/email or password' }, 401);
         }
@@ -316,6 +333,123 @@ export default {
             settings,
             stats
           }
+        });
+      }
+
+      // --- AUTH: PUBLIC ACCOUNTS LIST (FOR QUICK TV SWITCHER) ---
+      if (pathname === '/api/auth/accounts' && method === 'GET') {
+        const { results } = await db.prepare('SELECT id, username, email, avatar, tier, level, created_at FROM users ORDER BY id ASC LIMIT 20').all();
+        return jsonResponse({ success: true, accounts: results || [] });
+      }
+
+      // --- AUTH: TV CODE GENERATE (TV REQUESTS A 6-DIGIT CODE) ---
+      if (pathname === '/api/auth/tv-code/generate' && method === 'POST') {
+        const now = Date.now();
+        // Ensure table exists
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS tv_pair_codes (
+            code TEXT PRIMARY KEY,
+            user_id INTEGER,
+            token TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at INTEGER,
+            expires_at INTEGER
+          )
+        `).run();
+
+        // Prune expired codes
+        await db.prepare('DELETE FROM tv_pair_codes WHERE expires_at < ?').bind(now).run();
+
+        // Generate easy-to-read 6-character alphanumeric code (excluding ambiguous 0/O, 1/I)
+        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        const expiresAt = now + (10 * 60 * 1000); // 10 minutes expiry
+        await db.prepare('INSERT INTO tv_pair_codes (code, status, created_at, expires_at) VALUES (?, \'pending\', ?, ?)').bind(code, now, expiresAt).run();
+
+        return jsonResponse({
+          success: true,
+          code,
+          expiresIn: 600,
+          expiresAt
+        });
+      }
+
+      // --- AUTH: TV CODE STATUS (TV POLLS FOR PAIRING SUCCESS) ---
+      if (pathname === '/api/auth/tv-code/status' && method === 'GET') {
+        const code = String(url.searchParams.get('code') || '').trim().toUpperCase();
+        if (!code) {
+          return jsonResponse({ success: false, error: 'Code is required' }, 400);
+        }
+
+        const now = Date.now();
+        const pairRow = await db.prepare('SELECT * FROM tv_pair_codes WHERE code = ?').bind(code).first();
+        if (!pairRow || pairRow.expires_at < now) {
+          return jsonResponse({ success: false, status: 'expired', error: 'Code has expired or does not exist' }, 404);
+        }
+
+        if (pairRow.status === 'paired' && pairRow.user_id && pairRow.token) {
+          const user = await db.prepare('SELECT id, username, email, avatar, tier, level, created_at FROM users WHERE id = ?').bind(pairRow.user_id).first();
+          if (!user) {
+            return jsonResponse({ success: false, error: 'Paired user not found' }, 404);
+          }
+
+          const settings = await db.prepare('SELECT * FROM user_settings WHERE user_id = ?').bind(user.id).first() || {
+            preferred_audio: 'sub', auto_next: 1, auto_skip_intro: 1, auto_play: 1, preferred_quality: 'auto'
+          };
+          const stats = await calculateUserStats(user.id, db);
+
+          return jsonResponse({
+            success: true,
+            status: 'paired',
+            token: pairRow.token,
+            user,
+            data: {
+              user,
+              token: pairRow.token,
+              settings,
+              stats
+            }
+          });
+        }
+
+        return jsonResponse({ success: true, status: 'pending' });
+      }
+
+      // --- AUTH: TV CODE PAIR (WEB USER AUTHORIZES TV CODE) ---
+      if (pathname === '/api/auth/tv-code/pair' && method === 'POST') {
+        const user = await getAuthUser(request, db);
+        if (!user) {
+          return jsonResponse({ success: false, error: 'Unauthorized. Please log in to your account first.' }, 401);
+        }
+
+        const body = await request.json();
+        const code = String(body.code || '').trim().toUpperCase().replace(/[\s-]/g, '');
+        if (!code || code.length < 4) {
+          return jsonResponse({ success: false, error: 'Please enter a valid 6-character code' }, 400);
+        }
+
+        const now = Date.now();
+        const pairRow = await db.prepare('SELECT * FROM tv_pair_codes WHERE code = ? AND expires_at > ?').bind(code, now).first();
+        if (!pairRow) {
+          return jsonResponse({ success: false, error: 'Invalid or expired TV pairing code' }, 404);
+        }
+
+        // Generate persistent TV session token (60-day expiry)
+        const tvToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+        const expiresAt = now + (60 * 24 * 60 * 60 * 1000);
+        await db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').bind(tvToken, user.id, expiresAt).run();
+
+        // Mark code as paired
+        await db.prepare('UPDATE tv_pair_codes SET user_id = ?, token = ?, status = \'paired\' WHERE code = ?').bind(user.id, tvToken, code).run();
+
+        return jsonResponse({
+          success: true,
+          message: `TV successfully linked to account: ${user.username}!`,
+          user
         });
       }
 

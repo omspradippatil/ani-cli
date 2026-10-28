@@ -200,18 +200,19 @@ body {
   align-items: center !important;
   justify-content: space-between !important;
   gap: 6px !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   box-sizing: border-box !important;
   flex-wrap: nowrap !important;
+  position: relative !important;
 }
 
 .art-video-player .art-controls-left {
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
-  flex: 1 1 auto !important;
+  flex: 0 1 auto !important;
   min-width: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 .art-video-player .art-controls-right {
@@ -220,7 +221,8 @@ body {
   gap: 6px !important;
   flex: 0 0 auto !important;
   margin-left: auto !important;
-  z-index: 10 !important;
+  z-index: 20 !important;
+  overflow: visible !important;
 }
 
 .art-video-player .art-control-time {
@@ -340,6 +342,137 @@ body {
   background: rgba(255, 255, 255, 0.2) !important;
   border-color: #00e3fd !important;
   color: #00e3fd !important;
+}
+
+/* Artplayer Settings Menu & Selector Popups (Dark Glassmorphism & Glitch Prevention) */
+.art-video-player .art-settings {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+
+.art-video-player .art-setting-panel {
+  background: rgba(13, 17, 23, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.2) !important;
+  overflow: hidden !important;
+  font-family: var(--font-body) !important;
+}
+
+.art-video-player .art-setting-item {
+  color: #e2e8f0 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 8px 14px !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.art-video-player .art-setting-item:hover,
+.art-video-player .art-setting-item.art-current {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #00e3fd !important;
+}
+
+.art-video-player .art-setting-item .art-setting-item-right-icon svg,
+.art-video-player .art-setting-item .art-setting-item-left-icon svg {
+  fill: currentColor !important;
+}
+
+.art-video-player .art-setting-item-back {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  font-weight: 700 !important;
+  color: #00e3fd !important;
+}
+
+.art-video-player .art-control-setting {
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+}
+
+/* Suppress setting button tooltip when setting menu is open to prevent flicker */
+.art-video-player.art-setting-show .art-control-setting::before,
+.art-video-player.art-setting-show .art-control-setting::after {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* In-player Selector Menu (e.g. Quality Popup) */
+.art-video-player .art-selector-panel {
+  background: rgba(13, 17, 23, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8) !important;
+  z-index: 9999 !important;
+  overflow: hidden !important;
+}
+
+.art-video-player .art-selector-item {
+  color: #e2e8f0 !important;
+  font-size: 12px !important;
+  padding: 6px 14px !important;
+  transition: all 0.15s ease !important;
+}
+
+.art-video-player .art-selector-item:hover,
+.art-video-player .art-selector-item.art-current {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #00e3fd !important;
+}
+
+/* Responsive Player Controls: ensure ALL controls remain visible without clipping or overlapping */
+@media (max-width: 640px) {
+  .art-video-player .art-controls {
+    padding: 0 4px 4px !important;
+    gap: 2px !important;
+  }
+  .art-video-player .art-controls-left {
+    gap: 2px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+  }
+  .art-video-player .art-controls-right {
+    gap: 2px !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+  }
+  .art-video-player .art-control-time {
+    font-size: 9.5px !important;
+    padding: 0 2px !important;
+    letter-spacing: -0.2px !important;
+  }
+  .art-video-player .art-btn-mode,
+  .art-video-player .art-btn-skip,
+  .art-video-player .art-btn-cc,
+  .art-video-player .art-btn-quality {
+    font-size: 9.5px !important;
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+  }
+  .art-video-player .art-icon-btn {
+    padding: 2px 3px !important;
+  }
+  .art-video-player .art-icon-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  /* On touch mobile (<640px), hide only the hover volume slider track as hardware keys handle volume */
+  .art-video-player .art-control-volume {
+    display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .art-video-player .art-control-time {
+    max-width: 50px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
 }
 
 .quality-opt-btn:hover {
@@ -551,66 +684,23 @@ button:active,
   transition: transform 0.1s ease;
 }
 
-/* Artplayer Mobile Controls & Anti-Overlap Optimization */
-
-/* In portrait / inline mode on mobile (< 768px):
-   Hide duplicate secondary buttons from the in-player bar because they are
-   prominently accessible with large touch targets in #player-toolbar right below the video.
-   This guarantees ZERO overlapping controls inside the player! */
-@media (max-width: 767px) {
-  .art-video-player:not(.art-fullscreen):not(.art-fullscreen-web):not(.art-web-fullscreen) .art-controls-left [data-name="prev-ep-btn"],
-  .art-video-player:not(.art-fullscreen):not(.art-fullscreen-web):not(.art-web-fullscreen) .art-controls-left [data-name="next-ep-btn"],
-  .art-video-player:not(.art-fullscreen):not(.art-fullscreen-web):not(.art-web-fullscreen) .art-controls-left [data-name="skip-intro-btn"],
-  .art-video-player:not(.art-fullscreen):not(.art-fullscreen-web):not(.art-web-fullscreen) .art-controls-right [data-name="audio-mode-btn"],
-  .art-video-player:not(.art-fullscreen):not(.art-fullscreen-web):not(.art-web-fullscreen) .art-controls-right [data-name="quality-btn"],
-  .art-video-player:not(.art-fullscreen):not(.art-fullscreen-web):not(.art-web-fullscreen) .art-control-volume {
-    display: none !important;
-  }
-}
-
-/* In Fullscreen Mode (Landscape): Display ALL buttons with generous breathing room */
-.art-video-player.art-fullscreen .art-controls-left [data-name="prev-ep-btn"],
-.art-video-player.art-fullscreen .art-controls-left [data-name="next-ep-btn"],
-.art-video-player.art-fullscreen .art-controls-left [data-name="skip-intro-btn"],
-.art-video-player.art-fullscreen .art-controls-right [data-name="audio-mode-btn"],
-.art-video-player.art-fullscreen .art-controls-right [data-name="quality-btn"],
-.art-video-player.art-fullscreen .art-control-volume,
-.art-video-player.art-fullscreen-web .art-controls-left [data-name="prev-ep-btn"],
-.art-video-player.art-fullscreen-web .art-controls-left [data-name="next-ep-btn"],
-.art-video-player.art-fullscreen-web .art-controls-left [data-name="skip-intro-btn"],
-.art-video-player.art-fullscreen-web .art-controls-right [data-name="audio-mode-btn"],
-.art-video-player.art-fullscreen-web .art-controls-right [data-name="quality-btn"],
-.art-video-player.art-fullscreen-web .art-control-volume,
-.art-video-player.art-web-fullscreen .art-controls-left [data-name="prev-ep-btn"],
-.art-video-player.art-web-fullscreen .art-controls-left [data-name="next-ep-btn"],
-.art-video-player.art-web-fullscreen .art-controls-left [data-name="skip-intro-btn"],
-.art-video-player.art-web-fullscreen .art-controls-right [data-name="audio-mode-btn"],
-.art-video-player.art-web-fullscreen .art-controls-right [data-name="quality-btn"],
-.art-video-player.art-web-fullscreen .art-control-volume {
+/* Controls Integrity & Stability: Keep all player buttons visible and cleanly laid out across all sizes */
+.art-video-player .art-controls-left [data-name="prev-ep-btn"],
+.art-video-player .art-controls-left [data-name="next-ep-btn"],
+.art-video-player .art-controls-left [data-name="skip-intro-btn"],
+.art-video-player .art-controls-right [data-name="audio-mode-btn"],
+.art-video-player .art-controls-right [data-name="quality-btn"] {
   display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-@media (max-width: 640px) {
-  .art-video-player .art-controls {
-    padding: 0 8px 6px !important;
-    gap: 4px !important;
-  }
-  .art-video-player .art-controls-left {
-    gap: 3px !important;
-  }
-  .art-video-player .art-controls-right {
-    gap: 4px !important;
-  }
-  .art-video-player .art-btn-mode,
-  .art-video-player .art-btn-skip,
-  .art-video-player .art-btn-cc,
-  .art-video-player .art-btn-quality {
-    font-size: 10px !important;
-    padding: 2px 6px !important;
-  }
-  .art-video-player .art-icon-btn {
-    padding: 2px 5px !important;
-  }
+/* Ensure controls bar and setting popup do not flicker or glitch on hover */
+.art-video-player.art-setting-show .art-controls,
+.art-video-player.art-setting-show .art-bottom {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 

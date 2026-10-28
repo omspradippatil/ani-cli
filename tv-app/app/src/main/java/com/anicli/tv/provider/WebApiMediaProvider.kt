@@ -29,7 +29,7 @@ class WebApiMediaProvider @Inject constructor(
 
     companion object {
         const val PREF_BACKEND_URL = "pref_backend_url"
-        const val DEFAULT_BACKEND_URL = "https://ani-cli-steel.vercel.app"
+        const val DEFAULT_BACKEND_URL = "https://om-cli-anime.omspradippatil.workers.dev"
     }
 
     override suspend fun getHomeFeed(): Flow<Result<List<MediaRow>>> = flow {

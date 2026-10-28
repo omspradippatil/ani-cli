@@ -3,11 +3,15 @@ package com.anicli.tv.ui.player
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,6 +22,7 @@ import androidx.tv.foundation.lazy.list.itemsIndexed
 import androidx.tv.material3.*
 import com.anicli.tv.core.theme.KuroNamiColors
 import com.anicli.tv.player.VideoPlayer
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -54,7 +59,8 @@ fun PlayerScreen(
     } else {
         parts.getOrNull(1)?.toIntOrNull() ?: 1
     }
-    val nextEpId = "$mediaId|${epNum + 1}"
+    val nextEp = viewModel.cachedEpisodes.find { it.number == epNum + 1 }
+    val nextEpId = nextEp?.id ?: "$mediaId|${epNum + 1}"
 
     Box(
         modifier = Modifier
@@ -97,6 +103,7 @@ fun PlayerScreen(
                             subtitles = source.subtitles,
                             okHttpClient = viewModel.okHttpClient,
                             audioMode = audioMode,
+                            isOverlayDialogOpen = showQualitySelector || showEpisodeDrawer,
                             onToggleAudioMode = {
                                 viewModel.toggleAudioMode()
                             },
@@ -129,17 +136,31 @@ fun PlayerScreen(
                     if (showQualitySelector) {
                         BackHandler { showQualitySelector = false }
 
+                        val sourcesDialogInitialRequester = remember { FocusRequester() }
+                        LaunchedEffect(showQualitySelector) {
+                            delay(80)
+                            try { sourcesDialogInitialRequester.requestFocus() } catch (_: Exception) {}
+                        }
+
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.85f)),
+                                .background(Color.Black.copy(alpha = 0.85f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { showQualitySelector = false },
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .width(440.dp)
+                                    .width(460.dp)
                                     .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
                                     .border(1.5.dp, KuroNamiColors.Crimson, RoundedCornerShape(16.dp))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {} // consume touch/click
                                     .padding(32.dp)
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -171,7 +192,9 @@ fun PlayerScreen(
                                                 focusedContainerColor = KuroNamiColors.Crimson
                                             ),
                                             shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .focusRequester(sourcesDialogInitialRequester)
                                         ) {
                                             Text(
                                                 "SUB (JA / EN)",
@@ -259,18 +282,32 @@ fun PlayerScreen(
                     if (showEpisodeDrawer) {
                         BackHandler { showEpisodeDrawer = false }
 
+                        val episodeDrawerInitialRequester = remember { FocusRequester() }
+                        LaunchedEffect(showEpisodeDrawer) {
+                            delay(80)
+                            try { episodeDrawerInitialRequester.requestFocus() } catch (_: Exception) {}
+                        }
+
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.85f)),
+                                .background(Color.Black.copy(alpha = 0.85f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { showEpisodeDrawer = false },
                             contentAlignment = Alignment.CenterEnd
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .width(360.dp)
+                                    .width(380.dp)
                                     .background(KuroNamiColors.SurfaceLow)
                                     .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {} // consume touch/click
                                     .padding(24.dp)
                             ) {
                                 Column(modifier = Modifier.fillMaxSize()) {
@@ -296,7 +333,9 @@ fun PlayerScreen(
                                     Spacer(modifier = Modifier.height(16.dp))
 
                                     TvLazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth(),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(viewModel.cachedEpisodes) { ep ->
@@ -311,7 +350,11 @@ fun PlayerScreen(
                                                     focusedContainerColor = KuroNamiColors.CrimsonContainer
                                                 ),
                                                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .then(
+                                                        if (isCurrentEp) Modifier.focusRequester(episodeDrawerInitialRequester) else Modifier
+                                                    )
                                             ) {
                                                 Row(
                                                     modifier = Modifier
@@ -340,6 +383,20 @@ fun PlayerScreen(
                                                 }
                                             }
                                         }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Button(
+                                        onClick = { showEpisodeDrawer = false },
+                                        colors = ButtonDefaults.colors(
+                                            containerColor = KuroNamiColors.SurfaceHigh,
+                                            focusedContainerColor = KuroNamiColors.SurfaceHighest
+                                        ),
+                                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Close Queue", color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }

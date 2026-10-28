@@ -65,6 +65,17 @@ interface WebAnimeService {
     @POST("api/auth/demo")
     suspend fun demoLogin(): AuthResponse
 
+    @GET("api/auth/accounts")
+    suspend fun getAccounts(): WebAccountsResponse
+
+    @POST("api/auth/tv-code/generate")
+    suspend fun generateTvCode(): TvCodeGenerateResponse
+
+    @GET("api/auth/tv-code/status")
+    suspend fun checkTvCodeStatus(
+        @Query("code") code: String
+    ): TvCodeStatusResponse
+
     @GET("api/auth/me")
     suspend fun getMe(
         @Header("Authorization") token: String

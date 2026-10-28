@@ -91,8 +91,17 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun saveProgress(mediaId: String, epNum: Int, currentPosition: Long, duration: Long) {
+    private var lastSavedPositionMs = 0L
+    private var lastSavedTimestamp = 0L
+
+    fun saveProgress(mediaId: String, epNum: Int, currentPosition: Long, duration: Long, force: Boolean = false) {
         if (duration <= 0L || currentPosition <= 0L) return
+        val now = System.currentTimeMillis()
+        if (!force && (now - lastSavedTimestamp < 8000L) && kotlin.math.abs(currentPosition - lastSavedPositionMs) < 8000L) {
+            return
+        }
+        lastSavedTimestamp = now
+        lastSavedPositionMs = currentPosition
         viewModelScope.launch {
             try {
                 val title = cachedMediaDetail?.title?.takeIf { it.isNotBlank() } ?: "Anime Stream"

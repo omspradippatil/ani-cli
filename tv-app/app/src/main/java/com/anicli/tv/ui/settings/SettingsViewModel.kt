@@ -31,6 +31,71 @@ class SettingsViewModel @Inject constructor(
     val isAuthLoading = MutableStateFlow(false)
     val authError = MutableStateFlow<String?>(null)
 
+    // TV Pairing Code State
+    val tvPairCode = MutableStateFlow<String?>(null)
+    val isTvCodeLoading = MutableStateFlow(false)
+    val tvPairStatus = MutableStateFlow<String?>(null)
+    val availableAccounts = MutableStateFlow<List<WebUser>>(emptyList())
+    private var tvPollJob: kotlinx.coroutines.Job? = null
+
+    init {
+        loadAvailableAccounts()
+        if (currentUser.value == null) {
+            generateTvPairCode()
+        }
+    }
+
+    fun loadAvailableAccounts() {
+        viewModelScope.launch {
+            val result = webUserRepository.getAvailableAccounts()
+            result.onSuccess { accounts ->
+                availableAccounts.value = accounts
+            }
+        }
+    }
+
+    fun generateTvPairCode() {
+        tvPollJob?.cancel()
+        viewModelScope.launch {
+            isTvCodeLoading.value = true
+            tvPairStatus.value = null
+            val result = webUserRepository.generateTvCode()
+            isTvCodeLoading.value = false
+            result.onSuccess { code ->
+                tvPairCode.value = code
+                startPollingTvCode(code)
+            }.onFailure { err ->
+                tvPairStatus.value = err.message ?: "Failed to generate code"
+            }
+        }
+    }
+
+    private fun startPollingTvCode(code: String) {
+        tvPollJob?.cancel()
+        tvPollJob = viewModelScope.launch {
+            // Poll for 10 minutes max
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < 600_000L) {
+                kotlinx.coroutines.delay(2500)
+                val statusResult = webUserRepository.checkTvCodeStatus(code)
+                statusResult.onSuccess { resp ->
+                    if (resp.status == "paired") {
+                        tvPairStatus.value = "TV Linked Successfully! Welcome, ${resp.user?.username}!"
+                        return@launch
+                    } else if (resp.status == "expired") {
+                        tvPairStatus.value = "Code expired. Please generate a new one."
+                        return@launch
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        tvPollJob?.cancel()
+    }
+
     fun demoLogin(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             isAuthLoading.value = true

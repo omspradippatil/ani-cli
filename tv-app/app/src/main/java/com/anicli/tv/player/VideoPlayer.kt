@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
@@ -42,7 +42,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -67,6 +66,8 @@ fun VideoPlayer(
     okHttpClient: OkHttpClient,
     modifier: Modifier = Modifier,
     audioMode: String = "sub",
+    isOverlayDialogOpen: Boolean = false,
+    initialPositionMs: Long = 0L,
     onToggleAudioMode: () -> Unit = {},
     onShowQualitySelector: () -> Unit = {},
     onShowEpisodeList: () -> Unit = {},
@@ -80,7 +81,24 @@ fun VideoPlayer(
     var duration by remember { mutableLongStateOf(0L) }
     var bufferedPosition by remember { mutableLongStateOf(0L) }
     var showController by remember { mutableStateOf(true) }
-    val rootFocusRequester = remember { FocusRequester() }
+
+    // Remote D-Pad Navigation Requesters
+    // Top Row
+    val audioBtnRequester = remember { FocusRequester() }
+    val ccBtnRequester = remember { FocusRequester() }
+    val qualityBtnRequester = remember { FocusRequester() }
+    val sourcesBtnRequester = remember { FocusRequester() }
+
+    // Center Controls
+    val rewindBtnRequester = remember { FocusRequester() }
+    val playPauseRequester = remember { FocusRequester() }
+    val forwardBtnRequester = remember { FocusRequester() }
+
+    // Bottom Controls
+    val skipIntroRequester = remember { FocusRequester() }
+    val nextEpRequester = remember { FocusRequester() }
+    val episodesDrawerRequester = remember { FocusRequester() }
+    val volumeBtnRequester = remember { FocusRequester() }
 
     // State for user-selectable video quality and captions
     var selectedQuality by remember { mutableStateOf("Auto") }
@@ -105,22 +123,27 @@ fun VideoPlayer(
         } catch (_: Exception) {}
     }
 
-    // Auto-hide controller after 6.5 seconds of playback
-    LaunchedEffect(showController, isPlaying) {
-        if (showController && isPlaying) {
-            delay(6500)
+    // Auto-hide controller after 10 seconds of active playback (paused when dialogs or drawers are open)
+    LaunchedEffect(showController, isPlaying, showQualityDialog, isOverlayDialogOpen) {
+        if (showController && isPlaying && !showQualityDialog && !isOverlayDialogOpen) {
+            delay(10000)
             showController = false
         }
     }
 
     LaunchedEffect(showController) {
         onControllerVisibilityChanged(showController)
-        if (!showController) {
-            delay(100)
-            try {
-                rootFocusRequester.requestFocus()
-            } catch (_: Exception) {}
-        }
+    }
+
+    // Initial focus on Play/Pause when screen first appears
+    LaunchedEffect(Unit) {
+        delay(120)
+        try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+    }
+
+    // Dismiss controller on Back press when visible and no subdialog is open
+    BackHandler(enabled = showController && !showQualityDialog) {
+        showController = false
     }
 
     val trackSelector = remember {
@@ -137,7 +160,9 @@ fun VideoPlayer(
 
     val exoPlayer = remember {
         val renderersFactory = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
+            .setEnableAudioFloatOutput(false) // 16-bit PCM output avoids silence on Android TV DACs
 
         val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -147,7 +172,8 @@ fun VideoPlayer(
         ExoPlayer.Builder(context, renderersFactory)
             .setTrackSelector(trackSelector)
             .build().apply {
-                setAudioAttributes(audioAttributes, true)
+                // Must be false on Android TV so Compose focus navigation never silences or ducks audio!
+                setAudioAttributes(audioAttributes, false)
                 volume = 1.0f
                 playWhenReady = true
             }
@@ -208,14 +234,29 @@ fun VideoPlayer(
         exoPlayer.volume = if (newMuted) 0f else 1.0f
     }
 
-    // Update progress ticker
+    // Update progress ticker and save to SQLite/Cloud
+    LaunchedEffect(showController) {
+        if (showController) {
+            currentPosition = exoPlayer.currentPosition
+            duration = exoPlayer.duration.coerceAtLeast(0L)
+            bufferedPosition = exoPlayer.bufferedPosition.coerceAtLeast(0L)
+        }
+    }
+
     LaunchedEffect(exoPlayer) {
+        var tickCount = 0
         while (true) {
             if (exoPlayer.isPlaying) {
-                currentPosition = exoPlayer.currentPosition
-                duration = exoPlayer.duration.coerceAtLeast(0L)
-                bufferedPosition = exoPlayer.bufferedPosition.coerceAtLeast(0L)
-                onSaveProgress(currentPosition, duration)
+                if (showController) {
+                    currentPosition = exoPlayer.currentPosition
+                    duration = exoPlayer.duration.coerceAtLeast(0L)
+                    bufferedPosition = exoPlayer.bufferedPosition.coerceAtLeast(0L)
+                }
+                tickCount++
+                if (tickCount >= 8) {
+                    tickCount = 0
+                    onSaveProgress(exoPlayer.currentPosition, exoPlayer.duration.coerceAtLeast(0L))
+                }
             }
             delay(1000)
         }
@@ -251,6 +292,9 @@ fun VideoPlayer(
             .createMediaSource(mediaItemBuilder.build())
 
         exoPlayer.setMediaSource(mediaSource)
+        if (initialPositionMs > 0L) {
+            exoPlayer.seekTo(initialPositionMs)
+        }
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
         exoPlayer.volume = 1.0f
@@ -262,7 +306,7 @@ fun VideoPlayer(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
                     duration = exoPlayer.duration.coerceAtLeast(0L)
-                    exoPlayer.volume = 1.0f
+                    exoPlayer.volume = if (isMuted) 0f else 1.0f
                 } else if (playbackState == Player.STATE_ENDED) {
                     onNextEpisode()
                 }
@@ -271,9 +315,20 @@ fun VideoPlayer(
                 isPlaying = playing
             }
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                for (group in tracks.groups) {
-                    if (group.type == C.TRACK_TYPE_AUDIO) {
-                        android.util.Log.d("AniCliPlayer", "Audio track group length: ${group.mediaTrackGroup.length}, isSelected: ${group.isSelected}")
+                // Ensure active audio track selection across dual-audio and single-track streams
+                val hasSelectedAudio = tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+                if (!hasSelectedAudio) {
+                    for (group in tracks.groups) {
+                        if (group.type == C.TRACK_TYPE_AUDIO && group.mediaTrackGroup.length > 0) {
+                            val params = trackSelector.buildUponParameters()
+                                .setOverrideForType(
+                                    TrackSelectionOverride(group.mediaTrackGroup, listOf(0))
+                                )
+                                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                                .build()
+                            trackSelector.setParameters(params)
+                            break
+                        }
                     }
                 }
             }
@@ -295,27 +350,6 @@ fun VideoPlayer(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .focusRequester(rootFocusRequester)
-            .focusable()
-            .onKeyEvent { event ->
-                if (!showController && (event.type == KeyEventType.KeyDown || event.type == KeyEventType.KeyUp)) {
-                    when (event.key.nativeKeyCode) {
-                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
-                        android.view.KeyEvent.KEYCODE_ENTER,
-                        android.view.KeyEvent.KEYCODE_DPAD_UP,
-                        android.view.KeyEvent.KEYCODE_DPAD_DOWN,
-                        android.view.KeyEvent.KEYCODE_DPAD_LEFT,
-                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
-                        android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-                        android.view.KeyEvent.KEYCODE_MEDIA_PLAY,
-                        android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                            showController = true
-                            return@onKeyEvent true
-                        }
-                    }
-                }
-                false
-            }
     ) {
         AndroidView(
             factory = { ctx ->
@@ -342,28 +376,41 @@ fun VideoPlayer(
             modifier = Modifier.fillMaxSize()
         )
 
+        // Backdrop listener when controller is hidden: any directional or select key brings back HUD
         if (!showController) {
             val invisibleFocusRequester = remember { FocusRequester() }
             LaunchedEffect(Unit) {
-                invisibleFocusRequester.requestFocus()
+                try { invisibleFocusRequester.requestFocus() } catch (_: Exception) {}
             }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .focusRequester(invisibleFocusRequester)
                     .focusable()
-                    .clickable { showController = true }
-                    .onKeyEvent {
+                    .clickable {
                         showController = true
-                        true
+                        try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                    }
+                    .onKeyEvent { event ->
+                        if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                            // Let Back key pass through to exit player cleanly
+                            if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                                return@onKeyEvent false
+                            }
+                            showController = true
+                            try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                            return@onKeyEvent true
+                        }
+                        false
                     }
             )
         }
 
+        // TV Remote Navigable Player HUD
         AnimatedVisibility(
             visible = showController,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(160)),
+            exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(160)),
             modifier = Modifier.fillMaxSize()
         ) {
             Box(
@@ -391,7 +438,7 @@ fun VideoPlayer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        // Web Breadcrumb Trail (Home / Anime / Title / Episode)
+                        // Breadcrumb Trail
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(bottom = 6.dp)
@@ -459,19 +506,41 @@ fun VideoPlayer(
                         )
                     }
 
-                    // Top Right Badges & Audio Switcher
+                    // Top Right Action Buttons (Inter-connected D-pad Navigation)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Quick SUB / DUB Toggle Pill
+                        // 1. Audio Mode Toggle (SUB / DUB)
                         Button(
                             onClick = onToggleAudioMode,
                             colors = ButtonDefaults.colors(
                                 containerColor = if (audioMode == "sub") KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
                                 focusedContainerColor = KuroNamiColors.Crimson
                             ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .focusRequester(audioBtnRequester)
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                        when (event.nativeKeyEvent.keyCode) {
+                                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                onToggleAudioMode()
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                                try { ccBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                                try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                        }
+                                    }
+                                    false
+                                }
                         ) {
                             Text(
                                 text = if (audioMode == "sub") "AUDIO: SUB (JA)" else "AUDIO: DUB (EN)",
@@ -480,14 +549,40 @@ fun VideoPlayer(
                             )
                         }
 
-                        // Captions Quick Toggle Button
+                        // 2. Closed Captions Toggle
                         Button(
                             onClick = { toggleCaptions() },
                             colors = ButtonDefaults.colors(
                                 containerColor = if (captionsEnabled) KuroNamiColors.CyanContainer else KuroNamiColors.SurfaceHigh,
                                 focusedContainerColor = KuroNamiColors.Crimson
                             ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .focusRequester(ccBtnRequester)
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                        when (event.nativeKeyEvent.keyCode) {
+                                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                toggleCaptions()
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                                try { audioBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                                try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                                try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                        }
+                                    }
+                                    false
+                                }
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -505,14 +600,40 @@ fun VideoPlayer(
                             }
                         }
 
-                        // Video Quality Button
+                        // 3. Video Quality Selector Dialog Trigger
                         Button(
                             onClick = { showQualityDialog = true },
                             colors = ButtonDefaults.colors(
                                 containerColor = KuroNamiColors.SurfaceHigh,
                                 focusedContainerColor = KuroNamiColors.Crimson
                             ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .focusRequester(qualityBtnRequester)
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                        when (event.nativeKeyEvent.keyCode) {
+                                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                showQualityDialog = true
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                                try { ccBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                                try { sourcesBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                                try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                        }
+                                    }
+                                    false
+                                }
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -531,34 +652,48 @@ fun VideoPlayer(
                             }
                         }
 
+                        // 4. Sources / More Button Trigger
                         Button(
                             onClick = onShowQualitySelector,
                             colors = ButtonDefaults.colors(
                                 containerColor = KuroNamiColors.SurfaceHigh,
                                 focusedContainerColor = KuroNamiColors.Crimson
                             ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .focusRequester(sourcesBtnRequester)
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                        when (event.nativeKeyEvent.keyCode) {
+                                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                onShowQualitySelector()
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                                try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                                try { forwardBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                        }
+                                    }
+                                    false
+                                }
                         ) {
                             Text("Sources", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
 
-                // ── Center Quick Playback Controls ──────────────────────────
+                // ── Center Quick Playback Controls (D-Pad Graph) ────────────
                 Row(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalArrangement = Arrangement.spacedBy(36.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val playPauseRequester = remember { FocusRequester() }
-
-                    LaunchedEffect(showController) {
-                        if (showController) {
-                            delay(100)
-                            playPauseRequester.requestFocus()
-                        }
-                    }
-
                     // Rewind 10s
                     IconButton(
                         onClick = { exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0L)) },
@@ -568,7 +703,32 @@ fun VideoPlayer(
                         ),
                         modifier = Modifier
                             .size(60.dp)
+                            .focusRequester(rewindBtnRequester)
                             .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), CircleShape)
+                            .onKeyEvent { event ->
+                                if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                    when (event.nativeKeyEvent.keyCode) {
+                                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                        android.view.KeyEvent.KEYCODE_ENTER -> {
+                                            exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0L))
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                            try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                            try { audioBtnRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                            try { skipIntroRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                    }
+                                }
+                                false
+                            }
                     ) {
                         Icon(
                             Icons.Filled.FastRewind,
@@ -581,8 +741,11 @@ fun VideoPlayer(
                     // Play / Pause Main Glow Pill
                     IconButton(
                         onClick = {
-                            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
-                            isPlaying = !isPlaying
+                            if (exoPlayer.isPlaying) {
+                                exoPlayer.pause()
+                            } else {
+                                exoPlayer.play()
+                            }
                         },
                         colors = IconButtonDefaults.colors(
                             containerColor = KuroNamiColors.Crimson,
@@ -592,6 +755,34 @@ fun VideoPlayer(
                             .size(80.dp)
                             .focusRequester(playPauseRequester)
                             .border(2.5.dp, KuroNamiColors.CyanSoft.copy(alpha = 0.7f), CircleShape)
+                            .onKeyEvent { event ->
+                                if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                    when (event.nativeKeyEvent.keyCode) {
+                                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                        android.view.KeyEvent.KEYCODE_ENTER -> {
+                                            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                            try { rewindBtnRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                            try { forwardBtnRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                            try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                            try { skipIntroRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                    }
+                                }
+                                false
+                            }
                     ) {
                         Icon(
                             if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -610,7 +801,32 @@ fun VideoPlayer(
                         ),
                         modifier = Modifier
                             .size(60.dp)
+                            .focusRequester(forwardBtnRequester)
                             .border(1.dp, KuroNamiColors.Outline.copy(alpha = 0.3f), CircleShape)
+                            .onKeyEvent { event ->
+                                if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                    when (event.nativeKeyEvent.keyCode) {
+                                        android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                        android.view.KeyEvent.KEYCODE_ENTER -> {
+                                            exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(duration))
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                            try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                            try { sourcesBtnRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                        android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
+                                            try { nextEpRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                    }
+                                }
+                                false
+                            }
                     ) {
                         Icon(
                             Icons.Filled.FastForward,
@@ -657,21 +873,21 @@ fun VideoPlayer(
                             // Buffered bar
                             Box(
                                 modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(bufferRatio.coerceIn(0f, 1f))
-                                .background(KuroNamiColors.Outline.copy(alpha = 0.5f))
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(bufferRatio.coerceIn(0f, 1f))
+                                    .background(KuroNamiColors.Outline.copy(alpha = 0.5f))
                             )
 
                             // Played bar
                             Box(
                                 modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(progressRatio.coerceIn(0.001f, 1f))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        colors = listOf(KuroNamiColors.Crimson, KuroNamiColors.CrimsonContainer)
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(progressRatio.coerceIn(0.001f, 1f))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(KuroNamiColors.Crimson, KuroNamiColors.CrimsonContainer)
+                                        )
                                     )
-                                )
                             )
                         }
 
@@ -684,14 +900,14 @@ fun VideoPlayer(
                         )
                     }
 
-                    // Action Shortcuts
+                    // Action Shortcuts (Continuous 4-way D-Pad Flow)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            // Skip Intro
+                            // 1. Skip Intro (+85s)
                             Button(
                                 onClick = {
                                     val target = (exoPlayer.currentPosition + 85000).coerceAtMost(duration)
@@ -701,7 +917,30 @@ fun VideoPlayer(
                                     containerColor = KuroNamiColors.SurfaceHigh,
                                     focusedContainerColor = KuroNamiColors.Crimson
                                 ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                modifier = Modifier
+                                    .focusRequester(skipIntroRequester)
+                                    .onKeyEvent { event ->
+                                        if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                            when (event.nativeKeyEvent.keyCode) {
+                                                android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                                android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                    val target = (exoPlayer.currentPosition + 85000).coerceAtMost(duration)
+                                                    exoPlayer.seekTo(target)
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                                    try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                                    try { nextEpRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                            }
+                                        }
+                                        false
+                                    }
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -715,14 +954,40 @@ fun VideoPlayer(
                                 }
                             }
 
-                            // Next Episode
+                            // 2. Next Episode
                             Button(
                                 onClick = onNextEpisode,
                                 colors = ButtonDefaults.colors(
                                     containerColor = KuroNamiColors.SurfaceHigh,
                                     focusedContainerColor = KuroNamiColors.Crimson
                                 ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                modifier = Modifier
+                                    .focusRequester(nextEpRequester)
+                                    .onKeyEvent { event ->
+                                        if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                            when (event.nativeKeyEvent.keyCode) {
+                                                android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                                android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                    onNextEpisode()
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                                    try { skipIntroRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                                    try { episodesDrawerRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                                    try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                            }
+                                        }
+                                        false
+                                    }
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -736,14 +1001,40 @@ fun VideoPlayer(
                                 }
                             }
 
-                            // Episode Drawer Toggle Button
+                            // 3. Episode Drawer Toggle Button
                             Button(
                                 onClick = onShowEpisodeList,
                                 colors = ButtonDefaults.colors(
                                     containerColor = KuroNamiColors.SurfaceHigh,
                                     focusedContainerColor = KuroNamiColors.Crimson
                                 ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                modifier = Modifier
+                                    .focusRequester(episodesDrawerRequester)
+                                    .onKeyEvent { event ->
+                                        if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                            when (event.nativeKeyEvent.keyCode) {
+                                                android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                                android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                    onShowEpisodeList()
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                                    try { nextEpRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                                                    try { volumeBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                                android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                                    try { playPauseRequester.requestFocus() } catch (_: Exception) {}
+                                                    return@onKeyEvent true
+                                                }
+                                            }
+                                        }
+                                        false
+                                    }
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -758,25 +1049,46 @@ fun VideoPlayer(
                             }
                         }
 
-                        // Volume / Unmute Quick Toggle
+                        // 4. Volume / Unmute Quick Toggle
                         Button(
                             onClick = { toggleMute() },
                             colors = ButtonDefaults.colors(
                                 containerColor = KuroNamiColors.SurfaceHigh,
                                 focusedContainerColor = KuroNamiColors.Crimson
                             ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        if (!isMuted) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                                        contentDescription = "Audio Volume",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(if (!isMuted) "Audio: 100%" else "MUTED", fontWeight = FontWeight.Bold)
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .focusRequester(volumeBtnRequester)
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                        when (event.nativeKeyEvent.keyCode) {
+                                            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+                                            android.view.KeyEvent.KEYCODE_ENTER -> {
+                                                toggleMute()
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                                                try { episodesDrawerRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                            android.view.KeyEvent.KEYCODE_DPAD_UP -> {
+                                                try { forwardBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                        }
+                                    }
+                                    false
                                 }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    if (!isMuted) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                                    contentDescription = "Audio Volume",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (!isMuted) "Audio: 100%" else "MUTED", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -784,63 +1096,66 @@ fun VideoPlayer(
             }
         }
 
-        // Dedicated Glassmorphic Quality Selector Dialog
+        // Dedicated Glassmorphic Quality Selector Dialog (100% TV Remote Navigable)
         if (showQualityDialog) {
-            BackHandler { showQualityDialog = false }
+            BackHandler {
+                showQualityDialog = false
+                try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+            }
+
+            val qualityDialogInitialRequester = remember { FocusRequester() }
+            LaunchedEffect(showQualityDialog) {
+                delay(80)
+                try { qualityDialogInitialRequester.requestFocus() } catch (_: Exception) {}
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.85f)),
+                    .background(Color.Black.copy(alpha = 0.85f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        showQualityDialog = false
+                        try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .width(440.dp)
+                        .width(460.dp)
                         .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(16.dp))
                         .border(1.5.dp, KuroNamiColors.CyanSoft.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {} // consume touch/click
                         .padding(28.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Stream Quality",
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .background(KuroNamiColors.CyanContainer, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "HLS CDN",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = KuroNamiColors.Cyan,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                         Text(
-                            text = "Select video resolution for current playback stream",
-                            color = KuroNamiColors.OnSurfaceVariant,
+                            text = "Stream Quality",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Select preferred resolution for direct HLS stream",
                             style = MaterialTheme.typography.bodySmall,
+                            color = KuroNamiColors.OnSurfaceVariant,
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .padding(top = 4.dp, bottom = 18.dp)
                         )
 
-                        availableQualities.forEach { q ->
+                        availableQualities.forEachIndexed { qIdx, q ->
                             val isCurrent = selectedQuality == q
+                            val isFirst = qIdx == 0
                             Button(
                                 onClick = {
                                     applyQuality(q)
                                     showQualityDialog = false
+                                    try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
                                 },
                                 colors = ButtonDefaults.colors(
                                     containerColor = if (isCurrent) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHigh,
@@ -850,31 +1165,42 @@ fun VideoPlayer(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
+                                    .then(
+                                        if (isCurrent || (isFirst && !availableQualities.contains(selectedQuality))) {
+                                            Modifier.focusRequester(qualityDialogInitialRequester)
+                                        } else Modifier
+                                    )
+                                    .onKeyEvent { event ->
+                                        if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                            if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                                                event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                                            ) {
+                                                applyQuality(q)
+                                                showQualityDialog = false
+                                                try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                                                return@onKeyEvent true
+                                            }
+                                        }
+                                        false
+                                    }
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = when (q) {
-                                            "Auto" -> "Auto (Adaptive Bandwidth)"
-                                            "1080p" -> "1080p (Full HD - Highest)"
-                                            "720p" -> "720p (High Definition)"
-                                            "480p" -> "480p (Standard Definition)"
-                                            "360p" -> "360p (Data Saver)"
-                                            else -> q
-                                        },
+                                        text = if (q == "Auto") "Auto (Adaptive Bitrate)" else q,
                                         color = Color.White,
                                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
                                     )
                                     if (isCurrent) {
                                         Text(
                                             text = "ACTIVE",
-                                            color = KuroNamiColors.CyanSoft,
                                             style = MaterialTheme.typography.labelSmall,
+                                            color = KuroNamiColors.CyanSoft,
                                             fontWeight = FontWeight.ExtraBold
                                         )
                                     }
@@ -885,28 +1211,46 @@ fun VideoPlayer(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
-                            onClick = { showQualityDialog = false },
+                            onClick = {
+                                showQualityDialog = false
+                                try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                            },
                             colors = ButtonDefaults.colors(
                                 containerColor = KuroNamiColors.SurfaceHigh,
                                 focusedContainerColor = KuroNamiColors.SurfaceHighest
                             ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                            shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onKeyEvent { event ->
+                                    if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                        if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                                            event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                                        ) {
+                                            showQualityDialog = false
+                                            try { qualityBtnRequester.requestFocus() } catch (_: Exception) {}
+                                            return@onKeyEvent true
+                                        }
+                                    }
+                                    false
+                                }
                         ) {
-                            Text("Close", color = Color.White)
+                            Text("Close Quality Settings", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
         }
     }
+}
 
 fun formatTime(timeMs: Long): String {
     val totalSeconds = (timeMs / 1000).coerceAtLeast(0L)
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
     return if (hours > 0) {
-        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format("%02d:%02d", minutes, seconds)
     }

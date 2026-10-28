@@ -20,17 +20,18 @@ class TvApplication : Application(), ImageLoaderFactory {
             .okHttpClient(okHttpClient)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(0.35)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizePercent(0.05)
+                    .maxSizePercent(0.10)
                     .build()
             }
             .respectCacheHeaders(false)
-            .crossfade(true)
+            .crossfade(false)
+            .allowRgb565(true)
             .build()
     }
 }

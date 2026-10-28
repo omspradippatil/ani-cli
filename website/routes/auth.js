@@ -167,4 +167,98 @@ router.post('/logout', async (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
+/**
+ * GET /api/auth/accounts
+ */
+router.get('/accounts', async (req, res) => {
+  try {
+    const accounts = await db.getAllUsers();
+    res.json({ success: true, accounts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * TV Code In-Memory / DB storage helper
+ */
+const tvPairCodes = new Map();
+
+/**
+ * POST /api/auth/tv-code/generate
+ */
+router.post('/tv-code/generate', async (req, res) => {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const now = Date.now();
+  const expiresAt = now + (10 * 60 * 1000);
+  tvPairCodes.set(code, { status: 'pending', expiresAt, userId: null, token: null });
+
+  res.json({ success: true, code, expiresIn: 600, expiresAt });
+});
+
+/**
+ * GET /api/auth/tv-code/status
+ */
+router.get('/tv-code/status', async (req, res) => {
+  const code = String(req.query.code || '').trim().toUpperCase();
+  if (!code) return res.status(400).json({ success: false, error: 'Code is required' });
+
+  const pairRow = tvPairCodes.get(code);
+  const now = Date.now();
+  if (!pairRow || pairRow.expiresAt < now) {
+    return res.status(404).json({ success: false, status: 'expired', error: 'Code expired or not found' });
+  }
+
+  if (pairRow.status === 'paired' && pairRow.userId && pairRow.token) {
+    try {
+      const user = await db.getUserById(pairRow.userId);
+      const settings = await db.getUserSettings(user.id);
+      const stats = await db.getUserStats(user.id);
+      return res.json({
+        success: true,
+        status: 'paired',
+        token: pairRow.token,
+        user,
+        data: { user, token: pairRow.token, settings, stats }
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  res.json({ success: true, status: 'pending' });
+});
+
+/**
+ * POST /api/auth/tv-code/pair
+ */
+router.post('/tv-code/pair', async (req, res) => {
+  const token = extractToken(req);
+  if (!token) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+  try {
+    const user = await db.getUserByToken(token);
+    if (!user) return res.status(401).json({ success: false, error: 'Session expired' });
+
+    const code = String(req.body.code || '').trim().toUpperCase().replace(/[\s-]/g, '');
+    const pairRow = tvPairCodes.get(code);
+    const now = Date.now();
+
+    if (!pairRow || pairRow.expiresAt < now) {
+      return res.status(404).json({ success: false, error: 'Invalid or expired TV pairing code' });
+    }
+
+    const tvToken = await db.createSession(user.id);
+    tvPairCodes.set(code, { status: 'paired', expiresAt: pairRow.expiresAt, userId: user.id, token: tvToken });
+
+    res.json({ success: true, message: `TV linked to ${user.username}!`, user });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
