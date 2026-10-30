@@ -179,6 +179,7 @@ class HomeViewModel @Inject constructor(
     }
 }
 
+@androidx.compose.runtime.Immutable
 data class HomeState(
     val isLoading: Boolean = false,
     val rows: List<MediaRow> = emptyList(),

@@ -60,7 +60,7 @@ fun MediaCard(
             shape = RoundedCornerShape(12.dp)
         ),
         scale = CardDefaults.scale(
-            focusedScale = 1.05f
+            focusedScale = 1.04f
         ),
         border = CardDefaults.border(
             border = Border(BorderStroke(1.dp, KuroNamiColors.Outline.copy(alpha = 0.25f))),
@@ -68,7 +68,6 @@ fun MediaCard(
         ),
         modifier = modifier
             .padding(6.dp)
-            .zIndex(if (isFocused) 5f else 1f)
             .onFocusChanged { state ->
                 isFocused = state.isFocused
                 if (state.isFocused) {
@@ -86,16 +85,15 @@ fun MediaCard(
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
                     .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(KuroNamiColors.SurfaceHigh, KuroNamiColors.Surface)
-                        )
-                    )
+                    .background(KuroNamiColors.SurfaceHigh)
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(item.posterUrl.takeIf { it.isNotBlank() } ?: item.backdropUrl)
-                        .crossfade(true)
+                        .size(240, 360)
+                        .precision(coil.size.Precision.INEXACT)
+                        .crossfade(false)
+                        .allowRgb565(true)
                         .build(),
                     contentDescription = item.title,
                     modifier = Modifier.fillMaxSize(),
@@ -228,7 +226,7 @@ fun ContinueWatchingCard(
             shape = RoundedCornerShape(12.dp)
         ),
         scale = CardDefaults.scale(
-            focusedScale = 1.05f
+            focusedScale = 1.04f
         ),
         border = CardDefaults.border(
             border = Border(BorderStroke(1.dp, KuroNamiColors.Outline.copy(alpha = 0.25f))),
@@ -236,7 +234,6 @@ fun ContinueWatchingCard(
         ),
         modifier = modifier
             .padding(6.dp)
-            .zIndex(if (isFocused) 5f else 1f)
             .onFocusChanged { state ->
                 isFocused = state.isFocused
                 if (state.isFocused) {
@@ -270,7 +267,10 @@ fun ContinueWatchingCard(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(item.backdropUrl.takeIf { !it.isNullOrBlank() } ?: item.posterUrl)
-                        .crossfade(true)
+                        .size(360, 210)
+                        .precision(coil.size.Precision.INEXACT)
+                        .crossfade(false)
+                        .allowRgb565(true)
                         .build(),
                     contentDescription = item.title,
                     modifier = Modifier.fillMaxSize(),

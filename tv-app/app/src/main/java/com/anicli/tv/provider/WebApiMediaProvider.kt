@@ -163,7 +163,7 @@ class WebApiMediaProvider @Inject constructor(
     }
 
     override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
-        val defaultMode = sharedPreferences.getString("pref_language", "sub") ?: "sub"
+        val defaultMode = sharedPreferences.getString("pref_language", "dub") ?: "dub"
         return getStreamSources(episodeId, defaultMode)
     }
 
@@ -185,7 +185,15 @@ class WebApiMediaProvider @Inject constructor(
                 }
             }
 
-            val streamRes = webAnimeService.getStream(realStreamEpId, mode)
+            var streamRes = webAnimeService.getStream(realStreamEpId, mode)
+            if (streamRes.data == null && mode == "dub") {
+                try {
+                    val fallbackRes = webAnimeService.getStream(realStreamEpId, "sub")
+                    if (fallbackRes.data != null) {
+                        streamRes = fallbackRes
+                    }
+                } catch (_: Exception) {}
+            }
             val streamData = streamRes.data ?: return@withContext Result.failure(Exception("Stream not available for episode $realStreamEpId"))
 
             val sources = mutableListOf<StreamSource>()

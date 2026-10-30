@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.content.SharedPreferences
 import com.anicli.tv.data.local.dao.WatchProgressDao
 import com.anicli.tv.data.local.entity.WatchProgressEntity
 
@@ -24,11 +25,26 @@ class DetailsViewModel @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val watchProgressDao: WatchProgressDao,
     private val firebaseRepository: FirebaseRepository,
-    private val webUserRepository: WebUserRepository
+    private val webUserRepository: WebUserRepository,
+    private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DetailsState())
     val state: StateFlow<DetailsState> = _state.asStateFlow()
+
+    val preferredLanguage = MutableStateFlow(
+        sharedPreferences.getString("pref_language", "dub") ?: "dub"
+    )
+
+    fun setPreferredLanguage(lang: String) {
+        sharedPreferences.edit().putString("pref_language", lang).apply()
+        preferredLanguage.value = lang
+        viewModelScope.launch {
+            try {
+                webUserRepository.updatePreferredAudio(lang)
+            } catch (_: Exception) {}
+        }
+    }
 
     fun loadDetails(mediaId: String) {
         viewModelScope.launch {
@@ -77,6 +93,7 @@ class DetailsViewModel @Inject constructor(
     }
 }
 
+@androidx.compose.runtime.Immutable
 data class DetailsState(
     val isLoading: Boolean = false,
     val detail: MediaDetail? = null,

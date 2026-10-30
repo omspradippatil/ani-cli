@@ -56,6 +56,9 @@ fun HomeScreen(
     var itemToRemoveFromContinueWatching by remember { mutableStateOf<MediaItem?>(null) }
     val initialFocusRequester = remember { FocusRequester() }
 
+    val onFocusItem = remember { { item: MediaItem -> rawFocusedItem = item } }
+    val onRemoveContinueWatching = remember { { item: MediaItem -> itemToRemoveFromContinueWatching = item } }
+
     LaunchedEffect(rawFocusedItem) {
         val target = rawFocusedItem ?: return@LaunchedEffect
         if (focusedItem == null) {
@@ -163,8 +166,8 @@ fun HomeScreen(
                                 HomeRow(
                                     row = row,
                                     onMediaClick = onMediaClick,
-                                    onFocusItem = { rawFocusedItem = it },
-                                    onRemoveContinueWatching = { itemToRemoveFromContinueWatching = it }
+                                    onFocusItem = onFocusItem,
+                                    onRemoveContinueWatching = onRemoveContinueWatching
                                 )
                             }
                         }
@@ -778,7 +781,10 @@ fun HeroBanner(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.backdropUrl?.takeIf { it.isNotBlank() } ?: item.posterUrl)
-                .crossfade(true)
+                .size(960, 540)
+                .precision(coil.size.Precision.INEXACT)
+                .crossfade(false)
+                .allowRgb565(true)
                 .build(),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),

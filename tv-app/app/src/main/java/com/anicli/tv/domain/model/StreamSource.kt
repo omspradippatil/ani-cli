@@ -1,5 +1,8 @@
 package com.anicli.tv.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class StreamSource(
     val url: String,
     val title: String = "",
@@ -8,6 +11,7 @@ data class StreamSource(
     val headers: Map<String, String>? = null
 )
 
+@Immutable
 data class Subtitle(
     val url: String,
     val language: String

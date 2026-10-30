@@ -132,6 +132,23 @@ class GoGoAnimeProvider @Inject constructor(
     }
 
     override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
+        val preferredLanguage = sharedPreferences.getString("pref_language", "dub") ?: "dub"
+        return getStreamSources(episodeId, preferredLanguage)
+    }
+
+    override suspend fun getStreamSources(episodeId: String, mode: String): Result<List<StreamSource>> {
+        val parts = episodeId.split("|")
+        if (parts.size == 2 && mode == "dub" && !parts[0].endsWith("-dub")) {
+            val dubEpId = "${parts[0]}-dub|${parts[1]}"
+            val dubRes = resolveStreamSources(dubEpId)
+            if (dubRes.isSuccess && dubRes.getOrNull()?.isNotEmpty() == true) {
+                return dubRes
+            }
+        }
+        return resolveStreamSources(episodeId)
+    }
+
+    private suspend fun resolveStreamSources(episodeId: String): Result<List<StreamSource>> {
         return try {
             // episodeId format: "slug|episode_number" e.g. "one-piece-10040|1"
             val parts = episodeId.split("|")

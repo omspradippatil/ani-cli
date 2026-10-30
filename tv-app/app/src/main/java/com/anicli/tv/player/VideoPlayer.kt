@@ -106,6 +106,9 @@ fun VideoPlayer(
     var captionsEnabled by remember { mutableStateOf(true) }
     var isMuted by remember { mutableStateOf(false) }
 
+    val currentOnNextEpisode by rememberUpdatedState(onNextEpisode)
+    var hasHandledEnded by remember(videoUrl) { mutableStateOf(false) }
+
     // Ensure device audio stream is unmuted and at healthy volume on startup
     LaunchedEffect(Unit) {
         try {
@@ -257,6 +260,9 @@ fun VideoPlayer(
                     tickCount = 0
                     onSaveProgress(exoPlayer.currentPosition, exoPlayer.duration.coerceAtLeast(0L))
                 }
+            } else if (duration > 5000L && currentPosition >= (duration - 800L) && !hasHandledEnded) {
+                hasHandledEnded = true
+                currentOnNextEpisode()
             }
             delay(1000)
         }
@@ -308,7 +314,10 @@ fun VideoPlayer(
                     duration = exoPlayer.duration.coerceAtLeast(0L)
                     exoPlayer.volume = if (isMuted) 0f else 1.0f
                 } else if (playbackState == Player.STATE_ENDED) {
-                    onNextEpisode()
+                    if (!hasHandledEnded) {
+                        hasHandledEnded = true
+                        currentOnNextEpisode()
+                    }
                 }
             }
             override fun onIsPlayingChanged(playing: Boolean) {

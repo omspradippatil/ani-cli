@@ -20,7 +20,8 @@ class TvApplication : Application(), ImageLoaderFactory {
             .okHttpClient(okHttpClient)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(0.35)
+                    .maxSizePercent(0.28)
+                    .strongReferencesEnabled(true)
                     .build()
             }
             .diskCache {
@@ -32,6 +33,7 @@ class TvApplication : Application(), ImageLoaderFactory {
             .respectCacheHeaders(false)
             .crossfade(false)
             .allowRgb565(true)
+            .bitmapFactoryMaxParallelism(2) // Prevents decode threads from starving UI/audio threads on 4-core TV SoCs
             .build()
     }
 }

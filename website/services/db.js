@@ -697,6 +697,12 @@ async function getUserSettings(userId) {
 
 async function updateUserSettings(userId, data) {
   const now = Date.now();
+  const prefAudio = data.preferred_audio || data.preferredAudio || 'sub';
+  const autoNext = data.auto_next !== undefined ? (data.auto_next ? 1 : 0) : (data.autoNext !== undefined ? (data.autoNext ? 1 : 0) : null);
+  const autoSkipIntro = data.auto_skip_intro !== undefined ? (data.auto_skip_intro ? 1 : 0) : (data.autoSkipIntro !== undefined ? (data.autoSkipIntro ? 1 : 0) : null);
+  const autoPlay = data.auto_play !== undefined ? (data.auto_play ? 1 : 0) : (data.autoPlay !== undefined ? (data.autoPlay ? 1 : 0) : null);
+  const prefQuality = data.preferred_quality || data.preferredQuality || 'auto';
+
   if (isCloudflareD1Api) {
     await queryCloudflareD1(`
       UPDATE user_settings 
@@ -708,11 +714,11 @@ async function updateUserSettings(userId, data) {
           updated_at = ?
       WHERE user_id = ?
     `, [
-      data.preferredAudio,
-      data.autoNext !== undefined ? (data.autoNext ? 1 : 0) : null,
-      data.autoSkipIntro !== undefined ? (data.autoSkipIntro ? 1 : 0) : null,
-      data.autoPlay !== undefined ? (data.autoPlay ? 1 : 0) : null,
-      data.preferredQuality,
+      prefAudio,
+      autoNext,
+      autoSkipIntro,
+      autoPlay,
+      prefQuality,
       now,
       Number(userId)
     ]);
@@ -730,11 +736,11 @@ async function updateUserSettings(userId, data) {
           updated_at = ?
       WHERE user_id = ?
     `).run(
-      data.preferredAudio,
-      data.autoNext !== undefined ? (data.autoNext ? 1 : 0) : null,
-      data.autoSkipIntro !== undefined ? (data.autoSkipIntro ? 1 : 0) : null,
-      data.autoPlay !== undefined ? (data.autoPlay ? 1 : 0) : null,
-      data.preferredQuality,
+      prefAudio,
+      autoNext,
+      autoSkipIntro,
+      autoPlay,
+      prefQuality,
       now,
       Number(userId)
     );
@@ -742,11 +748,11 @@ async function updateUserSettings(userId, data) {
   }
 
   const s = await getUserSettings(userId);
-  if (data.preferredAudio) s.preferred_audio = data.preferredAudio;
-  if (data.autoNext !== undefined) s.auto_next = data.autoNext ? 1 : 0;
-  if (data.autoSkipIntro !== undefined) s.auto_skip_intro = data.autoSkipIntro ? 1 : 0;
-  if (data.autoPlay !== undefined) s.auto_play = data.autoPlay ? 1 : 0;
-  if (data.preferredQuality) s.preferred_quality = data.preferredQuality;
+  if (prefAudio) s.preferred_audio = prefAudio;
+  if (autoNext !== null) s.auto_next = autoNext;
+  if (autoSkipIntro !== null) s.auto_skip_intro = autoSkipIntro;
+  if (autoPlay !== null) s.auto_play = autoPlay;
+  if (prefQuality) s.preferred_quality = prefQuality;
   s.updated_at = now;
   return s;
 }

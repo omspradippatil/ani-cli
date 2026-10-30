@@ -34,6 +34,8 @@ fun PlayerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val audioMode by viewModel.audioMode.collectAsState()
+    val episodes by viewModel.cachedEpisodes.collectAsState()
+    val animeTitle by viewModel.cachedAnimeTitle.collectAsState()
 
     var showQualitySelector by remember { mutableStateOf(false) }
     var showEpisodeDrawer by remember { mutableStateOf(false) }
@@ -59,8 +61,6 @@ fun PlayerScreen(
     } else {
         parts.getOrNull(1)?.toIntOrNull() ?: 1
     }
-    val nextEp = viewModel.cachedEpisodes.find { it.number == epNum + 1 }
-    val nextEpId = nextEp?.id ?: "$mediaId|${epNum + 1}"
 
     Box(
         modifier = Modifier
@@ -96,7 +96,7 @@ fun PlayerScreen(
                     if (source != null) {
                         VideoPlayer(
                             videoUrl = source.url,
-                            title = viewModel.cachedAnimeTitle.ifBlank { "Anime Stream" },
+                            title = animeTitle.ifBlank { "Anime Stream" },
                             episodeTitle = "Episode $epNum",
                             serverName = source.title.ifBlank { "Cloud CDN HD" },
                             headers = source.headers ?: emptyMap(),
@@ -114,7 +114,12 @@ fun PlayerScreen(
                                 showEpisodeDrawer = true
                             },
                             onNextEpisode = {
-                                onNextEpisode(nextEpId)
+                                val targetNext = viewModel.getNextEpisodeId(episodeId)
+                                if (!targetNext.isNullOrBlank()) {
+                                    onNextEpisode(targetNext)
+                                } else {
+                                    onBack()
+                                }
                             },
                             onControllerVisibilityChanged = { isVisible ->
                                 isControllerVisible = isVisible
@@ -323,7 +328,7 @@ fun PlayerScreen(
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = "${viewModel.cachedEpisodes.size} EP",
+                                            text = "${episodes.size} EP",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = KuroNamiColors.Cyan,
                                             fontWeight = FontWeight.Bold
@@ -338,7 +343,7 @@ fun PlayerScreen(
                                             .fillMaxWidth(),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(viewModel.cachedEpisodes) { ep ->
+                                        items(episodes, key = { it.id }) { ep ->
                                             val isCurrentEp = ep.number == epNum
                                             Button(
                                                 onClick = {

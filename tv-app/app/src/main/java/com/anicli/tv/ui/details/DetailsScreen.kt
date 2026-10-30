@@ -46,6 +46,7 @@ fun DetailsScreen(
 ) {
     BackHandler { onBack() }
     val state by viewModel.state.collectAsState()
+    val preferredLanguage by viewModel.preferredLanguage.collectAsState()
     var selectedChunkIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(mediaId) {
@@ -72,7 +73,10 @@ fun DetailsScreen(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(detail.backdropUrl.takeIf { it.isNotBlank() } ?: detail.posterUrl)
-                    .crossfade(true)
+                    .size(960, 540)
+                    .precision(coil.size.Precision.INEXACT)
+                    .crossfade(false)
+                    .allowRgb565(true)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier
@@ -313,7 +317,7 @@ fun DetailsScreen(
                                 )
                             }
 
-                            // Audio Switcher Pill
+                            // Audio Switcher Pill (Universal Setting)
                             Row(
                                 modifier = Modifier
                                     .background(KuroNamiColors.SurfaceLow, RoundedCornerShape(8.dp))
@@ -321,28 +325,38 @@ fun DetailsScreen(
                                     .padding(3.dp),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(KuroNamiColors.CyanContainer, RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                Surface(
+                                    onClick = { viewModel.setPreferredLanguage("sub") },
+                                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                                    colors = ClickableSurfaceDefaults.colors(
+                                        containerColor = if (preferredLanguage == "sub") KuroNamiColors.Crimson else KuroNamiColors.SurfaceLow,
+                                        focusedContainerColor = KuroNamiColors.CrimsonContainer,
+                                        contentColor = Color.White
+                                    )
                                 ) {
                                     Text(
                                         text = "SUB (JA / EN)",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = KuroNamiColors.Cyan,
-                                        fontWeight = FontWeight.Bold
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                     )
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .background(KuroNamiColors.SurfaceHigh, RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                Surface(
+                                    onClick = { viewModel.setPreferredLanguage("dub") },
+                                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                                    colors = ClickableSurfaceDefaults.colors(
+                                        containerColor = if (preferredLanguage == "dub") KuroNamiColors.Crimson else KuroNamiColors.SurfaceLow,
+                                        focusedContainerColor = KuroNamiColors.CrimsonContainer,
+                                        contentColor = Color.White
+                                    )
                                 ) {
                                     Text(
                                         text = "DUB (EN)",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = KuroNamiColors.OnSurfaceVariant,
-                                        fontWeight = FontWeight.Bold
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                     )
                                 }
                             }
@@ -452,14 +466,16 @@ fun EpisodeCard(
             .width(230.dp)
             .padding(6.dp)
             .aspectRatio(16f / 10f)
-            .zIndex(if (isFocused) 5f else 1f)
             .onFocusChanged { isFocused = it.isFocused }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(episode.thumbnail?.takeIf { it.isNotBlank() } ?: fallbackThumbnail)
-                    .crossfade(true)
+                    .size(320, 200)
+                    .precision(coil.size.Precision.INEXACT)
+                    .crossfade(false)
+                    .allowRgb565(true)
                     .build(),
                 contentDescription = episode.title,
                 modifier = Modifier.fillMaxSize(),

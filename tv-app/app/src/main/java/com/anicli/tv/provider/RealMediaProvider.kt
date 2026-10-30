@@ -218,7 +218,12 @@ class RealMediaProvider @Inject constructor(
         }
     }
 
-        override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
+    override suspend fun getStreamSources(episodeId: String): Result<List<StreamSource>> {
+        val preferredLanguage = sharedPreferences.getString("pref_language", "dub") ?: "dub"
+        return getStreamSources(episodeId, preferredLanguage)
+    }
+
+    override suspend fun getStreamSources(episodeId: String, mode: String): Result<List<StreamSource>> {
         return try {
             val parts = episodeId.split("|")
             if (parts.size != 2) throw Exception("Invalid Episode ID format")
@@ -352,8 +357,8 @@ class RealMediaProvider @Inject constructor(
             
             if (parsedSources.isEmpty()) throw Exception("No compatible streams found. Try a different episode or server.")
             
-            // Sort to put highest quality first, then Dub/Sub based on something if needed
-            val preferredLanguage = sharedPreferences.getString("pref_language", "dub") ?: "dub"
+            // Sort to put highest quality first, then Dub/Sub based on target mode
+            val targetMode = if (mode.isNotBlank()) mode else (sharedPreferences.getString("pref_language", "dub") ?: "dub")
 
             val sorted = parsedSources.toList().sortedByDescending { 
                 var score = 0
@@ -361,8 +366,8 @@ class RealMediaProvider @Inject constructor(
                 else if (it.quality.contains("720")) score += 700
                 else if (it.quality.contains("480")) score += 400
                 
-                if (preferredLanguage == "dub" && it.title.contains("[Dub]")) score += 5000
-                else if (preferredLanguage == "sub" && it.title.contains("[Sub]")) score += 5000
+                if (targetMode == "dub" && it.title.contains("[Dub]")) score += 5000
+                else if (targetMode == "sub" && it.title.contains("[Sub]")) score += 5000
                 
                 score
             }

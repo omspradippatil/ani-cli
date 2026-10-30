@@ -5,7 +5,8 @@
   "description": "Om CLI Anime Streaming Platform & API",
   "main": "website/server.js",
   "scripts": {
-    "start": "node website/server.js"
+    "start": "node website/server.js",
+    "test": "node website/tests/test-seo.js"
   },
   "engines": {
     "node": ">=22.5.0"

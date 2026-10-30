@@ -181,21 +181,28 @@ async function extractStreamFromHash(hash) {
  * Convenience method: resolve stream directly by episodeId and preferred mode (sub/dub)
  */
 async function resolveEpisodeStream(episodeId, mode = 'sub') {
+  const targetMode = String(mode || 'sub').toLowerCase() === 'dub' ? 'dub' : 'sub';
   const servers = await getServers(episodeId);
   if (!servers.length) throw new Error('No servers found for episode');
 
-  // Try ZokoAnime in requested mode, then other mode, then any ZokoAnime, then first server
-  let selected = servers.find(s => s.type === mode && s.name.toLowerCase() === 'zokoanime');
+  // Try ZokoAnime in requested mode
+  let selected = servers.find(s => s.type.toLowerCase() === targetMode && s.name.toLowerCase() === 'zokoanime');
+  // If not on ZokoAnime, try any other server in requested mode
   if (!selected) {
-    const fallbackMode = mode === 'sub' ? 'dub' : 'sub';
-    selected = servers.find(s => s.type === fallbackMode && s.name.toLowerCase() === 'zokoanime');
+    selected = servers.find(s => s.type.toLowerCase() === targetMode);
   }
+  // Fallback to opposite mode if requested mode is not available
   if (!selected) {
-    selected = servers.find(s => s.name.toLowerCase() === 'zokoanime');
+    const fallbackMode = targetMode === 'sub' ? 'dub' : 'sub';
+    selected = servers.find(s => s.type.toLowerCase() === fallbackMode && s.name.toLowerCase() === 'zokoanime') ||
+               servers.find(s => s.type.toLowerCase() === fallbackMode);
+  }
+  if (!selected && servers.length > 0) {
+    selected = servers[0];
   }
 
   if (!selected) {
-    throw new Error('ZokoAnime stream server unavailable for this episode');
+    throw new Error('Stream server unavailable for this episode');
   }
 
   const result = await extractStreamFromHash(selected.hash);

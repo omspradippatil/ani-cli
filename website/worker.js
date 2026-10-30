@@ -159,6 +159,13 @@ export default {
       return new Response(null, { status: 204 });
     }
 
+    // SEO Robots & Sitemap handlers
+    if (pathname === '/robots.txt') {
+      return new Response(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: https://ani-cli-steel.vercel.app/sitemap.xml\nHost: https://ani-cli-steel.vercel.app\n`, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=86400' }
+      });
+    }
+
     // TV APK Download Route (Redirect directly to genuine signed Android TV APK on GitHub CDN)
     if (pathname === '/ani-cli-tv.apk' || pathname === '/download/tv-apk' || pathname === '/download/ani-cli-tv.apk') {
       return Response.redirect('https://github.com/omspradippatil/ani-cli/raw/master/ani-cli-production-signed.apk', 302);
@@ -606,6 +613,12 @@ export default {
         if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
         const body = await request.json();
         const now = Date.now();
+        const prefAudio = body.preferred_audio || body.preferredAudio || 'sub';
+        const autoNext = (body.auto_next !== undefined ? body.auto_next : body.autoNext) ? 1 : 0;
+        const autoSkipIntro = (body.auto_skip_intro !== undefined ? body.auto_skip_intro : body.autoSkipIntro) ? 1 : 0;
+        const autoPlay = (body.auto_play !== undefined ? body.auto_play : body.autoPlay) ? 1 : 0;
+        const prefQuality = body.preferred_quality || body.preferredQuality || 'auto';
+
         await db.prepare(`
           INSERT INTO user_settings (user_id, preferred_audio, auto_next, auto_skip_intro, auto_play, preferred_quality, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -618,14 +631,26 @@ export default {
             updated_at = excluded.updated_at
         `).bind(
           user.id,
-          body.preferred_audio || 'sub',
-          body.auto_next ? 1 : 0,
-          body.auto_skip_intro ? 1 : 0,
-          body.auto_play ? 1 : 0,
-          body.preferred_quality || 'auto',
+          prefAudio,
+          autoNext,
+          autoSkipIntro,
+          autoPlay,
+          prefQuality,
           now
         ).run();
-        return jsonResponse({ success: true, message: 'Settings saved' });
+        return jsonResponse({
+          success: true,
+          data: {
+            user_id: user.id,
+            preferred_audio: prefAudio,
+            auto_next: autoNext,
+            auto_skip_intro: autoSkipIntro,
+            auto_play: autoPlay,
+            preferred_quality: prefQuality,
+            updated_at: now
+          },
+          message: 'Settings saved'
+        });
       }
 
       // --- METADATA: TRENDING ---

@@ -72,8 +72,10 @@ fun TvApp() {
                 PlayerScreen(
                     episodeId = episodeId,
                     onNextEpisode = { nextEpId ->
-                        navController.popBackStack()
-                        navController.navigate("player/$nextEpId")
+                        navController.navigate("player/$nextEpId") {
+                            popUpTo("player/{episodeId}") { inclusive = true }
+                            launchSingleTop = true
+                        }
                     },
                     onBack = { navController.popBackStack() }
                 )

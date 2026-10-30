@@ -1,0 +1,32 @@
+# ==============================================================================
+# Om CLI (ani-cli) Robots Directive
+# Target Domain: https://ani-cli-steel.vercel.app
+# ==============================================================================
+
+User-agent: *
+Allow: /
+Allow: /public/
+Allow: /assets/
+Allow: /css/
+Allow: /js/
+Disallow: /api/
+
+# Crawler delay for optimal server performance
+Crawl-delay: 1
+
+# Major search engine specific directives
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+
+User-agent: Googlebot-Image
+Allow: /assets/
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://ani-cli-steel.vercel.app/sitemap.xml
+Host: https://ani-cli-steel.vercel.app

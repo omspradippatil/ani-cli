@@ -93,6 +93,11 @@ class WebUserRepository @Inject constructor(
         _userStats.value = stats
         _userSettings.value = settings
 
+        val audioPref = settings?.preferredAudio?.takeIf { it == "sub" || it == "dub" }
+        if (audioPref != null) {
+            sharedPreferences.edit().putString("pref_language", audioPref).apply()
+        }
+
         sharedPreferences.edit()
             .putString(KEY_AUTH_TOKEN, tokenVal)
             .apply {
@@ -126,6 +131,11 @@ class WebUserRepository @Inject constructor(
                 _currentUser.value = data.user
                 _userStats.value = data.stats
                 _userSettings.value = data.settings
+
+                val audioPref = data.settings?.preferredAudio?.takeIf { it == "sub" || it == "dub" }
+                if (audioPref != null) {
+                    sharedPreferences.edit().putString("pref_language", audioPref).apply()
+                }
 
                 sharedPreferences.edit()
                     .apply {
@@ -285,6 +295,25 @@ class WebUserRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Update preferred audio (sub/dub) locally and sync to cloud if authenticated
+     */
+    suspend fun updatePreferredAudio(mode: String) = withContext(Dispatchers.IO) {
+        sharedPreferences.edit().putString("pref_language", mode).apply()
+        val currentToken = _token.value
+        if (!currentToken.isNullOrBlank()) {
+            try {
+                val body = mapOf("preferred_audio" to mode)
+                val response = webAnimeService.updateUserSettings("Bearer $currentToken", body)
+                if (response.success && response.data != null) {
+                    _userSettings.value = response.data
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

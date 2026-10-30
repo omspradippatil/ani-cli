@@ -1,5 +1,6 @@
 package com.anicli.tv.ui.search
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anicli.tv.domain.model.MediaItem
@@ -65,6 +66,7 @@ class SearchViewModel @Inject constructor(
     }
 }
 
+@Immutable
 data class SearchState(
     val isLoading: Boolean = false,
     val results: List<MediaItem> = emptyList(),

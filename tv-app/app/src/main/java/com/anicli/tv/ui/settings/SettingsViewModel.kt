@@ -160,6 +160,11 @@ class SettingsViewModel @Inject constructor(
     fun setPreferredLanguage(lang: String) {
         sharedPreferences.edit().putString("pref_language", lang).apply()
         preferredLanguage.value = lang
+        viewModelScope.launch {
+            try {
+                webUserRepository.updatePreferredAudio(lang)
+            } catch (_: Exception) {}
+        }
     }
 
     // ─── Provider selection ─────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 package com.anicli.tv.data.remote.dto
 
+import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
 
 data class WebApiResponse<T>(
@@ -140,6 +141,7 @@ data class AuthRegisterRequest(
     @SerializedName("password") val password: String
 )
 
+@Immutable
 data class WebUser(
     @SerializedName("id") val id: Int = 0,
     @SerializedName("username") val username: String = "",
@@ -150,6 +152,7 @@ data class WebUser(
     @SerializedName("created_at") val createdAt: Long? = null
 )
 
+@Immutable
 data class WebUserStats(
     @SerializedName("totalEpisodesWatched") val totalEpisodesWatched: Int? = null,
     @SerializedName("totalDaysWatched") val totalDaysWatched: String? = null,
@@ -163,6 +166,7 @@ data class WebUserStats(
     @SerializedName("favoriteGenre") val favoriteGenre: String? = null
 )
 
+@Immutable
 data class WebUserSettings(
     @SerializedName("user_id") val userId: Int? = null,
     @SerializedName("preferred_audio") val preferredAudio: String? = "sub",

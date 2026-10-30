@@ -33,7 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.*
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.anicli.tv.core.theme.KuroNamiColors
 import com.anicli.tv.domain.provider.ProviderSelector
 
@@ -265,7 +267,13 @@ fun SettingsScreen(
                 ) {
                     if (!user.avatar.isNullOrBlank()) {
                         AsyncImage(
-                            model = user.avatar,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(user.avatar)
+                                .size(112, 112)
+                                .precision(coil.size.Precision.INEXACT)
+                                .crossfade(false)
+                                .allowRgb565(true)
+                                .build(),
                             contentDescription = user.username,
                             modifier = Modifier
                                 .size(56.dp)

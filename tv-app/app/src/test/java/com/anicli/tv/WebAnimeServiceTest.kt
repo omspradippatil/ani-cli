@@ -40,7 +40,7 @@ class WebAnimeServiceTest {
 
         val first = res.data!![0]
         println("Trending first: ${first.title?.preferredTitle()}, id=${first.id}")
-        assertTrue(first.id > 0)
+        assertTrue(first.id.isNotBlank())
     }
 
     @Test
@@ -48,10 +48,10 @@ class WebAnimeServiceTest {
         val res = service.search(query = "Naruto")
         assertTrue(res.success)
         assertNotNull(res.data)
-        val anilist = res.data?.anilist
-        assertNotNull(anilist)
-        assertFalse(anilist!!.isEmpty())
-        println("Search Naruto top match: ${anilist[0].title?.preferredTitle()}")
+        val items = res.data
+        assertNotNull(items)
+        assertFalse(items!!.isEmpty())
+        println("Search Naruto top match: ${items[0].title?.preferredTitle()}")
     }
 
     @Test

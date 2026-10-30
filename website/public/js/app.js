@@ -2,23 +2,29 @@
 // Om CLI Core Application Controller & Router
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Universal Saved Settings from LocalStorage
+  const savedAudioMode = localStorage.getItem('omcli_preferred_audio') || localStorage.getItem('omcli_audio_mode') || localStorage.getItem('kuronami_audio_mode') || 'sub';
+  const savedAutoNext = localStorage.getItem('omcli_auto_next') !== '0';
+  const savedAutoSkip = localStorage.getItem('omcli_skip_intro') !== '0';
+  const savedQuality = localStorage.getItem('omcli_quality') || 'auto';
+
   // Global Application State
   const state = {
     auth: {
       token: localStorage.getItem('omcli_token') || localStorage.getItem('kuronami_token') || null,
       user: null,
       settings: {
-        preferred_audio: 'sub',
-        auto_next: 1,
-        auto_skip_intro: 1,
+        preferred_audio: savedAudioMode,
+        auto_next: savedAutoNext ? 1 : 0,
+        auto_skip_intro: savedAutoSkip ? 1 : 0,
         auto_play: 1,
-        preferred_quality: 'auto'
+        preferred_quality: savedQuality
       }
     },
     player: null,
     currentAnime: null,
     currentEpisodeIndex: 0,
-    currentMode: 'sub',
+    currentMode: savedAudioMode,
     activeView: 'home',
     browseFilters: {
       search: '',
@@ -232,9 +238,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
 
   state.player = new window.AnimePlayer('#artplayer-mount');
+  state.player.autoNext = savedAutoNext;
   state.player.onNextEpisode = () => playNextEpisode();
   state.player.onPrevEpisode = () => playPrevEpisode();
   state.player.onToggleMode = () => switchGlobalAudio(state.currentMode === 'sub' ? 'dub' : 'sub');
+  window.appState = state;
 
   // Captions Toggle Sync
   state.player.onCaptionsToggle = (isEnabled) => {
@@ -302,9 +310,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Build Genre Checkboxes in Browse Filter Sidebar
   buildGenreMatrix();
 
+  window.getWatchUrl = (animeId, ep = 1, t = 0) => {
+    const mode = state.currentMode || localStorage.getItem('omcli_preferred_audio') || 'sub';
+    return `#watch?anime=${animeId}&ep=${ep}${t ? `&t=${t}` : ''}&mode=${mode}`;
+  };
+
   // Safe initial default for hero play button
   if (heroPlayBtn) {
-    heroPlayBtn.onclick = () => navigateTo('watch?anime=20&ep=1');
+    heroPlayBtn.onclick = () => navigateTo(`watch?anime=20&ep=1&mode=${state.currentMode}`);
   }
 
   // Initialize Auth & Data
@@ -319,6 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
 
   async function initAuth() {
+    // Apply immediate local preference to all UI buttons & settings inputs
+    updateAudioButtons(state.currentMode);
+    if (prefAudio) prefAudio.value = state.currentMode;
+    if (prefAutoNext) prefAutoNext.checked = savedAutoNext;
+    if (prefSkipIntro) prefSkipIntro.checked = savedAutoSkip;
+    if (prefQuality) prefQuality.value = savedQuality;
+
     if (!state.auth.token) {
       updateAuthUI(null);
       return;
@@ -333,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success && data.user) {
         state.auth.user = data.user;
         updateAuthUI(data.user);
-        loadUserSettings();
+        await loadUserSettings();
       } else {
         // Token invalid or expired
         clearAuth();
@@ -393,7 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadUserSettings() {
-    if (!state.auth.token) return;
+    if (!state.auth.token) {
+      const localAudio = localStorage.getItem('omcli_preferred_audio') || localStorage.getItem('omcli_audio_mode') || 'sub';
+      state.currentMode = localAudio;
+      updateAudioButtons(localAudio);
+      if (prefAudio) prefAudio.value = localAudio;
+      return;
+    }
     try {
       const res = await fetch('/api/user/settings', {
         headers: { 'Authorization': `Bearer ${state.auth.token}` }
@@ -401,13 +427,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const json = await res.json();
       if (json.success && json.data) {
         state.auth.settings = json.data;
-        state.currentMode = json.data.preferred_audio || 'sub';
+        const cloudAudio = json.data.preferred_audio || json.data.preferredAudio;
+        if (cloudAudio && (cloudAudio === 'sub' || cloudAudio === 'dub')) {
+          state.currentMode = cloudAudio;
+          localStorage.setItem('omcli_preferred_audio', cloudAudio);
+          localStorage.setItem('omcli_audio_mode', cloudAudio);
+        }
         updateAudioButtons(state.currentMode);
 
-        if (prefAudio) prefAudio.value = json.data.preferred_audio || 'sub';
-        if (prefQuality) prefQuality.value = json.data.preferred_quality || 'auto';
-        if (prefSkipIntro) prefSkipIntro.checked = !!json.data.auto_skip_intro;
-        if (prefAutoNext) prefAutoNext.checked = !!json.data.auto_next;
+        const autoNextVal = json.data.auto_next !== undefined ? json.data.auto_next : json.data.autoNext;
+        if (autoNextVal !== undefined) {
+          const isNext = !!autoNextVal;
+          localStorage.setItem('omcli_auto_next', isNext ? '1' : '0');
+          if (state.player) state.player.autoNext = isNext;
+          if (prefAutoNext) prefAutoNext.checked = isNext;
+        }
+
+        const skipVal = json.data.auto_skip_intro !== undefined ? json.data.auto_skip_intro : json.data.autoSkipIntro;
+        if (skipVal !== undefined) {
+          if (prefSkipIntro) prefSkipIntro.checked = !!skipVal;
+          localStorage.setItem('omcli_skip_intro', skipVal ? '1' : '0');
+        }
+
+        if (prefAudio) prefAudio.value = state.currentMode;
+        if (prefQuality) prefQuality.value = json.data.preferred_quality || json.data.preferredQuality || 'auto';
       }
     } catch (err) {
       console.warn('[Settings] Load failed:', err);
@@ -735,6 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (path === 'home') {
+      document.title = 'Om CLI — Watch Anime Free in HD | Dual-Audio HLS & Android TV Sync';
       views.home.classList.remove('hidden');
       loadContinueWatching();
     } else if (path === 'browse') {
@@ -744,6 +788,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const sortParam = params.get('sort');
       const formatParam = params.get('format');
       const statusParam = params.get('status');
+
+      if (genreParam && genreParam !== 'All') {
+        document.title = `${genreParam} Anime — Stream Free in HD | Om CLI`;
+      } else if (searchParam) {
+        document.title = `Search: "${searchParam}" — Om CLI Anime`;
+      } else {
+        document.title = 'Browse Anime Catalog & Seasonal Releases | Om CLI';
+      }
 
       if (queryStr) {
         state.browseFilters.search = searchParam || '';
@@ -766,13 +818,17 @@ document.addEventListener('DOMContentLoaded', () => {
       views.watch.classList.remove('hidden');
       const animeId = params.get('anime') || params.get('id');
       const epNum = parseInt(params.get('ep')) || 1;
-      const mode = params.get('mode') || state.currentMode || 'sub';
+      const requestedMode = params.get('mode');
+      const mode = (requestedMode === 'sub' || requestedMode === 'dub')
+        ? requestedMode
+        : (state.currentMode || localStorage.getItem('omcli_preferred_audio') || 'sub');
+      state.currentMode = mode;
+      updateAudioButtons(mode);
       const startTime = parseFloat(params.get('t')) || 0;
       if (animeId) {
         if (state.currentAnime && String(state.currentAnime.id) === String(animeId)) {
           // Anime already loaded in current watch room, simply switch episode
           if (state.currentEpisodeIndex !== epNum - 1 || state.currentMode !== mode) {
-            state.currentMode = mode;
             window.playEpisodeAtIndex(epNum - 1, startTime);
           }
         } else {
@@ -782,10 +838,12 @@ document.addEventListener('DOMContentLoaded', () => {
         navigateTo('home');
       }
     } else if (path === 'watchlist') {
+      document.title = 'My Anime Watchlist & Synced Library | Om CLI';
       views.account.classList.remove('hidden');
       switchAccountTab('watchlist');
       loadAccountData();
     } else if (path === 'account' || path.startsWith('account-')) {
+      document.title = 'Account Profile & Playback Preferences | Om CLI';
       views.account.classList.remove('hidden');
       const sub = path.replace('account-', '') || 'watchlist';
       switchAccountTab(sub);
@@ -843,15 +901,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function switchGlobalAudio(mode) {
-    state.currentMode = mode;
-    updateAudioButtons(mode);
+    const cleanMode = String(mode).toLowerCase() === 'dub' ? 'dub' : 'sub';
+    state.currentMode = cleanMode;
+    localStorage.setItem('omcli_preferred_audio', cleanMode);
+    localStorage.setItem('omcli_audio_mode', cleanMode);
+    updateAudioButtons(cleanMode);
+    if (prefAudio) prefAudio.value = cleanMode;
 
-    // If currently playing in watch room, reload stream
+    // Sync in background to cloud if authenticated
+    if (state.auth && state.auth.token) {
+      fetch('/api/user/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.auth.token}`
+        },
+        body: JSON.stringify({ preferred_audio: cleanMode, preferredAudio: cleanMode })
+      }).catch(() => {});
+    }
+
+    // If currently playing in watch room, reload stream with updated mode preserving timestamp
     if (state.activeView === 'watch' && state.currentAnime) {
       const episodes = state.currentAnime.episodes || [];
       const ep = episodes[state.currentEpisodeIndex];
       if (ep) {
-        state.player.loadStream(ep.id, mode, state.currentAnime.bannerImage || state.currentAnime.coverImage?.extraLarge);
+        const currentTime = (state.player && state.player.art) ? state.player.art.currentTime : 0;
+        const epNum = ep.number || state.currentEpisodeIndex + 1;
+        try {
+          history.replaceState(null, '', `#watch?anime=${state.currentAnime.id}&ep=${epNum}&mode=${cleanMode}`);
+        } catch {}
+        state.player.loadStream(ep.id, cleanMode, state.currentAnime.bannerImage || state.currentAnime.coverImage?.extraLarge, currentTime);
       }
     }
   }
@@ -1024,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Play CTA
     heroPlayBtn.onclick = () => {
-      navigateTo(`watch?anime=${item.id}&ep=1`);
+      navigateTo(`watch?anime=${item.id}&ep=1&mode=${state.currentMode}`);
     };
 
     // Watchlist CTA
@@ -1033,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     heroInfoBtn.onclick = () => {
-      navigateTo(`watch?anime=${item.id}&ep=1`);
+      navigateTo(`watch?anime=${item.id}&ep=1&mode=${state.currentMode}`);
     };
   }
 
@@ -1089,15 +1168,17 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: { 'Authorization': `Bearer ${state.auth.token}` }
         });
         const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           history = json.data;
           state.userHistory = history;
         }
       } catch (err) {
         console.warn('[History] Fetch failed:', err);
       }
-    } else {
-      // Guest mode fallback: check local progress keys only when not authenticated
+    }
+
+    // Fallback: if cloud history is empty or guest mode, populate from local progress keys
+    if (!history.length) {
       const localProgressKeys = Object.keys(localStorage).filter(k => k.startsWith('ani_progress_'));
       if (localProgressKeys.length) {
         history = localProgressKeys.map(k => {
@@ -1105,9 +1186,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = JSON.parse(localStorage.getItem(k));
             const epId = k.replace('ani_progress_', '');
             return {
-              anime_id: epId.split('-')[0] || epId,
-              anime_title: 'Continue Episode',
-              episode_num: 1,
+              anime_id: data.animeId || epId.split('-')[0] || epId,
+              anime_title: data.title || 'Continue Episode',
+              poster_image: data.poster || '',
+              episode_num: data.episode || 1,
               progress_seconds: data.time || 0,
               duration_seconds: data.duration || 1420
             };
@@ -1663,13 +1745,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // CINEMA WATCH ROOM MODULE
   // ============================================================================
 
-  async function loadWatchRoom(animeId, episodeNum = 1, mode = 'sub', startTime = 0) {
+  async function loadWatchRoom(animeId, episodeNum = 1, mode = null, startTime = 0) {
     state.currentEpisodeIndex = Math.max(0, parseInt(episodeNum) - 1);
-    state.currentMode = mode;
-    updateAudioButtons(mode);
+    const resolvedMode = (mode === 'sub' || mode === 'dub') ? mode : (state.currentMode || 'sub');
+    state.currentMode = resolvedMode;
+    updateAudioButtons(resolvedMode);
 
     try {
-      let anime = null;
+      history.replaceState(null, '', `#watch?anime=${animeId}&ep=${episodeNum}&mode=${resolvedMode}${startTime ? `&t=${startTime}` : ''}`);
+    } catch {}
+
+    try {
       let episodes = [];
 
       // Check if we already have this anime cached in client memory
@@ -1724,8 +1810,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update Breadcrumbs & Info safely
       const genre = anime.genres?.[0] || 'Anime';
       if (crumbAnimeGenre) crumbAnimeGenre.textContent = genre;
-      if (crumbAnimeTitle) crumbAnimeTitle.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
+      const currentTitle = anime.title?.english || anime.title?.romaji || 'Anime';
+      if (crumbAnimeTitle) crumbAnimeTitle.textContent = currentTitle;
       if (crumbEpisodeNum) crumbEpisodeNum.textContent = `Episode ${episodeNum}`;
+      document.title = `Watch Episode ${episodeNum} — ${currentTitle} [${(state.currentMode || 'sub').toUpperCase()}] | Om CLI`;
 
       if (detailPosterImg) detailPosterImg.src = anime.coverImage?.extraLarge || anime.coverImage?.large || '';
       if (detailAnimeTitle) detailAnimeTitle.textContent = anime.title?.english || anime.title?.romaji || 'Anime';
@@ -1764,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const posterUrl = anime.bannerImage || anime.coverImage?.extraLarge || '';
-      state.player.loadStream(currentEp.id, mode, posterUrl, resumeTime).then(() => {
+      state.player.loadStream(currentEp.id, resolvedMode, posterUrl, resumeTime).then(() => {
         if (state.player && state.player.art) {
           state.player.art.on('fullscreen', (isFull) => {
             if (btnFullscreenDown) {
@@ -1889,6 +1977,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (crumbEpisodeNum) crumbEpisodeNum.textContent = `Episode ${epNum}`;
     if (currentEpTitle) currentEpTitle.textContent = `Episode ${epNum}`;
+    const epAnimeTitle = state.currentAnime.title?.english || state.currentAnime.title?.romaji || 'Anime';
+    document.title = `Watch Episode ${epNum} — ${epAnimeTitle} [${(state.currentMode || 'sub').toUpperCase()}] | Om CLI`;
 
     renderEpisodeTiles(episodes, index);
 
@@ -1905,6 +1995,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state.currentAnime || !state.currentAnime.episodes) return;
     const nextIdx = state.currentEpisodeIndex + 1;
     if (nextIdx < state.currentAnime.episodes.length) {
+      const nextEp = state.currentAnime.episodes[nextIdx];
+      const epNum = nextEp ? (nextEp.number || nextIdx + 1) : nextIdx + 1;
+      showToast(`Auto-playing Episode ${epNum}...`, 'info');
       window.playEpisodeAtIndex(nextIdx);
     } else {
       showToast('You have reached the latest episode!', 'info');
@@ -2116,6 +2209,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.account-tab-panel').forEach(p => p.classList.add('hidden'));
     const targetPanel = document.getElementById(`tab-content-${tabName}`);
     if (targetPanel) targetPanel.classList.remove('hidden');
+
+    if (tabName === 'preferences') {
+      if (prefAudio) prefAudio.value = state.currentMode || 'sub';
+      if (prefAutoNext) prefAutoNext.checked = state.player ? state.player.autoNext : (localStorage.getItem('omcli_auto_next') !== '0');
+      if (prefSkipIntro) prefSkipIntro.checked = localStorage.getItem('omcli_skip_intro') !== '0';
+      if (prefQuality) prefQuality.value = localStorage.getItem('omcli_quality') || 'auto';
+    }
   }
 
   async function loadAccountData() {
@@ -2361,15 +2461,60 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {}
   });
 
+  // Direct Change on Audio Preference in Settings
+  if (prefAudio) {
+    prefAudio.addEventListener('change', () => {
+      switchGlobalAudio(prefAudio.value);
+    });
+  }
+
+  // Direct Change on Auto-Next in Settings
+  if (prefAutoNext) {
+    prefAutoNext.addEventListener('change', () => {
+      const isNext = !!prefAutoNext.checked;
+      localStorage.setItem('omcli_auto_next', isNext ? '1' : '0');
+      if (state.player) {
+        state.player.autoNext = isNext;
+      }
+    });
+  }
+
   // Save Playback Preferences
   btnSavePreferences.addEventListener('click', async () => {
-    if (!state.auth.token) return;
+    const chosenAudio = prefAudio ? prefAudio.value : state.currentMode;
+    const chosenQuality = prefQuality ? prefQuality.value : 'auto';
+    const chosenSkip = prefSkipIntro ? prefSkipIntro.checked : true;
+    const chosenNext = prefAutoNext ? prefAutoNext.checked : true;
+
+    // Apply immediately to universal client state & local storage
+    state.currentMode = chosenAudio;
+    localStorage.setItem('omcli_preferred_audio', chosenAudio);
+    localStorage.setItem('omcli_audio_mode', chosenAudio);
+    localStorage.setItem('omcli_auto_next', chosenNext ? '1' : '0');
+    localStorage.setItem('omcli_skip_intro', chosenSkip ? '1' : '0');
+    localStorage.setItem('omcli_quality', chosenQuality);
+
+    updateAudioButtons(chosenAudio);
+    if (state.player) {
+      state.player.autoNext = chosenNext;
+    }
+
+    if (!state.auth.token) {
+      showToast('Playback preferences saved locally!', 'success');
+      return;
+    }
 
     const data = {
-      preferredAudio: prefAudio.value,
-      preferredQuality: prefQuality.value,
-      autoSkipIntro: prefSkipIntro.checked,
-      autoNext: prefAutoNext.checked
+      preferred_audio: chosenAudio,
+      preferredAudio: chosenAudio,
+      preferred_quality: chosenQuality,
+      preferredQuality: chosenQuality,
+      auto_skip_intro: chosenSkip ? 1 : 0,
+      autoSkipIntro: chosenSkip ? 1 : 0,
+      auto_next: chosenNext ? 1 : 0,
+      autoNext: chosenNext ? 1 : 0,
+      auto_play: 1,
+      autoPlay: 1
     };
 
     try {
@@ -2387,15 +2532,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const json = await res.json();
 
       if (json.success) {
-        state.auth.settings = json.data;
-        state.currentMode = data.preferredAudio;
-        updateAudioButtons(data.preferredAudio);
-        showToast('Playback preferences saved successfully!', 'success');
+        state.auth.settings = json.data || data;
+        showToast('Playback preferences saved to cloud!', 'success');
       } else {
-        throw new Error(json.error || 'Failed to update preferences');
+        showToast(json.error || 'Saved locally', 'warning');
       }
     } catch (err) {
-      showToast(err.message, 'error');
+      showToast('Saved locally', 'info');
     } finally {
       btnSavePreferences.disabled = false;
       btnSavePreferences.textContent = 'Save Playback Preferences';

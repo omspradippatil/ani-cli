@@ -29,18 +29,40 @@ class AnimePlayer {
     this.onQualityList = null;
     this.onQualityChange = null;
     this.onCaptionsToggle = null;
-    this.autoNext = true;
+    this.autoNext = typeof localStorage !== 'undefined' ? localStorage.getItem('omcli_auto_next') !== '0' : true;
     this.captionsEnabled = true;
     this.levels = [];
     this.currentQualityLabel = 'Auto';
+    this._episodeEndedTriggered = false;
+  }
+
+  /**
+   * Helper to trigger auto-playing next episode safely without double calls
+   */
+  triggerAutoNext() {
+    if (!this.autoNext || this._episodeEndedTriggered) return;
+    this._episodeEndedTriggered = true;
+    console.log('[Player] Episode completed. Triggering auto next episode...');
+    if (this.art && this.art.notice) {
+      this.art.notice.show = 'Episode finished. Loading next episode...';
+    }
+    if (typeof this.onNextEpisode === 'function') {
+      setTimeout(() => {
+        this.onNextEpisode();
+      }, 350);
+    }
   }
 
   /**
    * Initializes or updates Artplayer with a stream
    */
   async loadStream(episodeId, mode = 'sub', posterUrl = '', resumeTime = 0) {
+    const cleanMode = (String(mode || '').toLowerCase() === 'dub')
+      ? 'dub'
+      : (String(mode || '').toLowerCase() === 'sub' ? 'sub' : (this.currentMode || (typeof localStorage !== 'undefined' ? localStorage.getItem('omcli_preferred_audio') : 'sub') || 'sub'));
     this.currentEpisodeId = episodeId;
-    this.currentMode = mode;
+    this.currentMode = cleanMode;
+    this._episodeEndedTriggered = false;
 
     const mount = document.querySelector(this.mountSelector);
     if (!mount) {
@@ -55,13 +77,15 @@ class AnimePlayer {
         this.art.notice.show = 'Loading episode stream...';
       }
       try {
-        const res = await fetch(`/api/stream/${episodeId}?mode=${mode}`);
+        const res = await fetch(`/api/stream/${episodeId}?mode=${cleanMode}`);
         const json = await res.json();
         if (!json.success || !json.data) {
           throw new Error(json.error || 'Failed to fetch episode stream');
         }
         const streamData = json.data;
         const streamUrl = streamData.proxyM3u8;
+        const actualMode = streamData.type || cleanMode;
+        this.currentMode = actualMode;
 
         // Prepare Subtitle
         let subUrl = '';
@@ -84,7 +108,7 @@ class AnimePlayer {
         // Update in-player SUB / DUB toggle button
         const modeBtn = this.art.template.$controls?.querySelector('.art-btn-mode');
         if (modeBtn) {
-          modeBtn.textContent = mode.toUpperCase();
+          modeBtn.textContent = actualMode.toUpperCase();
         }
 
         // Switch stream URL
@@ -97,8 +121,19 @@ class AnimePlayer {
           this.art.video.volume = 0.90;
         }
         if (this.art.notice) {
-          this.art.notice.show = `Loaded Episode (${mode.toUpperCase()})`;
+          this.art.notice.show = `Loaded Episode (${actualMode.toUpperCase()})`;
         }
+
+        // Automatically start playing immediately after switching
+        try {
+          await this.art.play();
+        } catch (playErr) {
+          console.warn('[Player] Auto-play blocked after switchUrl, falling back to video.play():', playErr);
+          if (this.art.video) {
+            this.art.video.play().catch(() => {});
+          }
+        }
+
         return streamData;
       } catch (err) {
         console.error('[Player] Switch stream error:', err);
@@ -121,7 +156,7 @@ class AnimePlayer {
     `;
 
     try {
-      const res = await fetch(`/api/stream/${episodeId}?mode=${mode}`);
+      const res = await fetch(`/api/stream/${episodeId}?mode=${cleanMode}`);
       const json = await res.json();
 
       if (!json.success || !json.data) {
@@ -130,8 +165,10 @@ class AnimePlayer {
 
       const streamData = json.data;
       const streamUrl = streamData.proxyM3u8;
+      const actualMode = streamData.type || cleanMode;
+      this.currentMode = actualMode;
 
-      console.log(`[Player] Loaded stream for episode ${episodeId} (${mode}):`, streamUrl);
+      console.log(`[Player] Loaded stream for episode ${episodeId} (${actualMode}):`, streamUrl);
 
       // Check saved progress: priority to cross-device resumeTime, then local localStorage
       let savedTime = resumeTime || 0;
@@ -442,6 +479,14 @@ class AnimePlayer {
           this.art.subtitle.show = this.captionsEnabled;
         }
         ensureAudioAudible();
+        this.art.play().catch(() => {});
+
+        // Add native video ended listener for ultimate reliability
+        if (this.art.video) {
+          this.art.video.addEventListener('ended', () => {
+            self.triggerAutoNext();
+          });
+        }
 
         // Prevent setting panel click/touch from propagating to video player to stop glitching/closing
         try {
@@ -511,14 +556,17 @@ class AnimePlayer {
           if (typeof this.onTimeUpdate === 'function') {
             this.onTimeUpdate(this.art.currentTime, this.art.duration);
           }
+
+          // Near-end auto-next trigger: if video reached within 0.5s of end, advance seamlessly
+          if (self.autoNext && self.art.duration > 20 && self.art.currentTime >= (self.art.duration - 0.5) && !self._episodeEndedTriggered) {
+            self.triggerAutoNext();
+          }
         }
       });
 
       this.art.on('video:ended', () => {
-        console.log('[Player] Episode completed.');
-        if (this.autoNext && typeof this.onNextEpisode === 'function') {
-          this.onNextEpisode();
-        }
+        console.log('[Player] Episode completed (video:ended).');
+        self.triggerAutoNext();
       });
 
       return streamData;

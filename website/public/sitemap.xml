@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Homepage / Main Portal -->
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://ani-cli-steel.vercel.app/assets/hero_bg.jpg</image:loc>
+      <image:title>Om CLI — Precision Anime Streaming Cinema Interface</image:title>
+      <image:caption>Stream trending anime in 4K HDR with dual-audio and synchronized watchlist.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://ani-cli-steel.vercel.app/assets/logo.jpg</image:loc>
+      <image:title>Om CLI Official Brand Emblem</image:title>
+      <image:caption>Om CLI — Free Open Source Anime Streaming Platform</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Browse Catalog & Genre Explorer -->
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Genre Categories for Search Indexing -->
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Action</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Adventure</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Fantasy</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Sci-Fi</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Romance</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Comedy</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Drama</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Supernatural</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Mystery</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Sports</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Slice%20of%20Life</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- My Watchlist -->
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#watchlist</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Android TV APK Download -->
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/download/tv-apk</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Account Portal -->
+  <url>
+    <loc>https://ani-cli-steel.vercel.app/#account</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>
