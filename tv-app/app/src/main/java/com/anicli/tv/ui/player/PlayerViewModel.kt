@@ -205,6 +205,10 @@ class PlayerViewModel @Inject constructor(
         return null
     }
 
+    val preferredQuality: String
+        get() = sharedPreferences.getString("pref_quality", "1080p") ?: "1080p"
+
+    private val saveScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     private var lastSavedPositionMs = 0L
     private var lastSavedTimestamp = 0L
 
@@ -216,7 +220,7 @@ class PlayerViewModel @Inject constructor(
         }
         lastSavedTimestamp = now
         lastSavedPositionMs = currentPosition
-        viewModelScope.launch {
+        saveScope.launch {
             try {
                 // Resolve true mediaId if mediaId was accidentally passed as an episode ID
                 val resolvedMediaId = if (mediaDetailCache.containsKey(mediaId)) {
@@ -235,41 +239,28 @@ class PlayerViewModel @Inject constructor(
                     ?: mediaDetailCache[resolvedMediaId]?.posterUrl?.takeIf { it.isNotBlank() }
 
                 // Fallback to existing saved progress poster/title if available
-                if (title.isNullOrBlank() || poster.isNullOrBlank()) {
-                    val existing = watchProgressDao.getProgressForMedia(resolvedMediaId)
-                    if (title.isNullOrBlank()) title = existing?.mediaTitle?.takeIf { it.isNotBlank() && it != "Anime Stream" && it != "Anime" && it != "Anime Details" }
-                    if (poster.isNullOrBlank()) poster = existing?.posterUrl?.takeIf { it.isNotBlank() }
-                }
+                val existing = watchProgressDao.getProgressForMedia(resolvedMediaId)
+                if (title.isNullOrBlank()) title = existing?.mediaTitle?.takeIf { it.isNotBlank() && it != "Anime Stream" && it != "Anime" && it != "Anime Details" }
+                if (poster.isNullOrBlank()) poster = existing?.posterUrl?.takeIf { it.isNotBlank() }
 
-                // If still missing, query provider for real details
-                if (title.isNullOrBlank() || poster.isNullOrBlank()) {
-                    try {
-                        val detailResult = providerSelector.getActiveProvider().getDetails(resolvedMediaId)
-                        detailResult.onSuccess { detail ->
-                            mediaDetailCache[resolvedMediaId] = detail
-                            _cachedMediaDetail.value = detail
-                            _cachedEpisodes.value = detail.episodes
-                            _cachedAnimeTitle.value = detail.title
-                            title = detail.title
-                            poster = detail.backdropUrl.takeIf { it.isNotBlank() } ?: detail.posterUrl
-                        }
-                    } catch (_: Exception) {}
-                }
-
-                // If title is STILL blank or placeholder, DO NOT save corrupt dummy records to SQLite
-                if (title.isNullOrBlank() || title == "Anime Stream" || title.equals("Anime", true) || title.equals("Anime Details", true) || title.equals("Continue Watching", true)) {
-                    return@launch
-                }
-
-                val finalTitle = title!!
+                val finalTitle = title?.takeIf { it.isNotBlank() } ?: "Anime #$resolvedMediaId"
                 val finalPoster = poster?.takeIf { it.isNotBlank() } ?: ""
-
-                // Never save if poster is completely blank for an unverified title
-                if (finalPoster.isBlank() && finalTitle.startsWith("Anime #")) {
-                    return@launch
-                }
-
                 val epId = currentEpisodeId.ifBlank { "$resolvedMediaId|$epNum" }
+
+                // 1. Immediately write to local Room database (un-cancellable, fast)
+                val entity = WatchProgressEntity(
+                    mediaId = resolvedMediaId,
+                    episodeId = epId,
+                    mediaTitle = finalTitle,
+                    episodeTitle = "Episode $epNum",
+                    posterUrl = finalPoster,
+                    progressMs = currentPosition,
+                    totalDurationMs = duration,
+                    lastUpdated = System.currentTimeMillis()
+                )
+                watchProgressDao.insertProgress(entity)
+
+                // 2. Sync to cloud backend in background
                 webUserRepository.saveHistory(
                     animeId = resolvedMediaId,
                     title = finalTitle,

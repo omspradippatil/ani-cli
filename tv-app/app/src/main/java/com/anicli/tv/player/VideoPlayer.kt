@@ -72,6 +72,7 @@ fun VideoPlayer(
     okHttpClient: OkHttpClient,
     modifier: Modifier = Modifier,
     audioMode: String = "sub",
+    defaultQuality: String = "1080p",
     isOverlayDialogOpen: Boolean = false,
     initialPositionMs: Long = 0L,
     onToggleAudioMode: () -> Unit = {},
@@ -79,7 +80,7 @@ fun VideoPlayer(
     onShowEpisodeList: () -> Unit = {},
     onNextEpisode: () -> Unit = {},
     onControllerVisibilityChanged: (Boolean) -> Unit = {},
-    onSaveProgress: (Long, Long) -> Unit = { _, _ -> }
+    onSaveProgress: (Long, Long, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
@@ -107,7 +108,7 @@ fun VideoPlayer(
     val volumeBtnRequester = remember { FocusRequester() }
 
     // State for user-selectable video quality and captions
-    var selectedQuality by remember { mutableStateOf("Auto") }
+    var selectedQuality by remember(defaultQuality) { mutableStateOf(defaultQuality) }
     var showQualityDialog by remember { mutableStateOf(false) }
     var captionsEnabled by remember { mutableStateOf(true) }
 
@@ -241,7 +242,7 @@ fun VideoPlayer(
                     val pos = exoPlayer.currentPosition
                     val dur = exoPlayer.duration.coerceAtLeast(0L)
                     if (pos > 1000L && dur > 5000L && (hasPerformedInitialSeek || currentInitialPositionMs <= 0L)) {
-                        onSaveProgress(pos, dur)
+                        onSaveProgress(pos, dur, true)
                     }
                 }
                 Lifecycle.Event.ON_DESTROY -> {
@@ -277,15 +278,22 @@ fun VideoPlayer(
             for (group in exoPlayer.currentTracks.groups) {
                 if (group.type == C.TRACK_TYPE_VIDEO) {
                     val mediaTrackGroup = group.mediaTrackGroup
+                    var bestTrackIndex = -1
+                    var bestHeightDiff = Int.MAX_VALUE
                     for (i in 0 until mediaTrackGroup.length) {
                         val format = mediaTrackGroup.getFormat(i)
-                        if (kotlin.math.abs(format.height - targetHeight) <= 30) {
-                            paramsBuilder.setOverrideForType(
-                                TrackSelectionOverride(mediaTrackGroup, listOf(i))
-                            )
-                            appliedOverride = true
-                            break
+                        val diff = kotlin.math.abs(format.height - targetHeight)
+                        if (diff < bestHeightDiff) {
+                            bestHeightDiff = diff
+                            bestTrackIndex = i
                         }
+                    }
+                    if (bestTrackIndex >= 0 && bestHeightDiff <= 140) {
+                        paramsBuilder.setOverrideForType(
+                            TrackSelectionOverride(mediaTrackGroup, listOf(bestTrackIndex))
+                        )
+                        appliedOverride = true
+                        break
                     }
                 }
                 if (appliedOverride) break
@@ -339,7 +347,7 @@ fun VideoPlayer(
                 if (tickCount >= 8) {
                     tickCount = 0
                     if (pos > 1000L && dur > 5000L && (hasPerformedInitialSeek || currentInitialPositionMs <= 0L)) {
-                        onSaveProgress(pos, dur)
+                        onSaveProgress(pos, dur, false)
                     }
                 }
             } else if (dur > 5000L && pos >= (dur - 800L) && !hasHandledEnded) {
@@ -381,7 +389,7 @@ fun VideoPlayer(
             .createMediaSource(mediaItemBuilder.build())
 
         exoPlayer.setMediaSource(mediaSource)
-        if (initialPositionMs > 0L) {
+        if (initialPositionMs > 2000L) {
             exoPlayer.seekTo(initialPositionMs)
             hasPerformedInitialSeek = true
         }
@@ -390,21 +398,13 @@ fun VideoPlayer(
         exoPlayer.volume = 1.0f
     }
 
-    LaunchedEffect(initialPositionMs) {
-        if (initialPositionMs > 0L && !hasPerformedInitialSeek && exoPlayer.playbackState != Player.STATE_IDLE) {
-            hasPerformedInitialSeek = true
-            exoPlayer.seekTo(initialPositionMs)
-        }
-    }
-
     DisposableEffect(Unit) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
                     duration = exoPlayer.duration.coerceAtLeast(0L)
-                    if (currentInitialPositionMs > 0L && !hasPerformedInitialSeek) {
-                        hasPerformedInitialSeek = true
-                        exoPlayer.seekTo(currentInitialPositionMs)
+                    if (selectedQuality != "Auto") {
+                        applyQuality(selectedQuality)
                     }
                 } else if (playbackState == Player.STATE_ENDED) {
                     if (!hasHandledEnded) {
@@ -417,6 +417,10 @@ fun VideoPlayer(
                 isPlaying = playing
             }
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                // Apply universal quality preference on tracks
+                if (selectedQuality != "Auto") {
+                    applyQuality(selectedQuality)
+                }
                 // Ensure active audio track selection across dual-audio and single-track streams
                 val hasSelectedAudio = tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
                 if (!hasSelectedAudio) {
@@ -443,7 +447,7 @@ fun VideoPlayer(
             val finalPos = exoPlayer.currentPosition
             val finalDur = exoPlayer.duration.coerceAtLeast(0L)
             if (finalPos > 1000L && finalDur > 5000L && (hasPerformedInitialSeek || currentInitialPositionMs <= 0L)) {
-                onSaveProgress(finalPos, finalDur)
+                onSaveProgress(finalPos, finalDur, true)
             }
             exoPlayer.removeListener(listener)
             exoPlayer.release()

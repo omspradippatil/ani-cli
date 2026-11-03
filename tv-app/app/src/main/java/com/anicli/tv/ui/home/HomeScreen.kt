@@ -147,9 +147,9 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             item {
-                                HeroBanner(
-                                    item = focusedItem,
-                                    isWatchlisted = state.favoriteMediaIds.contains(focusedItem?.id ?: ""),
+                                IsolatedHeroBanner(
+                                    itemProvider = { focusedItem },
+                                    isWatchlistedProvider = { state.favoriteMediaIds.contains(focusedItem?.id ?: "") },
                                     primaryFocusRequester = initialFocusRequester,
                                     onClick = { focusedItem?.let { onMediaClick(it.id) } },
                                     onToggleWatchlist = { focusedItem?.let { viewModel.toggleWatchlist(it) } }
@@ -757,6 +757,26 @@ fun GenreChipsBar(
             }
         }
     }
+}
+
+@Composable
+fun IsolatedHeroBanner(
+    itemProvider: () -> MediaItem?,
+    isWatchlistedProvider: () -> Boolean,
+    primaryFocusRequester: FocusRequester,
+    onClick: () -> Unit,
+    onToggleWatchlist: () -> Unit
+) {
+    val item = itemProvider()
+    if (item == null) return
+    val isWatchlisted = isWatchlistedProvider()
+    HeroBanner(
+        item = item,
+        isWatchlisted = isWatchlisted,
+        primaryFocusRequester = primaryFocusRequester,
+        onClick = { onClick() },
+        onToggleWatchlist = onToggleWatchlist
+    )
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)

@@ -192,11 +192,14 @@ fun DetailsScreen(
                             if (watchProg != null && watchProg.episodeId.isNotBlank()) {
                                 // Match watchProg to real episode in detail.episodes
                                 val savedEpNum = watchProg.episodeId.split("|").lastOrNull()?.toIntOrNull()
-                                val matchedEp = detail.episodes.find { ep ->
-                                    ep.id == watchProg.episodeId || (savedEpNum != null && ep.number == savedEpNum)
-                                }
+                                    ?: Regex("""\b(\d+)\b""").find(watchProg.episodeTitle)?.groupValues?.get(1)?.toIntOrNull()
+                                    ?: 1
+                                val matchedEp = detail.episodes.find { it.number == savedEpNum }
+                                    ?: detail.episodes.find { it.id == watchProg.episodeId }
+                                    ?: detail.episodes.firstOrNull()
+
                                 val resumeEpId = matchedEp?.id ?: watchProg.episodeId
-                                val epDisplayNum = matchedEp?.number ?: savedEpNum ?: 1
+                                val epDisplayNum = matchedEp?.number ?: savedEpNum
                                 val percent = if (watchProg.totalDurationMs > 0L) {
                                     ((watchProg.progressMs.toFloat() / watchProg.totalDurationMs.toFloat()) * 100).toInt().coerceIn(1, 99)
                                 } else null

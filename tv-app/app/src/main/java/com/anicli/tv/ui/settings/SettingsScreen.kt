@@ -55,7 +55,6 @@ fun SettingsScreen(
     val tvPairCode by viewModel.tvPairCode.collectAsState()
     val isTvCodeLoading by viewModel.isTvCodeLoading.collectAsState()
     val tvPairStatus by viewModel.tvPairStatus.collectAsState()
-    val availableAccounts by viewModel.availableAccounts.collectAsState()
 
     var usernameInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
@@ -63,11 +62,10 @@ fun SettingsScreen(
     val usernameFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
     val signInBtnFocusRequester = remember { FocusRequester() }
-    val backendInputFocusRequester = remember { FocusRequester() }
 
     val preferredLanguage by viewModel.preferredLanguage.collectAsState()
+    val preferredQuality by viewModel.preferredQuality.collectAsState()
     val activeProvider by viewModel.activeProvider.collectAsState()
-    val backendUrl by viewModel.backendUrl.collectAsState()
 
     Row(
         modifier = Modifier
@@ -183,51 +181,66 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Web Cloud Backend URL ──
-            if (activeProvider == ProviderSelector.PROVIDER_WEB_API) {
-                Spacer(modifier = Modifier.height(20.dp))
-                Text(
-                    "Connected Backend Server",
-                    color = KuroNamiColors.OnSurface,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-                var backendInput by remember(backendUrl) { mutableStateOf(backendUrl) }
-
-                OutlinedTextField(
-                    value = backendInput,
-                    onValueChange = { backendInput = it },
-                    label = { androidx.compose.material3.Text("Server URL", color = KuroNamiColors.OnSurfaceVariant) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { viewModel.setBackendUrl(backendInput) }),
-                    colors = TextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = KuroNamiColors.OnSurface,
-                        focusedContainerColor = KuroNamiColors.SurfaceLow,
-                        unfocusedContainerColor = KuroNamiColors.SurfaceLow,
-                        focusedIndicatorColor = KuroNamiColors.Crimson,
-                        unfocusedIndicatorColor = KuroNamiColors.Outline.copy(alpha = 0.4f)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .focusRequester(backendInputFocusRequester)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            // ── Universal Playback Quality ───────────────────────────────────
+            Text(
+                "Universal Video Quality",
+                color = KuroNamiColors.OnSurface,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Preferred stream resolution across all anime playback",
+                color = KuroNamiColors.OnSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
-                    onClick = { viewModel.setBackendUrl(backendInput) },
+                    onClick = { viewModel.setPreferredQuality("1080p") },
                     colors = ButtonDefaults.colors(
-                        containerColor = KuroNamiColors.Crimson,
+                        containerColor = if (preferredQuality == "1080p")
+                            KuroNamiColors.Crimson else KuroNamiColors.SurfaceLow,
                         focusedContainerColor = KuroNamiColors.CrimsonContainer
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
                 ) {
                     Text(
-                        "Save Server URL",
+                        "1080p (FHD)",
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                Button(
+                    onClick = { viewModel.setPreferredQuality("720p") },
+                    colors = ButtonDefaults.colors(
+                        containerColor = if (preferredQuality == "720p")
+                            KuroNamiColors.Crimson else KuroNamiColors.SurfaceLow,
+                        focusedContainerColor = KuroNamiColors.CrimsonContainer
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                ) {
+                    Text(
+                        "720p (HD)",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                Button(
+                    onClick = { viewModel.setPreferredQuality("Auto") },
+                    colors = ButtonDefaults.colors(
+                        containerColor = if (preferredQuality == "Auto")
+                            KuroNamiColors.Crimson else KuroNamiColors.SurfaceLow,
+                        focusedContainerColor = KuroNamiColors.CrimsonContainer
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp))
+                ) {
+                    Text(
+                        "Auto (Adaptive)",
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -489,47 +502,9 @@ fun SettingsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // ── 2. Discovered Accounts Quick Switcher ──
-                if (availableAccounts.isNotEmpty()) {
-                    Text(
-                        text = "Or Select Web Account:",
-                        color = KuroNamiColors.OnSurfaceVariant,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        availableAccounts.take(3).forEach { acc ->
-                            Button(
-                                onClick = {
-                                    usernameInput = acc.username
-                                    try { passwordFocusRequester.requestFocus() } catch (_: Exception) {}
-                                },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = if (usernameInput == acc.username) KuroNamiColors.Crimson else KuroNamiColors.SurfaceHigh,
-                                    focusedContainerColor = KuroNamiColors.CrimsonContainer
-                                ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = acc.username,
-                                    maxLines = 1,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                // ── 3. TV Remote Navigable Input Fields ──
+                // ── 2. TV Remote Navigable Input Fields ──
                 OutlinedTextField(
                     value = usernameInput,
                     onValueChange = { usernameInput = it },

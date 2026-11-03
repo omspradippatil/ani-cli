@@ -167,6 +167,16 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ─── Universal Video Quality preference ──────────────────────────────────
+    val preferredQuality = MutableStateFlow(
+        sharedPreferences.getString("pref_quality", "1080p") ?: "1080p"
+    )
+
+    fun setPreferredQuality(quality: String) {
+        sharedPreferences.edit().putString("pref_quality", quality).apply()
+        preferredQuality.value = quality
+    }
+
     // ─── Provider selection ─────────────────────────────────────────────────
     val activeProvider = MutableStateFlow(providerSelector.getActiveProviderKey())
 

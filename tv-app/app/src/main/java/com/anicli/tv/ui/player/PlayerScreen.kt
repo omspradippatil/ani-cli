@@ -107,6 +107,7 @@ fun PlayerScreen(
                             subtitles = source.subtitles,
                             okHttpClient = viewModel.okHttpClient,
                             audioMode = audioMode,
+                            defaultQuality = viewModel.preferredQuality,
                             initialPositionMs = initialPositionMs,
                             isOverlayDialogOpen = showQualitySelector || showEpisodeDrawer,
                             onToggleAudioMode = {
@@ -129,8 +130,8 @@ fun PlayerScreen(
                             onControllerVisibilityChanged = { isVisible ->
                                 isControllerVisible = isVisible
                             },
-                            onSaveProgress = { pos, dur ->
-                                viewModel.saveProgress(mediaId, epNum, pos, dur)
+                            onSaveProgress = { pos, dur, force ->
+                                viewModel.saveProgress(mediaId, epNum, pos, dur, force)
                             }
                         )
                     } else {
