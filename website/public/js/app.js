@@ -360,9 +360,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return `#watch?anime=${animeId}&ep=${ep}${cleanTime > 0 ? `&t=${cleanTime}` : ''}&mode=${mode}`;
   };
 
+  // Prevent automatic browser scroll restoration (stops automatic scrolling down to footer)
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+
   window.navigateToWatch = (animeId, ep = 1, t = 0) => {
     const mode = state.currentMode || localStorage.getItem('omcli_preferred_audio') || 'sub';
     const cleanTime = Math.round(Number(t) || 0);
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     navigateTo(`watch?anime=${animeId}&ep=${ep}${cleanTime > 0 ? `&t=${cleanTime}` : ''}&mode=${mode}`);
   };
 
@@ -777,6 +785,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function navigateTo(hashPath) {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     window.location.hash = hashPath;
   }
 
@@ -844,7 +855,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     state.activeView = path;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
 
     if (path === 'home') {
       document.title = 'Om CLI — Watch Anime Free in HD | Dual-Audio HLS & Android TV Sync';
@@ -979,6 +992,41 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Auto-Orientation Sensor: Automatically enters fullscreen when phone is turned landscape, and exits in portrait
+  function setupAutoOrientationFullscreen() {
+    let orientationTimeout = null;
+    const handleOrientation = () => {
+      clearTimeout(orientationTimeout);
+      orientationTimeout = setTimeout(() => {
+        if (state.activeView !== 'watch' || !state.player || !state.player.art) return;
+        const isLandscape = (window.innerWidth > window.innerHeight) ||
+          window.matchMedia('(orientation: landscape)').matches || 
+          (window.screen?.orientation && window.screen.orientation.type.startsWith('landscape')) ||
+          (Math.abs(window.orientation || 0) === 90);
+        const isCurrentlyFull = !!(
+          document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          state.player.art.fullscreen ||
+          state.player.art.fullscreenWeb ||
+          document.body.classList.contains('player-in-fullscreen')
+        );
+        if (window.innerWidth < 900 || window.innerHeight < 600) {
+          if (isLandscape && !isCurrentlyFull) {
+            state.player.enterFullscreen();
+          } else if (!isLandscape && isCurrentlyFull) {
+            state.player.exitFullscreen();
+          }
+        }
+      }, 200);
+    };
+
+    if (window.screen && window.screen.orientation) {
+      window.screen.orientation.addEventListener('change', handleOrientation);
+    }
+    window.addEventListener('orientationchange', handleOrientation);
+  }
+  setupAutoOrientationFullscreen();
 
   function switchGlobalAudio(mode) {
     const cleanMode = String(mode).toLowerCase() === 'dub' ? 'dub' : 'sub';
@@ -2092,6 +2140,11 @@ document.addEventListener('DOMContentLoaded', () => {
     state.currentMode = resolvedMode;
     updateAudioButtons(resolvedMode);
 
+    // Instant scroll to top upon entering watch room
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     try {
       history.replaceState(null, '', `#watch?anime=${animeId}&ep=${episodeNum}&mode=${resolvedMode}${startTime ? `&t=${startTime}` : ''}`);
     } catch {}
@@ -2229,6 +2282,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const posterUrl = anime.bannerImage || anime.coverImage?.extraLarge || '';
       state.player.loadStream(currentEp.id, resolvedMode, posterUrl, resumeTime).then(() => {
+        // Mobile auto-scroll: smoothly scroll the player into optimal viewing position
+        if (window.innerWidth < 768) {
+          const stage = document.getElementById('video-stage-container');
+          if (stage) {
+            setTimeout(() => {
+              stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
+        } else {
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
+
         if (state.player && state.player.art) {
           state.player.art.on('fullscreen', (isFull) => {
             if (btnFullscreenDown) {

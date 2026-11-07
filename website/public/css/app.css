@@ -39,6 +39,17 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+
+#watch-view {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow-anchor: none !important;
+}
+
 body {
   background-color: var(--surface-lowest);
   color: var(--on-surface);
@@ -616,62 +627,20 @@ body {
    MOBILE & DESKTOP FULLSCREEN PRECISION
    ========================================================================== */
 
-/* Fullscreen Master Stage: Full 100% Edge-to-Edge Coverage */
-body.player-in-fullscreen,
-body:has(.art-video-player.art-fullscreen),
-body:has(.art-video-player.art-fullscreen-web),
-body:has(.art-video-player.art-web-fullscreen) {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  width: 100dvw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
-  overflow: hidden !important;
-  touch-action: none !important;
-  overscroll-behavior: none !important;
-}
-
-body.player-in-fullscreen #watch-view,
-body:has(.art-video-player.art-fullscreen) #watch-view,
-body:has(.art-video-player.art-fullscreen-web) #watch-view {
-  padding: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  position: fixed !important;
-  inset: 0 !important;
-  overflow: hidden !important;
-  z-index: 2147483646 !important;
-}
-
-/* Hide every other webpage component inside #watch-view in fullscreen */
-body.player-in-fullscreen #watch-view > *:not(#video-stage-container),
-body:has(.art-video-player.art-fullscreen) #watch-view > *:not(#video-stage-container),
-body:has(.art-video-player.art-fullscreen-web) #watch-view > *:not(#video-stage-container) {
+/* Hide background navigation, headers, and toasts in fullscreen */
+body.player-in-fullscreen header,
+body.player-in-fullscreen #mobile-bottom-nav,
+body.player-in-fullscreen #toast-container,
+body:has(.art-video-player.art-fullscreen) header,
+body:has(.art-video-player.art-fullscreen) #mobile-bottom-nav,
+body:has(.art-video-player.art-fullscreen) #toast-container,
+body:has(.art-video-player.art-fullscreen-web) header,
+body:has(.art-video-player.art-fullscreen-web) #mobile-bottom-nav,
+body:has(.art-video-player.art-fullscreen-web) #toast-container {
   display: none !important;
 }
 
-body.player-in-fullscreen #video-stage-container,
-body:has(.art-video-player.art-fullscreen) #video-stage-container,
-body:has(.art-video-player.art-fullscreen-web) #video-stage-container {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  width: 100dvw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
-  max-width: none !important;
-  max-height: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  z-index: 2147483647 !important;
-  background: #000000 !important;
-}
-
+/* Fullscreen Master Stage: Full 100% Edge-to-Edge Coverage */
 .art-video-player.art-fullscreen,
 .art-video-player.art-fullscreen-web,
 .art-video-player.art-web-fullscreen,
@@ -705,19 +674,7 @@ body.player-in-fullscreen .art-video-player video {
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;
-}
-
-/* Hide background navigation, headers, and toasts in fullscreen */
-body.player-in-fullscreen #mobile-bottom-nav,
-body.player-in-fullscreen header,
-body.player-in-fullscreen #toast-container,
-body:has(.art-video-player.art-fullscreen) #mobile-bottom-nav,
-body:has(.art-video-player.art-fullscreen) header,
-body:has(.art-video-player.art-fullscreen) #toast-container,
-body:has(.art-video-player.art-fullscreen-web) #mobile-bottom-nav,
-body:has(.art-video-player.art-fullscreen-web) header,
-body:has(.art-video-player.art-fullscreen-web) #toast-container {
-  display: none !important;
+  background: #000000 !important;
 }
 
 /* Fullscreen Safe Area Insets for Phone Notches / Dynamic Island */
