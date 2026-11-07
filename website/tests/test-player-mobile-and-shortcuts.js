@@ -174,6 +174,8 @@ async function runTests() {
 
     const mobileContext = await browser.newContext(pixel7);
     const mobPage = await mobileContext.newPage();
+    mobPage.on('console', msg => console.log('MOB LOG:', msg.text()));
+    mobPage.on('pageerror', err => console.error('MOB ERROR:', err.message));
 
     await mobPage.goto(`${BASE_URL}#watch?anime=20&ep=1`, { waitUntil: 'domcontentloaded' });
     await mobPage.waitForSelector('.art-video-player', { timeout: 15000 });
@@ -242,7 +244,7 @@ async function runTests() {
 
     record('2.3 Mobile enters true fullscreen (fixed, z-index 2147483647, nav hidden)', 
       fsStyles.isBodyFull && fsStyles.position === 'fixed' && fsStyles.navHidden,
-      `Pos: ${fsStyles.position}, Z: ${fsStyles.zIndex}, NavHidden: ${fsStyles.navHidden}`
+      `isBodyFull: ${fsStyles.isBodyFull}, Pos: ${fsStyles.position}, Z: ${fsStyles.zIndex}, NavHidden: ${fsStyles.navHidden}`
     );
 
     record('2.4 Mobile fullscreen does NOT force distorted 90deg CSS rotation', 

@@ -951,6 +951,17 @@ document.addEventListener('DOMContentLoaded', () => {
       qualityDropdownMenu.classList.toggle('hidden');
     });
 
+    qualityDropdownMenu.querySelectorAll('.quality-opt-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lvl = parseInt(btn.dataset.level);
+        if (state.player && typeof state.player.setQuality === 'function') {
+          state.player.setQuality(lvl);
+        }
+        qualityDropdownMenu.classList.add('hidden');
+      });
+    });
+
     document.addEventListener('click', (e) => {
       if (qualitySelectorWrap && !qualitySelectorWrap.contains(e.target)) {
         qualityDropdownMenu.classList.add('hidden');

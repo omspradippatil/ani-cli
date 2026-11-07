@@ -437,6 +437,9 @@ class AnimePlayer {
             position: 'right',
             index: 14,
             html: `<button class="art-btn-quality" title="Change Streaming Quality">${this.currentQualityLabel}</button>`,
+            click: function () {
+              self.toggleQualityMenu();
+            },
             selector: [{ html: 'Auto', level: -1, default: true }],
             onSelect: function (item) {
               return self.setQuality(item.level);
@@ -582,17 +585,17 @@ class AnimePlayer {
 
       // Fullscreen and Orientation Event Sync
       this.art.on('fullscreen', (isFull) => {
-        self.handleFullscreenChange(isFull);
+        self.handleFullscreenChange(isFull, 'art.fullscreen');
       });
 
       this.art.on('fullscreenWeb', (isFull) => {
-        self.handleFullscreenChange(isFull);
+        self.handleFullscreenChange(isFull, 'art.fullscreenWeb');
       });
 
       // Synchronize with native browser & device fullscreen events
       const onNativeFsChange = () => {
         const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || (self.art && (self.art.fullscreen || self.art.fullscreenWeb)));
-        self.handleFullscreenChange(isFull);
+        self.handleFullscreenChange(isFull, 'onNativeFsChange');
       };
       document.addEventListener('fullscreenchange', onNativeFsChange);
       document.addEventListener('webkitfullscreenchange', onNativeFsChange);
@@ -726,30 +729,132 @@ class AnimePlayer {
   }
 
   /**
-   * Sets streaming quality level (-1 for Auto, or level index)
+   * Sets streaming quality level (-1 for Auto, or level index / height)
    */
   setQuality(levelIndex) {
-    levelIndex = parseInt(levelIndex);
+    let targetLevel = parseInt(levelIndex);
+    let label = 'Auto';
+
     if (this.art && this.art.hls) {
-      this.art.hls.currentLevel = levelIndex;
-      const match = this.levels.find(l => l.level === levelIndex);
-      const label = match ? match.html : (levelIndex === -1 ? 'Auto' : `${this.art.hls.levels[levelIndex]?.height || ''}p`);
-      this.currentQualityLabel = label;
-
-      if (this.art.notice) {
-        this.art.notice.show = `Quality: ${label}`;
+      if (this.levels && this.levels.length > 0) {
+        let match = this.levels.find(l => l.level === targetLevel);
+        if (!match && targetLevel > 0) {
+          match = this.levels.find(l => l.height === targetLevel);
+        }
+        if (match) {
+          targetLevel = match.level;
+          label = match.html;
+        } else if (targetLevel === -1) {
+          label = 'Auto';
+        } else {
+          label = `${targetLevel}p`;
+        }
+      } else {
+        label = targetLevel === -1 ? 'Auto' : `${targetLevel}p`;
       }
 
-      // Update in-player quality button label
-      const qBtn = this.art.template?.$controls?.querySelector('.art-btn-quality');
-      if (qBtn) qBtn.textContent = label;
-
-      if (typeof this.onQualityChange === 'function') {
-        this.onQualityChange(levelIndex, label);
+      try {
+        this.art.hls.currentLevel = targetLevel;
+      } catch (e) {
+        console.warn('[Player] HLS currentLevel error:', e);
       }
-      return label;
+    } else {
+      label = targetLevel === -1 ? 'Auto' : `${targetLevel}p`;
     }
-    return null;
+
+    this.currentQualityLabel = label;
+    try {
+      localStorage.setItem('omcli_quality', label);
+    } catch (_) {}
+
+    if (this.art && this.art.notice) {
+      this.art.notice.show = `Quality: ${label}`;
+    }
+
+    // Update in-player quality button label
+    const qBtn = this.art?.template?.$controls?.querySelector('.art-btn-quality');
+    if (qBtn) qBtn.textContent = label;
+
+    // Update bottom toolbar quality label
+    const textQ = document.getElementById('text-current-quality');
+    if (textQ) textQ.textContent = label;
+
+    if (typeof this.onQualityChange === 'function') {
+      this.onQualityChange(targetLevel, label);
+    }
+    return label;
+  }
+
+  /**
+   * Interactive In-Player Quality Selector Modal
+   */
+  toggleQualityMenu() {
+    const container = this.art?.template?.$player || document.querySelector('.art-video-player');
+    if (!container) return;
+
+    const existing = container.querySelector('.ani-quality-modal-overlay');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    let options = [];
+    if (this.levels && this.levels.length > 0) {
+      options = this.levels;
+    } else {
+      options = [
+        { html: 'Auto (ABR)', level: -1 },
+        { html: '1080p FHD', level: 1080 },
+        { html: '720p HD', level: 720 },
+        { html: '480p SD', level: 480 },
+        { html: '360p Data Saver', level: 360 }
+      ];
+    }
+
+    const currentLabel = (this.currentQualityLabel || 'Auto').toLowerCase();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ani-quality-modal-overlay';
+    overlay.innerHTML = `
+      <div class="ani-quality-modal-dialog">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="display:flex;align-items:center;gap:6px;color:#fff;font-size:14px;font-weight:700;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:#00e3fd;"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V6h14v12z"/></svg>
+            <span>Streaming Quality</span>
+          </div>
+          <button class="ani-quality-modal-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:4px;" title="Close">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;">
+          ${options.map(opt => {
+            const optClean = opt.html.toLowerCase().split(' ')[0];
+            const isMatch = currentLabel.includes(optClean) || (opt.level === -1 && currentLabel.startsWith('auto'));
+            return `
+              <button class="ani-quality-item-btn ${isMatch ? 'active' : ''}" data-level="${opt.level}">
+                <span>${opt.html}</span>
+                ${isMatch ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>' : ''}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('.ani-quality-modal-close')) {
+        overlay.remove();
+      }
+    });
+
+    overlay.querySelectorAll('.ani-quality-item-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lvl = parseInt(btn.dataset.level);
+        this.setQuality(lvl);
+        overlay.remove();
+      });
+    });
+
+    container.appendChild(overlay);
   }
 
   /**
@@ -959,7 +1064,10 @@ class AnimePlayer {
    * Universal Mobile & Desktop Fullscreen
    */
   async toggleFullscreen() {
-    if (!this.art) return false;
+    if (!this.art) {
+      console.log('[Player] toggleFullscreen: no this.art');
+      return false;
+    }
 
     const isCurrentlyFull = !!(
       this.art.fullscreen ||
@@ -984,17 +1092,42 @@ class AnimePlayer {
 
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    if (!isIOS && (document.fullscreenEnabled || document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) {
+    // On iOS Safari, use native video.webkitEnterFullscreen() for true edge-to-edge
+    if (isIOS && this.art.video && typeof this.art.video.webkitEnterFullscreen === 'function') {
+      try {
+        this.art.video.webkitEnterFullscreen();
+        const onIosEnd = () => {
+          this.art.video.removeEventListener('webkitendfullscreen', onIosEnd);
+          this.exitFullscreen();
+        };
+        this.art.video.addEventListener('webkitendfullscreen', onIosEnd, { once: true });
+        this.updateFullscreenIcons(true);
+        if (typeof this.onFullscreenChange === 'function') {
+          this.onFullscreenChange(true);
+        }
+        return true;
+      } catch (err) {
+        console.warn('[Player] iOS webkitEnterFullscreen failed, falling back to CSS fullscreen:', err);
+      }
+    }
+
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+    if (isMobileDevice) {
+      // Mobile: CSS Web Fullscreen gives reliable 100dvw x 100dvh edge-to-edge without browser API restrictions
+      this.art.fullscreenWeb = true;
+    } else {
+      // Desktop: Attempt standard hardware fullscreen, falling back to fullscreenWeb
       try {
         if (!this.art.fullscreen && !document.fullscreenElement && !document.webkitFullscreenElement) {
           this.art.fullscreen = true;
+        } else {
+          this.art.fullscreenWeb = true;
         }
       } catch (err) {
-        console.warn('[Player] art.fullscreen failed, using fullscreenWeb fallback:', err);
+        console.warn('[Player] art.fullscreen failed, falling back to fullscreenWeb:', err);
         this.art.fullscreenWeb = true;
       }
-    } else {
-      this.art.fullscreenWeb = true;
     }
 
     // Try hardware orientation lock if available
@@ -1038,7 +1171,13 @@ class AnimePlayer {
   }
 
   handleFullscreenChange(isFull) {
-    if (isFull) {
+    const isActuallyFull = !!(
+      isFull ||
+      (this.art && (this.art.fullscreen || this.art.fullscreenWeb)) ||
+      document.fullscreenElement ||
+      document.webkitFullscreenElement
+    );
+    if (isActuallyFull) {
       document.body.classList.add('player-in-fullscreen');
     } else {
       document.body.classList.remove('player-in-fullscreen');
@@ -1047,9 +1186,9 @@ class AnimePlayer {
       }
     }
 
-    this.updateFullscreenIcons(isFull);
+    this.updateFullscreenIcons(isActuallyFull);
     if (typeof this.onFullscreenChange === 'function') {
-      this.onFullscreenChange(isFull);
+      this.onFullscreenChange(isActuallyFull);
     }
   }
 

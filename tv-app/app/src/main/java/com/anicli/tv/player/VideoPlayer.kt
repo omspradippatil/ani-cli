@@ -350,7 +350,7 @@ fun VideoPlayer(
                         onSaveProgress(pos, dur, false)
                     }
                 }
-            } else if (dur > 5000L && pos >= (dur - 800L) && !hasHandledEnded) {
+            } else if (dur > 5000L && pos > 1000L && pos >= (dur - 800L) && !hasHandledEnded) {
                 hasHandledEnded = true
                 currentOnNextEpisode()
             }
@@ -407,7 +407,9 @@ fun VideoPlayer(
                         applyQuality(selectedQuality)
                     }
                 } else if (playbackState == Player.STATE_ENDED) {
-                    if (!hasHandledEnded) {
+                    val endPos = exoPlayer.currentPosition
+                    val endDur = exoPlayer.duration.coerceAtLeast(0L)
+                    if (!hasHandledEnded && endDur > 5000L) {
                         hasHandledEnded = true
                         currentOnNextEpisode()
                     }

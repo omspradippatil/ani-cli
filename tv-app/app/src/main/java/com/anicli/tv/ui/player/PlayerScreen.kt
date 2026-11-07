@@ -59,9 +59,11 @@ fun PlayerScreen(
     val parts = episodeId.split("|")
     val mediaId = if (parts.size >= 2) parts[0] else (viewModel.cachedMediaDetail.value?.id ?: "")
     val epNum = if (parts.size >= 3) {
-        parts.lastOrNull()?.toIntOrNull() ?: 1
+        val p = parts.lastOrNull()?.toIntOrNull() ?: 1
+        if (p < 2000) p else 1
     } else if (parts.size == 2) {
-        parts[1].toIntOrNull() ?: 1
+        val p1 = parts[1].toIntOrNull() ?: 1
+        if (p1 < 2000) p1 else 1
     } else {
         1
     }

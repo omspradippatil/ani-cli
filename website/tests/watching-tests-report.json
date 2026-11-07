@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-02T17:51:21.981Z",
+  "timestamp": "2026-11-07T06:23:24.433Z",
   "baseUrl": "http://127.0.0.1:3001",
   "total": 44,
   "passed": 44,
@@ -11,153 +11,153 @@
       "name": "1-Click Demo Login generates valid JWT token and session",
       "passed": true,
       "details": "Authenticated as: \"Alex Mercer\" | Token length: 64",
-      "durationMs": 1477
+      "durationMs": 924
     },
     {
       "suite": "A. Auth & Clean Slate",
       "name": "Clear existing watch history for deterministic testing",
       "passed": true,
       "details": "History wiped clean in SQLite",
-      "durationMs": 70
+      "durationMs": 87
     },
     {
       "suite": "A. Auth & Clean Slate",
       "name": "GET /api/user/history returns empty list",
       "passed": true,
       "details": "Confirmed 0 history entries",
-      "durationMs": 11
+      "durationMs": 7
     },
     {
       "suite": "A. Auth & Clean Slate",
       "name": "Continue Watching rail on Home feed is hidden when history is empty",
       "passed": true,
       "details": "Continue watching rail cleanly hidden",
-      "durationMs": 491
+      "durationMs": 513
     },
     {
       "suite": "B. Watch Progress Sync",
       "name": "Sync watch progress for Naruto (Ep 1 @ 420s / 1420s = 30%)",
       "passed": true,
       "details": "Progress saved to D1 SQLite database",
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "suite": "B. Watch Progress Sync",
       "name": "GET /api/user/history returns synced Naruto record with 30% progress",
       "passed": true,
       "details": "Anime: \"Naruto\" | Ep 1 | 420s / 1420s",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "suite": "B. Watch Progress Sync",
       "name": "Home feed unhides #continue-watching-section when history exists",
       "passed": true,
       "details": "Continue Watching rail is now visible",
-      "durationMs": 478
+      "durationMs": 482
     },
     {
       "suite": "B. Watch Progress Sync",
       "name": "Continue Watching card renders title, episode badge, and 30% progress",
       "passed": true,
       "details": "Card: \"Naruto\" | Badge: \"EP 1\" | Progress: \"30% Complete\"",
-      "durationMs": 10
+      "durationMs": 9
     },
     {
       "suite": "B. Watch Progress Sync",
       "name": "Continue Watching progress bar visual width is 30%",
       "passed": true,
       "details": "Progress bar style: width: 30%",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "suite": "C. Playback Resume",
       "name": "Clicking Continue Watching card navigates to Watch Room with t=420",
       "passed": true,
       "details": "Resume URL: http://127.0.0.1:3001/#watch?anime=20&ep=1&mode=sub&t=420",
-      "durationMs": 633
+      "durationMs": 636
     },
     {
       "suite": "C. Playback Resume",
       "name": "Watch Room mounts player stage with breadcrumbs",
       "passed": true,
-      "details": "Breadcrumb: \"SERIES TITLE\" / EP 1",
-      "durationMs": 7
+      "details": "Breadcrumb: \"NARUTO\" / EPISODE 1",
+      "durationMs": 21
     },
     {
       "suite": "C. Playback Resume",
       "name": "Anime Details card renders correct synopsis and score",
       "passed": true,
-      "details": "Details: \"Anime Title\" | Score: ★ 9.0",
-      "durationMs": 4
+      "details": "Details: \"Naruto\" | Score: ★ 8.0",
+      "durationMs": 6
     },
     {
       "suite": "D. Progress Update",
       "name": "Simulate user watching further in episode (advance to 1136s = 80%)",
       "passed": true,
       "details": "Updated progress to 1136s",
-      "durationMs": 2
+      "durationMs": 4
     },
     {
       "suite": "D. Progress Update",
       "name": "Home feed Continue Watching card updates to 80% Complete",
       "passed": true,
       "details": "Updated Progress: \"80% Complete\" | Bar Width: 80%",
-      "durationMs": 504
+      "durationMs": 519
     },
     {
       "suite": "D. Progress Update",
       "name": "Clicking updated card navigates with t=1136",
       "passed": true,
       "details": "Navigated to: http://127.0.0.1:3001/#watch?anime=20&ep=1&mode=sub&t=1136",
-      "durationMs": 634
+      "durationMs": 633
     },
     {
       "suite": "E. Episode Progression",
       "name": "User completes Ep 1 and starts Ep 2 (180s / 1420s = 13%)",
       "passed": true,
       "details": "Episode 2 progress recorded in D1 SQLite",
-      "durationMs": 3
+      "durationMs": 53
     },
     {
       "suite": "E. Episode Progression",
       "name": "Continue Watching rail reflects Episode 2 badge and 13% progress",
       "passed": true,
       "details": "Badge: \"EP 2\" | Progress: \"13% Complete\"",
-      "durationMs": 518
+      "durationMs": 512
     },
     {
       "suite": "F. Multi-Anime Queue",
       "name": "Add Bleach to history (Anime ID 269, Ep 1 @ 600s / 1440s = 42%)",
       "passed": true,
       "details": "Bleach added to watch history",
-      "durationMs": 105
+      "durationMs": 103
     },
     {
       "suite": "F. Multi-Anime Queue",
       "name": "Continue Watching rail renders both Bleach and Naruto in chronological order",
       "passed": true,
       "details": "1st: \"Bleach\" | 2nd: \"Naruto\"",
-      "durationMs": 494
+      "durationMs": 498
     },
     {
       "suite": "F. Multi-Anime Queue",
       "name": "Bleach card displays EP 1 and 42% Complete",
       "passed": true,
       "details": "Bleach: \"EP 1\" | \"42% Complete\"",
-      "durationMs": 4
+      "durationMs": 5
     },
     {
       "suite": "G. Account Timeline",
       "name": "Navigating to #account History tab displays timeline entries",
       "passed": true,
       "details": "2 items rendered in Account History Timeline",
-      "durationMs": 76
+      "durationMs": 80
     },
     {
       "suite": "G. Account Timeline",
       "name": "Timeline entry includes episode info, percentage, and date string",
       "passed": true,
-      "details": "Timeline Item: \"Bleach\" | Meta: \"Episode 1\n•\n42% Watched\n•\nNov 2, 11:21 PM\"",
+      "details": "Timeline Item: \"Bleach\" | Meta: \"Episode 1\n•\n42% Watched\n•\nNov 7, 11:53 AM\"",
       "durationMs": 3
     },
     {
@@ -172,28 +172,28 @@
       "name": "Home Continue Watching rail now only contains Bleach",
       "passed": true,
       "details": "Confirmed 1 card remaining: \"Bleach\"",
-      "durationMs": 482
+      "durationMs": 505
     },
     {
       "suite": "H. Cross-Device Sync",
       "name": "Device 2 loads initially without stored session",
       "passed": true,
       "details": "Device 2 is unauthenticated visitor",
-      "durationMs": 2017
+      "durationMs": 421
     },
     {
       "suite": "H. Cross-Device Sync",
       "name": "Device 2 authenticates with same user session token",
       "passed": true,
       "details": "Device 2 session restored for: \"Alex Mercer\"",
-      "durationMs": 137
+      "durationMs": 141
     },
     {
       "suite": "H. Cross-Device Sync",
       "name": "Device 2 instantly syncs Continue Watching rail from Cloudflare D1",
       "passed": true,
       "details": "Device 2 synced: \"Bleach\" (42% Complete)",
-      "durationMs": 5
+      "durationMs": 6
     },
     {
       "suite": "H. Cross-Device Sync",
@@ -214,84 +214,84 @@
       "name": "Clear entire watch history via DELETE /api/user/history",
       "passed": true,
       "details": "All history cleared",
-      "durationMs": 18
+      "durationMs": 20
     },
     {
       "suite": "I. Clear All History",
       "name": "Continue Watching rail on Home immediately hides when history is wiped",
       "passed": true,
       "details": "Continue Watching rail successfully hidden",
-      "durationMs": 502
+      "durationMs": 509
     },
     {
       "suite": "I. Clear All History",
       "name": "Account History tab displays empty state placeholder",
       "passed": true,
       "details": "Empty state verified: \"No watch history recorded yet. Start watching anime to build your timeline!\"",
-      "durationMs": 65
+      "durationMs": 69
     },
     {
       "suite": "J. Watchlist Integration",
       "name": "Add Demon Slayer to Watchlist with status \"Watching\"",
       "passed": true,
       "details": "Added Demon Slayer as \"Watching\"",
-      "durationMs": 10
+      "durationMs": 6
     },
     {
       "suite": "J. Watchlist Integration",
       "name": "Account Watchlist tab renders Demon Slayer under \"Watching\" category",
       "passed": true,
       "details": "Watchlist Card: \"Demon Slayer: Kimetsu no Yaiba\"",
-      "durationMs": 162
+      "durationMs": 178
     },
     {
       "suite": "J. Watchlist Integration",
       "name": "Remove Demon Slayer from Watchlist via DELETE /api/user/watchlist/101922",
       "passed": true,
       "details": "Demon Slayer removed from Watchlist",
-      "durationMs": 5
+      "durationMs": 6
     },
     {
       "suite": "K. In-Player Controls",
       "name": "Navigate to Watch Room for Naruto Ep 1",
       "passed": true,
       "details": "Watch room active",
-      "durationMs": 9
+      "durationMs": 8
     },
     {
       "suite": "K. In-Player Controls",
       "name": "Dual Audio switchers (SUB / DUB) toggle cleanly",
       "passed": true,
       "details": "Dual Audio toggled SUB -> DUB -> SUB",
-      "durationMs": 466
+      "durationMs": 464
     },
     {
       "suite": "K. In-Player Controls",
       "name": "Skip Intro (+85s) button triggers seek forward",
       "passed": true,
       "details": "Skip Intro (+85s) clicked",
-      "durationMs": 42
+      "durationMs": 45
     },
     {
       "suite": "K. In-Player Controls",
       "name": "Captions (CC) button toggles subtitles status",
       "passed": true,
       "details": "Captions status: \"CC OFF\"",
-      "durationMs": 253
+      "durationMs": 255
     },
     {
       "suite": "K. In-Player Controls",
       "name": "Streaming Quality button opens resolution menu",
       "passed": true,
       "details": "Quality menu toggled",
-      "durationMs": 303
+      "durationMs": 301
     },
     {
       "suite": "K. In-Player Controls",
       "name": "Episode queue sidebar renders episodes list with interactive items",
       "passed": true,
       "details": "Episode queue sidebar verified",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "suite": "K. In-Player Controls",

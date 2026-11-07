@@ -16,13 +16,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import com.anicli.tv.data.local.dao.WatchProgressDao
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WebApiMediaProvider @Inject constructor(
     private val webAnimeService: WebAnimeService,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val watchProgressDao: WatchProgressDao
 ) : MediaProvider {
 
     override val name: String = "Ani-Cli Web Cloud"
@@ -98,25 +100,38 @@ class WebApiMediaProvider @Inject constructor(
 
     override suspend fun getDetails(mediaId: String): Result<MediaDetail> = withContext(Dispatchers.IO) {
         try {
-            val fallbackTitle = if (!mediaId.all { it.isDigit() }) {
+            var fallbackTitle = if (!mediaId.all { it.isDigit() }) {
                 mediaId.replace(Regex("-\\d+$"), "").replace("-", " ")
                     .split(" ")
                     .filter { it.isNotBlank() }
                     .joinToString(" ") { word -> word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
             } else null
 
+            // If mediaId is all digits, check if we have a known title from in-memory cache or watch progress
+            if (fallbackTitle.isNullOrBlank()) {
+                val cached = com.anicli.tv.ui.player.PlayerViewModel.getDetailFromCache(mediaId)
+                if (cached != null && cached.title.isNotBlank() && !cached.title.startsWith("Anime #") && cached.title != "Anime Details" && cached.title != "Anime") {
+                    fallbackTitle = cached.title
+                } else {
+                    val progress = watchProgressDao.getProgressForMedia(mediaId)
+                    if (progress != null && progress.mediaTitle.isNotBlank() && !progress.mediaTitle.startsWith("Anime #") && progress.mediaTitle != "Anime Details" && progress.mediaTitle != "Anime") {
+                        fallbackTitle = progress.mediaTitle
+                    }
+                }
+            }
+
             val response = webAnimeService.getAnimeDetails(mediaId, title = fallbackTitle)
             val detailData = response.data ?: return@withContext Result.failure(Exception("Anime not found"))
 
-            val title = detailData.title?.preferredTitle()?.takeIf { it.isNotBlank() && it != "Unknown Anime" && it != "Anime Details" && it != "Anime" }
-                ?: fallbackTitle?.takeIf { it.isNotBlank() && it != "Anime Details" && it != "Anime" }
+            val title = detailData.title?.preferredTitle()?.takeIf { it.isNotBlank() && it != "Unknown Anime" && it != "Anime Details" && it != "Anime" && !it.startsWith("Anime #") }
+                ?: fallbackTitle?.takeIf { it.isNotBlank() && it != "Anime Details" && it != "Anime" && !it.startsWith("Anime #") }
                 ?: detailData.hiAnimeMatch?.title?.takeIf { it.isNotBlank() && it != "Anime Details" && it != "Anime" }
                 ?: ("Anime #" + mediaId)
             val posterUrl = detailData.coverImage?.bestImageUrl()?.takeIf { it.isNotBlank() }
                 ?: detailData.poster?.takeIf { it.isNotBlank() }
                 ?: detailData.image?.takeIf { it.isNotBlank() }
                 ?: detailData.hiAnimeMatch?.poster?.takeIf { it.isNotBlank() }
-                ?: ""
+                ?: (watchProgressDao.getProgressForMedia(mediaId)?.posterUrl?.takeIf { it.isNotBlank() } ?: "")
             val backdropUrl = detailData.bannerImage?.takeIf { it.isNotBlank() } ?: posterUrl
             val cleanDesc = cleanHtmlText(detailData.description).takeIf { it != "No description available." }
                 ?: "Stream $title with precision dual-audio Japanese/English playback."
@@ -126,15 +141,21 @@ class WebApiMediaProvider @Inject constructor(
                 ?: detailData.episodes?.takeIf { it.isNotEmpty() }
                 ?: emptyList()
             if (rawEpisodes.isEmpty()) {
-                val queryTitle = if (!title.startsWith("Anime #") && title != "Anime Details" && title != "Anime") title else (fallbackTitle ?: mediaId)
-                try {
-                    val epResponse = webAnimeService.getEpisodesByQuery(queryTitle)
-                    rawEpisodes = epResponse.data ?: emptyList()
-                } catch (e: Exception) {
+                val queryTitle = if (!title.startsWith("Anime #") && title != "Anime Details" && title != "Anime") {
+                    title
+                } else {
+                    fallbackTitle ?: mediaId
+                }
+                if (!queryTitle.startsWith("Anime #") && queryTitle != "Anime Details" && queryTitle != "Anime") {
                     try {
-                        val epResponse = webAnimeService.getEpisodes(mediaId)
+                        val epResponse = webAnimeService.getEpisodesByQuery(queryTitle)
                         rawEpisodes = epResponse.data ?: emptyList()
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        try {
+                            val epResponse = webAnimeService.getEpisodes(mediaId)
+                            rawEpisodes = epResponse.data ?: emptyList()
+                        } catch (_: Exception) {}
+                    }
                 }
             }
 

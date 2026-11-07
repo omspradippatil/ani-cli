@@ -550,13 +550,24 @@ body {
   transform: scale(1.15) !important;
 }
 
-/* Ensure controls stay clearly visible in fullscreen */
-.art-video-player.art-fullscreen .art-bottom,
-.art-video-player.art-fullscreen-web .art-bottom,
-.art-video-player.art-web-fullscreen .art-bottom,
-.art-video-player.art-hover .art-bottom {
+/* Precision Controls Visibility & Auto-Hide: Controls & Timer hide during playback */
+.art-video-player:not(.art-hover):not(.art-paused) .art-bottom,
+.art-video-player:not(.art-hover):not(.art-paused) .art-controls-left,
+.art-video-player:not(.art-hover):not(.art-paused) .art-controls-right {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+.art-video-player.art-hover .art-bottom,
+.art-video-player.art-paused .art-bottom,
+.art-video-player.art-hover .art-controls-left,
+.art-video-player.art-hover .art-controls-right {
   opacity: 1 !important;
   visibility: visible !important;
+  pointer-events: auto !important;
+  transition: opacity 0.2s ease, visibility 0.2s ease !important;
 }
 
 .art-video-player .art-progress-played {
@@ -610,9 +621,15 @@ body.player-in-fullscreen,
 body:has(.art-video-player.art-fullscreen),
 body:has(.art-video-player.art-fullscreen-web),
 body:has(.art-video-player.art-web-fullscreen) {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  width: 100dvw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   overflow: hidden !important;
-  width: 100% !important;
-  height: 100% !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
 }
 
 body.player-in-fullscreen #watch-view,
@@ -622,7 +639,37 @@ body:has(.art-video-player.art-fullscreen-web) #watch-view {
   margin: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  position: static !important;
+  position: fixed !important;
+  inset: 0 !important;
+  overflow: hidden !important;
+  z-index: 2147483646 !important;
+}
+
+/* Hide every other webpage component inside #watch-view in fullscreen */
+body.player-in-fullscreen #watch-view > *:not(#video-stage-container),
+body:has(.art-video-player.art-fullscreen) #watch-view > *:not(#video-stage-container),
+body:has(.art-video-player.art-fullscreen-web) #watch-view > *:not(#video-stage-container) {
+  display: none !important;
+}
+
+body.player-in-fullscreen #video-stage-container,
+body:has(.art-video-player.art-fullscreen) #video-stage-container,
+body:has(.art-video-player.art-fullscreen-web) #video-stage-container {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  width: 100dvw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  z-index: 2147483647 !important;
+  background: #000000 !important;
 }
 
 .art-video-player.art-fullscreen,
@@ -681,8 +728,63 @@ body.player-in-fullscreen .art-video-player .art-bottom {
   padding-left: max(16px, env(safe-area-inset-left, 0px)) !important;
   padding-right: max(16px, env(safe-area-inset-right, 0px)) !important;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
-  opacity: 1 !important;
-  visibility: visible !important;
+}
+
+/* In-Player Quality Selector Modal (Floating on video stage) */
+.ani-quality-modal-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: fadeIn 0.2s ease-out !important;
+}
+
+.ani-quality-modal-dialog {
+  background: #14171d !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  padding: 16px 20px !important;
+  min-width: 260px !important;
+  max-width: 90vw !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.ani-quality-item-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.ani-quality-item-btn.active {
+  background: #ff4f73 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(255, 79, 115, 0.4) !important;
+}
+
+.ani-quality-item-btn:not(.active) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #cbd5e1 !important;
+}
+
+.ani-quality-item-btn:not(.active):hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
 }
 
 /* Quick Double-Tap Seek Feedback Animation for Mobile */

@@ -191,15 +191,20 @@ fun DetailsScreen(
 
                             if (watchProg != null && watchProg.episodeId.isNotBlank()) {
                                 // Match watchProg to real episode in detail.episodes
-                                val savedEpNum = watchProg.episodeId.split("|").lastOrNull()?.toIntOrNull()
+                                val parsedFromTitle = Regex("""\b(?:ep|episode)\s*(\d+)\b""", RegexOption.IGNORE_CASE)
+                                    .find(watchProg.episodeTitle)?.groupValues?.get(1)?.toIntOrNull()
+                                val rawEpNum = watchProg.episodeId.split("|").lastOrNull()?.toIntOrNull()
+                                val savedEpNum = parsedFromTitle
+                                    ?: if (rawEpNum != null && rawEpNum < 2000) rawEpNum else null
                                     ?: Regex("""\b(\d+)\b""").find(watchProg.episodeTitle)?.groupValues?.get(1)?.toIntOrNull()
                                     ?: 1
+
                                 val matchedEp = detail.episodes.find { it.number == savedEpNum }
-                                    ?: detail.episodes.find { it.id == watchProg.episodeId }
+                                    ?: detail.episodes.find { it.id == watchProg.episodeId || it.id.contains(watchProg.episodeId) }
                                     ?: detail.episodes.firstOrNull()
 
                                 val resumeEpId = matchedEp?.id ?: watchProg.episodeId
-                                val epDisplayNum = matchedEp?.number ?: savedEpNum
+                                val epDisplayNum = matchedEp?.number ?: (if (savedEpNum < 2000) savedEpNum else 1)
                                 val percent = if (watchProg.totalDurationMs > 0L) {
                                     ((watchProg.progressMs.toFloat() / watchProg.totalDurationMs.toFloat()) * 100).toInt().coerceIn(1, 99)
                                 } else null

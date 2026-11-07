@@ -62,7 +62,7 @@ class HomeViewModel @Inject constructor(
                         if (prog.mediaId.isBlank() || prog.mediaId == "undefined") return@mapNotNull null
 
                         var title = prog.mediaTitle.takeIf { 
-                            it.isNotBlank() && it != "Unknown Anime" && it != "Anime Stream" && it != "Anime" 
+                            it.isNotBlank() && it != "Unknown Anime" && it != "Anime Stream" && it != "Anime" && it != "Anime Details" && !it.startsWith("Anime #")
                         }
                         var poster = prog.posterUrl.takeIf { 
                             it.isNotBlank() && !it.contains("wp.youtube-anime.com") 
@@ -78,7 +78,7 @@ class HomeViewModel @Inject constructor(
                         // Also check memory cache from PlayerViewModel
                         if (title == null || poster == null) {
                             val cached = com.anicli.tv.ui.player.PlayerViewModel.getDetailFromCache(prog.mediaId)
-                            if (title == null && cached != null) title = cached.title
+                            if (title == null && cached != null && !cached.title.startsWith("Anime #")) title = cached.title
                             if (poster == null && cached != null) poster = cached.backdropUrl.takeIf { it.isNotBlank() } ?: cached.posterUrl
                         }
 
@@ -89,13 +89,19 @@ class HomeViewModel @Inject constructor(
                             (prog.progressMs.toFloat() / prog.totalDurationMs.toFloat()).coerceIn(0.01f, 1f)
                         } else 0.5f
 
+                        val parsedEpNum = Regex("""\b(?:ep|episode)\s*(\d+)\b""", RegexOption.IGNORE_CASE)
+                            .find(prog.episodeTitle)?.groupValues?.get(1)?.toIntOrNull()
+                            ?: prog.episodeId.split("|").lastOrNull()?.toIntOrNull()?.takeIf { it < 2000 }
+                            ?: Regex("""\b(\d+)\b""").find(prog.episodeTitle)?.groupValues?.get(1)?.toIntOrNull()
+                            ?: 1
+
                         MediaItem(
                             id = prog.mediaId, 
                             title = title, 
                             posterUrl = poster,
                             backdropUrl = poster,
                             progressPercent = progressRatio,
-                            episodeLabel = prog.episodeTitle.ifBlank { "EP 1" },
+                            episodeLabel = "EPISODE $parsedEpNum",
                             episodeId = prog.episodeId
                         )
                     }

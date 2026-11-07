@@ -72,9 +72,13 @@ class PlayerViewModel @Inject constructor(
         val parts = episodeId.split("|")
         val mediaId = parts.getOrNull(0) ?: ""
         val epNum = if (parts.size >= 3) {
-            parts.lastOrNull()?.toIntOrNull() ?: 1
+            val p = parts.lastOrNull()?.toIntOrNull() ?: 1
+            if (p < 2000) p else 1
+        } else if (parts.size == 2) {
+            val p = parts.getOrNull(1)?.toIntOrNull() ?: 1
+            if (p < 2000) p else 1
         } else {
-            parts.getOrNull(1)?.toIntOrNull() ?: 1
+            1
         }
 
         // Query saved progress to resume playback at exact millisecond
@@ -172,9 +176,13 @@ class PlayerViewModel @Inject constructor(
         val parts = currentEpId.split("|")
         val mediaId = parts.getOrNull(0) ?: ""
         val epNum = if (parts.size >= 3) {
-            parts.lastOrNull()?.toIntOrNull() ?: 1
+            val p = parts.lastOrNull()?.toIntOrNull() ?: 1
+            if (p < 2000) p else 1
+        } else if (parts.size == 2) {
+            val p = parts.getOrNull(1)?.toIntOrNull() ?: 1
+            if (p < 2000) p else 1
         } else {
-            parts.getOrNull(1)?.toIntOrNull() ?: 1
+            1
         }
 
         val episodes = _cachedEpisodes.value.takeIf { it.isNotEmpty() }
