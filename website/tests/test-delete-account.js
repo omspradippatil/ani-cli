@@ -2,21 +2,16 @@
 // Automated End-to-End Verification for Account Deletion Feature
 
 const { chromium } = require('playwright');
+const { launchBrowser } = require('./browser');
 
 const BASE_URL = 'https://om-cli-anime.omspradippatil.workers.dev';
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
 async function main() {
   console.log('================================================================');
   console.log('🗑️  STARTING DELETE ACCOUNT END-TO-END VERIFICATION');
   console.log(`🌍 Target Base URL: ${BASE_URL}`);
   console.log('================================================================\n');
 
-  const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  const browser = await launchBrowser();
 
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();

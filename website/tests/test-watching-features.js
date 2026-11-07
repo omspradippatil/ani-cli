@@ -3,12 +3,11 @@
 // Powered by Playwright & Google Chrome
 
 const { chromium } = require('playwright');
+const { launchBrowser } = require('./browser');
 const fs = require('fs');
 const path = require('path');
 
 const BASE_URL = process.env.BASE_URL || 'https://om-cli-anime.omspradippatil.workers.dev';
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
 const results = [];
 let passedCount = 0;
 let failedCount = 0;
@@ -47,14 +46,10 @@ async function main() {
   console.log('================================================================');
   console.log('🎬 STARTING WATCHING & CONTINUE WATCHING FEATURE TEST SUITE');
   console.log(`🌍 Target Base URL: ${BASE_URL}`);
-  console.log(`🖥️  Browser Binary: ${CHROME_PATH}`);
+  console.log('🖥️  Browser: installed Chrome/Edge channel (set BROWSER_CHANNEL to override)');
   console.log('================================================================\n');
 
-  const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
-  });
+  const browser = await launchBrowser();
 
   // Device 1 Context (Primary User Session)
   const context1 = await browser.newContext({

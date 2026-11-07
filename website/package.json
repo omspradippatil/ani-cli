@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node tests/test-seo.js",
+    "test": "node tests/test-seo.js && node tests/test-html-structure.js && node tests/test-codebase-audit.js",
+    "test:responsive": "node tests/test-responsive.js",
+    "test:browser": "node tests/run-all-tests.js",
     "d1:create": "wrangler d1 create omcli-db",
     "d1:migrate:local": "wrangler d1 migrations apply omcli-db --local",
     "d1:migrate:remote": "wrangler d1 migrations apply omcli-db --remote",

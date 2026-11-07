@@ -2492,11 +2492,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isListed) {
           if (textWatchlistStatus) textWatchlistStatus.textContent = 'In Watchlist';
           if (iconWatchlistStatus) iconWatchlistStatus.textContent = 'bookmark_added';
-          if (btnToggleWatchlist) btnToggleWatchlist.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container/20 border border-primary/40 text-primary text-xs font-semibold transition-all';
+if (btnToggleWatchlist) {
+            // Toggle state classes only, so the responsive sizing declared in the
+            // markup (px-2.5 sm:px-3) is preserved.
+            btnToggleWatchlist.classList.remove('bg-surface-container-low', 'text-gray-300', 'hover:text-primary', 'border-white/[0.08]');
+            btnToggleWatchlist.classList.add('bg-primary-container/20', 'border-primary/40', 'text-primary');
+          }
         } else {
           if (textWatchlistStatus) textWatchlistStatus.textContent = 'Add to Watchlist';
           if (iconWatchlistStatus) iconWatchlistStatus.textContent = 'bookmark_add';
-          if (btnToggleWatchlist) btnToggleWatchlist.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-white/[0.08] text-gray-300 hover:text-primary text-xs font-semibold transition-all';
+if (btnToggleWatchlist) {
+            // Toggle state classes only, so the responsive sizing declared in the
+            // markup (px-2.5 sm:px-3) is preserved.
+            btnToggleWatchlist.classList.remove('bg-primary-container/20', 'border-primary/40', 'text-primary');
+            btnToggleWatchlist.classList.add('bg-surface-container-low', 'border-white/[0.08]', 'text-gray-300', 'hover:text-primary');
+          }
         }
       }
     } catch {}
@@ -2643,12 +2653,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function switchAccountTab(tabName) {
-    accountSubTabs.querySelectorAll('.account-tab').forEach(t => {
-      if (t.dataset.tab === tabName) {
-        t.className = 'account-tab active px-4 py-2.5 font-semibold text-xs text-white border-b-2 border-primary transition-all flex items-center gap-2';
-      } else {
-        t.className = 'account-tab px-4 py-2.5 font-semibold text-xs text-gray-400 hover:text-white border-b-2 border-transparent transition-all flex items-center gap-2';
-      }
+accountSubTabs.querySelectorAll('.account-tab').forEach(t => {
+      const isActive = t.dataset.tab === tabName;
+      // Toggle state classes only. Rewriting className here used to drop the
+      // responsive variants the markup defines for narrow phones
+      // (px-3 sm:px-4, py-2 sm:py-2.5, gap-1.5 sm:gap-2, whitespace-nowrap),
+      // which broke the tab strip after the first tap on a small screen.
+      t.classList.toggle('active', isActive);
+      t.classList.toggle('text-white', isActive);
+      t.classList.toggle('text-gray-400', !isActive);
+      t.classList.toggle('border-primary', isActive);
+      t.classList.toggle('border-transparent', !isActive);
+      t.classList.toggle('hover:text-white', !isActive);
     });
 
     document.querySelectorAll('.account-tab-panel').forEach(p => p.classList.add('hidden'));

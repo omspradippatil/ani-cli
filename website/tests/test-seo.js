@@ -40,7 +40,7 @@ function runSeoAudit() {
   assert(sitemapContent.includes('<loc>https://ani-cli-steel.vercel.app/</loc>'), 'Contains root canonical URL');
   assert(sitemapContent.includes('<image:image>'), 'Contains Google image sitemap extensions');
   assert(sitemapContent.includes('https://ani-cli-steel.vercel.app/assets/hero_bg.jpg'), 'Contains hero background image in sitemap');
-  assert(sitemapContent.includes('<loc>https://ani-cli-steel.vercel.app/#browse?genre=Action</loc>'), 'Contains crawlable genre entries');
+  assert(!/<loc>[^<]*#/.test(sitemapContent), 'Sitemap contains no fragment-only URLs (Google strips fragments, so each one duplicated "/")');
 
   // 3. Audit index.html Head Metadata
   console.log('\n--- 3. index.html Head Metadata & Social Previews ---');

@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Om CLI sitemap.
+
+  Only real, crawlable URLs belong here. Om CLI is a single-page app: routes such
+  as /#browse or /#browse?genre=Action are fragment URLs, and Google strips the
+  fragment before indexing, so every one of them resolved to the same document as
+  "/" — 14 duplicate entries that burned crawl budget and produced
+  "Duplicate, Google chose a different canonical" noise.
+
+  The genre taxonomy is still fully crawlable: the real <a href> links live in the
+  "Browse Anime by Genre" nav inside #seo-knowledge-base on the homepage, so
+  crawlers reach them by following links rather than via this file.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
-  
-  <!-- Homepage / Main Portal -->
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- Homepage / Main Portal (the single indexable document of the SPA) -->
   <url>
     <loc>https://ani-cli-steel.vercel.app/</loc>
-    <lastmod>2026-10-30</lastmod>
+    <lastmod>2026-11-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -21,104 +33,12 @@
     </image:image>
   </url>
 
-  <!-- Browse Catalog & Genre Explorer -->
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- Genre Categories for Search Indexing -->
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Action</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Adventure</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Fantasy</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Sci-Fi</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Romance</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Comedy</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Drama</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Supernatural</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Mystery</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Sports</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#browse?genre=Slice%20of%20Life</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- My Watchlist -->
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#watchlist</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- Android TV APK Download -->
+  <!-- Android TV APK Download (real server route, linked from the footer) -->
   <url>
     <loc>https://ani-cli-steel.vercel.app/download/tv-apk</loc>
-    <lastmod>2026-10-30</lastmod>
+    <lastmod>2026-11-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
-  </url>
-
-  <!-- Account Portal -->
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/#account</loc>
-    <lastmod>2026-10-30</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
 
 </urlset>

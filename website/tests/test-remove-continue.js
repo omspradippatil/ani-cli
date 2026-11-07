@@ -2,21 +2,16 @@
 // Verification for removing individual/all items from Continue Watching rail
 
 const { chromium } = require('playwright');
+const { launchBrowser } = require('./browser');
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
 async function main() {
   console.log('================================================================');
   console.log('🎬 TESTING REMOVE FROM CONTINUE WATCHING FEATURE');
   console.log(`🌍 Target Base URL: ${BASE_URL}`);
   console.log('================================================================\n');
 
-  const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  const browser = await launchBrowser();
 
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();

@@ -2,6 +2,7 @@
 // Automated End-to-End Verification for Mobile Optimization & Auto-Rotate
 
 const { chromium, devices } = require('playwright');
+const { launchBrowser } = require('./browser');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3456';
 
@@ -25,19 +26,13 @@ function record(name, passed, details = '') {
   }
 }
 
-const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
 async function runTests() {
   console.log('============================================================');
   console.log('📱 STARTING MOBILE OPTIMIZATION & AUTO-ROTATE VERIFICATION');
   console.log(`🌐 Target: ${BASE_URL}`);
   console.log('============================================================\n');
 
-  const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  const browser = await launchBrowser();
 
   try {
     // -------------------------------------------------------------------------
