@@ -58,3 +58,5 @@ Contributors are welcome! Feel free to report issues, suggest improvements, or s
 Copyright (c) 2026 Om Pradip Patil. All rights reserved.
 
 Distributed under the [MIT License](LICENSE).
+
+Contributions are welcomed 
