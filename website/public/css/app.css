@@ -565,19 +565,47 @@ body {
 }
 
 /* Precision Controls Visibility & Auto-Hide: Controls & Timer hide during playback */
-.art-video-player:not(.art-hover):not(.art-paused) .art-bottom,
-.art-video-player:not(.art-hover):not(.art-paused) .art-controls-left,
-.art-video-player:not(.art-hover):not(.art-paused) .art-controls-right {
+.art-video-player .art-bottom {
+  pointer-events: none !important;
+}
+
+.art-video-player.art-controls-hidden .art-bottom,
+.art-video-player.art-controls-hidden .art-controls,
+.art-video-player.art-controls-hidden .art-controls-left,
+.art-video-player.art-controls-hidden .art-controls-right,
+.art-video-player.art-controls-hidden .art-control,
+.art-video-player.art-controls-hidden .art-control-time,
+.art-video-player.art-controls-hidden .art-progress,
+.art-video-player:not(.art-control-show):not(.art-paused) .art-bottom,
+.art-video-player:not(.art-control-show):not(.art-paused) .art-controls,
+.art-video-player:not(.art-control-show):not(.art-paused) .art-controls-left,
+.art-video-player:not(.art-control-show):not(.art-paused) .art-controls-right,
+.art-video-player:not(.art-hover):not(.art-paused):not(.art-control-show) .art-bottom,
+.art-video-player:not(.art-hover):not(.art-paused):not(.art-control-show) .art-controls-left,
+.art-video-player:not(.art-hover):not(.art-paused):not(.art-control-show) .art-controls-right {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
   transition: opacity 0.3s ease, visibility 0.3s ease !important;
 }
 
-.art-video-player.art-hover .art-bottom,
-.art-video-player.art-paused .art-bottom,
-.art-video-player.art-hover .art-controls-left,
-.art-video-player.art-hover .art-controls-right {
+.art-video-player:not(.art-controls-hidden).art-control-show .art-bottom,
+.art-video-player:not(.art-controls-hidden).art-paused .art-bottom,
+.art-video-player:not(.art-controls-hidden):not(.art-mobile).art-hover .art-bottom {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease, visibility 0.2s ease !important;
+}
+
+.art-video-player:not(.art-controls-hidden).art-control-show .art-controls,
+.art-video-player:not(.art-controls-hidden).art-control-show .art-controls-left,
+.art-video-player:not(.art-controls-hidden).art-control-show .art-controls-right,
+.art-video-player:not(.art-controls-hidden).art-control-show .art-progress,
+.art-video-player:not(.art-controls-hidden).art-paused .art-controls,
+.art-video-player:not(.art-controls-hidden):not(.art-mobile).art-hover .art-controls,
+.art-video-player:not(.art-controls-hidden):not(.art-mobile).art-hover .art-controls-left,
+.art-video-player:not(.art-controls-hidden):not(.art-mobile).art-hover .art-controls-right {
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
@@ -915,18 +943,19 @@ button:active,
     display: none !important;
   }
 
-  /* Always keep Play, Rewind 5s, Forward 5s, Time, CC, and Fullscreen visible on mobile */
-  .art-video-player .art-control-play,
-  .art-video-player .art-control-skip-back-5s-btn,
-  .art-video-player .art-control-skip-fwd-5s-btn,
-  .art-video-player .art-controls-left [data-name="skip-back-5s-btn"],
-  .art-video-player .art-controls-left [data-name="skip-fwd-5s-btn"],
-  .art-video-player .art-control-time,
-  .art-video-player .art-control-cc-btn,
-  .art-video-player .art-controls-right [data-name="cc-btn"],
-  .art-video-player .art-control-custom-fullscreen-btn,
-  .art-video-player .art-controls-right [data-name="custom-fullscreen-btn"],
-  .art-video-player .art-control-fullscreen {
+  /* Always keep Play, Rewind 5s, Forward 5s, Time, CC, and Fullscreen visible when active on mobile */
+  .art-video-player:not(.art-controls-hidden) .art-control-play,
+  .art-video-player:not(.art-controls-hidden) .art-control-playAndPause,
+  .art-video-player:not(.art-controls-hidden) .art-control-skip-back-5s-btn,
+  .art-video-player:not(.art-controls-hidden) .art-control-skip-fwd-5s-btn,
+  .art-video-player:not(.art-controls-hidden) .art-controls-left [data-name="skip-back-5s-btn"],
+  .art-video-player:not(.art-controls-hidden) .art-controls-left [data-name="skip-fwd-5s-btn"],
+  .art-video-player:not(.art-controls-hidden) .art-control-time,
+  .art-video-player:not(.art-controls-hidden) .art-control-cc-btn,
+  .art-video-player:not(.art-controls-hidden) .art-controls-right [data-name="cc-btn"],
+  .art-video-player:not(.art-controls-hidden) .art-control-custom-fullscreen-btn,
+  .art-video-player:not(.art-controls-hidden) .art-controls-right [data-name="custom-fullscreen-btn"],
+  .art-video-player:not(.art-controls-hidden) .art-control-fullscreen {
     display: inline-flex !important;
   }
 }

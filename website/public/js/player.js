@@ -546,36 +546,8 @@ class AnimePlayer {
           }
         } catch (e) {}
 
-        // Mobile touch double-tap seek & gestures
-        try {
-          const vLayer = self.art.template?.$video || self.art.template?.$player;
-          if (vLayer) {
-            let lastTap = 0;
-            vLayer.addEventListener('touchend', (e) => {
-              if (e.changedTouches.length !== 1) return;
-              const touch = e.changedTouches[0];
-              const rect = vLayer.getBoundingClientRect();
-              const x = touch.clientX - rect.left;
-              const width = rect.width;
-              const now = Date.now();
-              const diff = now - lastTap;
-              if (diff < 320 && diff > 50) {
-                lastTap = 0;
-                if (x < width * 0.38) {
-                  e.preventDefault();
-                  self.seekRelative(-10);
-                  self.showQuickSeekFeedback('left', '-10s');
-                } else if (x > width * 0.62) {
-                  e.preventDefault();
-                  self.seekRelative(10);
-                  self.showQuickSeekFeedback('right', '+10s');
-                }
-              } else {
-                lastTap = now;
-              }
-            }, { passive: false });
-          }
-        } catch (_) {}
+        // Setup precision mobile & desktop controls visibility auto-hide manager
+        self.setupControlsVisibilityManager();
       });
 
       this.art.on('video:play', () => {
@@ -741,6 +713,234 @@ class AnimePlayer {
         `;
       }
       throw err;
+    }
+  }
+
+  /**
+   * Hides the player UI controls bar, time display, and progress bar
+   */
+  hideControls() {
+    if (this.art?.setting?.show) return;
+    if (this._controlsHideTimer) {
+      clearTimeout(this._controlsHideTimer);
+      this._controlsHideTimer = null;
+    }
+    this.controlsVisible = false;
+    if (this.art?.controls) {
+      this.art.controls.isHover = false;
+      this.art.controls.show = false;
+    }
+    const playerEl = this.art?.template?.$player;
+    if (playerEl) {
+      playerEl.classList.add('art-controls-hidden');
+      playerEl.classList.remove('art-hover');
+    }
+  }
+
+  /**
+   * Shows the player UI controls bar and optionally schedules auto-hide
+   */
+  showControls(autoHideMs = 3000) {
+    if (this._controlsHideTimer) {
+      clearTimeout(this._controlsHideTimer);
+      this._controlsHideTimer = null;
+    }
+    this.controlsVisible = true;
+    const playerEl = this.art?.template?.$player;
+    if (playerEl) {
+      playerEl.classList.remove('art-controls-hidden');
+    }
+    if (this.art?.controls) {
+      this.art.controls.show = true;
+    }
+    if (autoHideMs > 0 && this.art?.video && !this.art.video.paused) {
+      this._controlsHideTimer = setTimeout(() => {
+        this.hideControls();
+      }, autoHideMs);
+    }
+  }
+
+  /**
+   * Toggles player UI controls visibility on/off
+   */
+  toggleControls() {
+    if (this.controlsVisible) {
+      this.hideControls();
+    } else {
+      this.showControls(3000);
+    }
+  }
+
+  /**
+   * Resets the auto-hide countdown timer (3000ms by default)
+   */
+  resetControlsTimer(ms = 3000) {
+    if (this._controlsHideTimer) {
+      clearTimeout(this._controlsHideTimer);
+      this._controlsHideTimer = null;
+    }
+    if (this.art?.video && !this.art.video.paused && this.controlsVisible) {
+      this._controlsHideTimer = setTimeout(() => {
+        this.hideControls();
+      }, ms);
+    }
+  }
+
+  /**
+   * Initializes mobile & desktop controls auto-hide and touch gesture management
+   */
+  setupControlsVisibilityManager() {
+    const self = this;
+    const art = this.art;
+    if (!art) return;
+
+    const playerEl = art.template?.$player;
+    const bottomEl = art.template?.$bottom;
+    const settingEl = art.template?.$setting;
+    if (!playerEl) return;
+
+    if (this._controlsHideTimer) {
+      clearTimeout(this._controlsHideTimer);
+      this._controlsHideTimer = null;
+    }
+    if (this._singleTapTimeout) {
+      clearTimeout(this._singleTapTimeout);
+      this._singleTapTimeout = null;
+    }
+
+    this.controlsVisible = true;
+
+    // Document touchend ensures art.controls.isHover never gets stuck true on touchscreens
+    if (this._docTouchEndListener) {
+      document.removeEventListener('touchend', this._docTouchEndListener);
+    }
+    const onDocTouchEnd = () => {
+      if (art.controls) art.controls.isHover = false;
+    };
+    document.addEventListener('touchend', onDocTouchEnd, { passive: true });
+    this._docTouchEndListener = onDocTouchEnd;
+
+    // Interacting with bottom controls or settings bar
+    if (bottomEl) {
+      bottomEl.addEventListener('touchstart', () => {
+        if (self._controlsHideTimer) {
+          clearTimeout(self._controlsHideTimer);
+          self._controlsHideTimer = null;
+        }
+        self.controlsVisible = true;
+        playerEl.classList.remove('art-controls-hidden');
+      }, { passive: true });
+
+      bottomEl.addEventListener('touchend', () => {
+        if (art.controls) art.controls.isHover = false;
+        self.resetControlsTimer(3000);
+      }, { passive: true });
+    }
+
+    if (settingEl) {
+      settingEl.addEventListener('touchstart', () => {
+        if (self._controlsHideTimer) {
+          clearTimeout(self._controlsHideTimer);
+          self._controlsHideTimer = null;
+        }
+        self.controlsVisible = true;
+      }, { passive: true });
+
+      settingEl.addEventListener('touchend', () => {
+        if (art.controls) art.controls.isHover = false;
+      }, { passive: true });
+    }
+
+    // Touch gesture handling on video stage:
+    // Single tap toggles UI visibility
+    // Double tap seeks -10s (left) or +10s (right)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let isDragging = false;
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+
+    playerEl.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.art-controls') || e.target.closest('.art-setting') || e.target.closest('.art-progress') || e.target.closest('.art-contextmenus')) return;
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      touchStartTime = Date.now();
+      isDragging = false;
+    }, { passive: true });
+
+    playerEl.addEventListener('touchmove', (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 12) {
+        isDragging = true;
+      }
+    }, { passive: true });
+
+    playerEl.addEventListener('touchend', (e) => {
+      if (e.target.closest('.art-controls') || e.target.closest('.art-setting') || e.target.closest('.art-progress') || e.target.closest('.art-contextmenus')) return;
+      if (isDragging || (Date.now() - touchStartTime > 450)) return;
+      if (e.changedTouches.length !== 1) return;
+
+      const t = e.changedTouches[0];
+      const now = Date.now();
+      const rect = playerEl.getBoundingClientRect();
+      const relX = (t.clientX - rect.left) / rect.width;
+
+      if (now - lastTapTime < 300 && Math.hypot(t.clientX - lastTapX, t.clientY - lastTapY) < 40) {
+        if (self._singleTapTimeout) {
+          clearTimeout(self._singleTapTimeout);
+          self._singleTapTimeout = null;
+        }
+        lastTapTime = 0;
+        if (relX < 0.38) {
+          self.seekRelative(-10);
+          self.showQuickSeekFeedback('left', '-10s');
+        } else if (relX > 0.62) {
+          self.seekRelative(10);
+          self.showQuickSeekFeedback('right', '+10s');
+        } else {
+          self.togglePlay();
+        }
+      } else {
+        lastTapTime = now;
+        lastTapX = t.clientX;
+        lastTapY = t.clientY;
+        if (self._singleTapTimeout) clearTimeout(self._singleTapTimeout);
+        self._singleTapTimeout = setTimeout(() => {
+          self._singleTapTimeout = null;
+          self.toggleControls();
+        }, 260);
+      }
+    }, { passive: true });
+
+    // Desktop mouse movement wakes controls
+    playerEl.addEventListener('mousemove', () => {
+      const isMobile = window.matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (!isMobile) {
+        self.showControls(3000);
+      }
+    }, { passive: true });
+
+    // Auto-hide starts as soon as playback starts
+    art.on('video:play', () => {
+      self.resetControlsTimer(3000);
+    });
+    art.on('video:playing', () => {
+      self.resetControlsTimer(3000);
+    });
+    art.on('video:pause', () => {
+      self.showControls(0);
+    });
+    art.on('video:timeupdate', () => {
+      if (art.controls) art.controls.isHover = false;
+    });
+
+    if (art.video && !art.video.paused) {
+      this.resetControlsTimer(3000);
     }
   }
 
@@ -1373,6 +1573,19 @@ class AnimePlayer {
    * Completely stops, pauses, and tears down video/audio to guarantee no background sound
    */
   stop() {
+    if (this._controlsHideTimer) {
+      clearTimeout(this._controlsHideTimer);
+      this._controlsHideTimer = null;
+    }
+    if (this._docTouchEndListener) {
+      document.removeEventListener('touchend', this._docTouchEndListener);
+      this._docTouchEndListener = null;
+    }
+    if (this._singleTapTimeout) {
+      clearTimeout(this._singleTapTimeout);
+      this._singleTapTimeout = null;
+    }
+
     document.body.classList.remove('player-in-fullscreen');
     document.body.classList.remove('player-forced-landscape');
     const playerEl = this.art?.template?.$player || document.querySelector('.art-video-player');
