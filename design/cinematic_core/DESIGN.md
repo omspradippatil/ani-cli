@@ -103,13 +103,13 @@ spacing:
 
 ## Brand & Style
 
-The design system is engineered for high-end Android TV environments, prioritizing immersion, legibility, and a "lean-back" experience. The personality is cinematic, authoritative, and premium, evoking the feeling of a private theater. 
+The design system is engineered for high-end Android TV environments, prioritizing immersion, legibility, and a "lean-back" experience. The personality is cinematic, authoritative, and premium, evoking the feeling of a private theater.
 
 The style utilizes **Modern Minimalism** mixed with **Tonal Layering**. It avoids unnecessary ornamentation to keep the focus entirely on the content. High-contrast focus states and subtle motion are used to provide the user with a clear sense of orientation within a 10-foot UI context. The overall aesthetic is dark and expansive, using deep blacks to allow hardware-level OLED blacks to disappear into the room.
 
 ## Colors
 
-The palette is strictly dark-mode to reduce eye strain in low-light viewing environments. 
+The palette is strictly dark-mode to reduce eye strain in low-light viewing environments.
 - **Background**: A near-perfect black (#0A0A0A) to ensure depth and contrast for media posters.
 - **Surface**: Subtle charcoals (#121212 and #1F1F1F) define secondary containers and navigation bars.
 - **Primary**: A vibrant, high-energy Red (#E50914) serves as the primary "Action" color, used sparingly for critical call-outs, progress bars, and branding.
@@ -141,7 +141,7 @@ Depth is used exclusively to signify the "Focused" state. This design system doe
 
 ## Shapes
 
-The design system uses a **Rounded** shape language to create a friendly and premium feel. 
+The design system uses a **Rounded** shape language to create a friendly and premium feel.
 
 - **Base Radius**: 24px (rounded-xl) for all content cards (Movies, TV Shows).
 - **Secondary Radius**: 12px (rounded-md) for buttons and input fields.

@@ -1,6 +1,6 @@
 # Ani-CLI TV App Memory
 
-- **Provider Architecture**: 
+- **Provider Architecture**:
   - Backend switched from Consumet to native AllAnime GraphQL scraping due to Consumet deprecation/failures.
   - Implemented dynamic `aaReq` token generation natively in Kotlin (`CryptoUtils.kt`), scraping the JS bundle on the fly to bypass Cloudflare and AllAnime anti-bot protections.
   - Custom `OkHttpClient` is configured to trust all certificates to bypass SSL chain validation errors in emulators.
@@ -12,7 +12,7 @@
   - Added custom OkHttp Interceptor in `DataModule.kt` to inject `Range: bytes=0-` for ExoPlayer requests, explicitly fixing an infinite buffering bug caused by Mp4Upload omitting `Accept-Ranges: bytes`.
   - Implemented Load Balancing/Timeout in `RealMediaProvider.kt` using `withTimeoutOrNull(8000)` to ensure slow or hanging mirrors do not prevent the video player from loading fast streams.
   - Production TV UI overhaul: Added a `SplashScreen.kt` for seamless loading, and updated `HomeScreen.kt` to use an immersive Hero Banner crossfading system (Netflix style) for focused media cards, moving away from simple static grids.
-  - **TV Only Enforcement**: Removed all `Mobile` UI components and dual-routing logic to focus exclusively on a robust Android TV experience. 
+  - **TV Only Enforcement**: Removed all `Mobile` UI components and dual-routing logic to focus exclusively on a robust Android TV experience.
   - **HLS MimeType Fix**: Explicitly forcing `MimeTypes.APPLICATION_M3U8` for non-MP4 URLs in `VideoPlayer.kt` to prevent ExoPlayer from infinitely buffering while incorrectly probing HLS streams as progressive MP4s.
   - **Continue Watching State**: Fixed `VideoPlayer.kt` missing progress callbacks to properly populate the `HomeViewModel`'s Continue Watching rows via `WatchProgressDao`.
   - **TV Settings UI**: Rebuilt `SettingsScreen.kt` from a single-column layout into a side-by-side Auth vs Settings view properly utilizing D-Pad focused TV Material 3 components instead of raw Android Compose TextFields.

@@ -59,4 +59,4 @@ Copyright (c) 2026 Om Pradip Patil. All rights reserved.
 
 Distributed under the [MIT License](LICENSE).
 
-Contributions are welcomed 
+Contributions are welcomed
