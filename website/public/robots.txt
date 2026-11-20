@@ -10,14 +10,13 @@ Allow: /assets/
 Allow: /css/
 Allow: /js/
 Disallow: /api/
-
-# Crawler delay for optimal server performance
-Crawl-delay: 1
+Disallow: /download/
 
 # Major search engine specific directives
 User-agent: Googlebot
 Allow: /
 Disallow: /api/
+Disallow: /download/
 
 User-agent: Googlebot-Image
 Allow: /assets/
@@ -26,7 +25,7 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 Disallow: /api/
+Disallow: /download/
 
 # Sitemap location
 Sitemap: https://ani-cli-steel.vercel.app/sitemap.xml
-Host: https://ani-cli-steel.vercel.app

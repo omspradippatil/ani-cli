@@ -1,16 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Om CLI sitemap.
-
-  Only real, crawlable URLs belong here. Om CLI is a single-page app: routes such
-  as /#browse or /#browse?genre=Action are fragment URLs, and Google strips the
-  fragment before indexing, so every one of them resolved to the same document as
-  "/" — 14 duplicate entries that burned crawl budget and produced
-  "Duplicate, Google chose a different canonical" noise.
-
-  The genre taxonomy is still fully crawlable: the real <a href> links live in the
-  "Browse Anime by Genre" nav inside #seo-knowledge-base on the homepage, so
-  crawlers reach them by following links rather than via this file.
+  Only real, 200 OK indexable canonical HTML URLs belong here.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
@@ -18,7 +9,7 @@
   <!-- Homepage / Main Portal (the single indexable document of the SPA) -->
   <url>
     <loc>https://ani-cli-steel.vercel.app/</loc>
-    <lastmod>2026-11-03</lastmod>
+    <lastmod>2026-11-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -31,14 +22,6 @@
       <image:title>Om CLI Official Brand Emblem</image:title>
       <image:caption>Om CLI — Free Open Source Anime Streaming Platform</image:caption>
     </image:image>
-  </url>
-
-  <!-- Android TV APK Download (real server route, linked from the footer) -->
-  <url>
-    <loc>https://ani-cli-steel.vercel.app/download/tv-apk</loc>
-    <lastmod>2026-11-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
   </url>
 
 </urlset>
